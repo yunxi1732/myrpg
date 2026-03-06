@@ -33,6 +33,6 @@ public class PlayerPrimaryAttack : PlayerState
     {
         base.Update();
         if (triggerCalled) stateMachine.ChangeState(player.idleState);
-        if (stateTimer < 0) player.SetZeroVelocity();
+        if (stateTimer < 0) player.SetVelocity(0, 0);
     }
 }

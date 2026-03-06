@@ -11,12 +11,21 @@ public class Entity : MonoBehaviour
     [SerializeField] protected Transform wallCheck;
     [SerializeField] protected float wallCheckDistance;
 
+    [Header("Knockback Info")]
+    [SerializeField] protected Vector2 knockbackDir;
+    [SerializeField] protected float knockbackDuration;
+    protected bool isKnocked;
+
+    public Transform attackCheck;
+    public float attackCheckRadius;
+
     public int facingDir { get; private set; } = 1;
     protected bool facingRight = true;
 
     #region Component
     public Animator anim { get; private set; }
     public Rigidbody2D rb { get; private set; }
+    public EntityFX fx { get; private set; }
     #endregion
 
     protected virtual void Awake()
@@ -25,6 +34,7 @@ public class Entity : MonoBehaviour
     }
     protected virtual void Start()
     {
+        fx = GetComponentInChildren<EntityFX>();
         anim = GetComponentInChildren<Animator>();
         rb = GetComponent<Rigidbody2D>();
     }
@@ -32,6 +42,20 @@ public class Entity : MonoBehaviour
     protected virtual void Update()
     {
 
+    }
+
+    public virtual void Damage()
+    {
+        fx.AttackedFlashFX();
+        StartCoroutine(HitKnockBack());
+    }
+
+    private IEnumerator HitKnockBack()
+    {
+        isKnocked = true;
+        rb.velocity = new Vector2(-facingDir * knockbackDir.x, knockbackDir.y);
+        yield return new WaitForSeconds(knockbackDuration);
+        isKnocked = false;
     }
 
     #region Collision
@@ -42,6 +66,7 @@ public class Entity : MonoBehaviour
     {
         Gizmos.DrawLine(groundCheck.position, new Vector3(groundCheck.position.x, groundCheck.position.y - groundCheckDistance));
         Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y));
+        Gizmos.DrawWireSphere(attackCheck.position, attackCheckRadius);
     }
     #endregion
     #region Flip
@@ -61,9 +86,9 @@ public class Entity : MonoBehaviour
     #region Velocity
     public void SetVelocity(float _xVelocity, float _yVelocity)
     {
+        if (isKnocked) return;
         rb.velocity = new Vector2(_xVelocity, _yVelocity);
         FlipController(_xVelocity);
     }
-    public void SetZeroVelocity() => rb.velocity = new Vector2(0, 0);
     #endregion
 }

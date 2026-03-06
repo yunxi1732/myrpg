@@ -8,6 +8,7 @@ public class Player : Entity
     public bool isBusy { get; private set; }
     [Header("Attack Details")]
     public float[] attackMovement;
+    public float CounterAttackDuration = .2f;
     
     [Header("Move Info")]
     public float moveSpeed = 8f;
@@ -29,7 +30,9 @@ public class Player : Entity
     public PlayerDashState dashState { get; private set; }
     public PlayerWallSlideState wallSlideState { get; private set; }
     public PlayerWallJumpState wallJumpState { get; private set; }
-    public PlayerPrimaryAttack primaryAttack { get; private set; }
+    public PlayerPrimaryAttack primaryAttackState { get; private set; }
+    public PlayerCounterAttackState counterAttackState { get; private set; }
+
     #endregion
 
     protected override void Awake()
@@ -44,7 +47,8 @@ public class Player : Entity
         dashState = new PlayerDashState(this, stateMachine, "Dash");
         wallSlideState = new PlayerWallSlideState(this, stateMachine, "WallSlide");
         wallJumpState = new PlayerWallJumpState(this, stateMachine, "Jump");
-        primaryAttack = new PlayerPrimaryAttack(this, stateMachine, "Attack");
+        primaryAttackState = new PlayerPrimaryAttack(this, stateMachine, "Attack");
+        counterAttackState = new PlayerCounterAttackState(this, stateMachine, "CounterAttack");
     }
 
     protected override void Start()
@@ -58,7 +62,6 @@ public class Player : Entity
         base.Update();
         stateMachine.currentState.Update();
         CheckForDashInput();
-        if (Input.GetKeyDown(KeyCode.Mouse0)) stateMachine.ChangeState(primaryAttack);
     }
 
 
