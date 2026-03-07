@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Android;
 
@@ -14,6 +15,7 @@ public class PlayerDashState : PlayerState
     {
         base.Enter();
         stateTimer = player.dashDuraiton;
+        player.skill.clone.CreateClone(player.transform);
     }
 
     public override void Exit()

@@ -19,6 +19,8 @@ public class Player : Entity
     public float dashDuraiton = 0.1f;
     public float dashDir { get; private set; }
 
+    public SkillManager skill {  get; private set; }
+
     #region State
     public PlayerStateMachine stateMachine { get; private set; }
     public PlayerIdleState idleState { get; private set; }
@@ -36,6 +38,7 @@ public class Player : Entity
     protected override void Awake()
     {
         base.Awake();
+        skill = SkillManager.instance;
         stateMachine = new PlayerStateMachine();
         
         idleState = new PlayerIdleState(this, stateMachine, "Idle");
