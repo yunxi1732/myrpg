@@ -13,6 +13,7 @@ public class Player : Entity
     [Header("Move Info")]
     public float moveSpeed = 8f;
     public float jumpForce = 12f;
+    public float swordReturnImpact = 5f;
 
     [Header("Dash Info")]
     public float dashSpeed = 40f;
@@ -20,6 +21,7 @@ public class Player : Entity
     public float dashDir { get; private set; }
 
     public SkillManager skill {  get; private set; }
+    public GameObject sword { get; private set; }
 
     #region State
     public PlayerStateMachine stateMachine { get; private set; }
@@ -70,6 +72,13 @@ public class Player : Entity
         CheckForDashInput();
     }
 
+    public void AssignNewSword(GameObject _newSword) => sword = _newSword;
+
+    public void CatchTheSword()
+    {
+        stateMachine.ChangeState(catchSwordState);
+        Destroy(sword);
+    }    
 
     public void CheckForDashInput()
     {
