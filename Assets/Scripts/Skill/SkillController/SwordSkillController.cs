@@ -40,6 +40,8 @@ public class SwordSkillController : MonoBehaviour
         anim = GetComponentInChildren<Animator>();
         rb = GetComponent<Rigidbody2D>();
         cd = GetComponent<CircleCollider2D>();
+        if (rb == null)
+            Debug.LogError("Rigidbody2D ¶ªÁË£¡");
     }
 
     private void DestroyMe() => Destroy(gameObject);

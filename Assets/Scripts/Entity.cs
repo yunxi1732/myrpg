@@ -26,6 +26,7 @@ public class Entity : MonoBehaviour
     public Animator anim { get; private set; }
     public Rigidbody2D rb { get; private set; }
     public EntityFX fx { get; private set; }
+    public SpriteRenderer sr { get; private set; }
     #endregion
 
     protected virtual void Awake()
@@ -37,6 +38,7 @@ public class Entity : MonoBehaviour
         fx = GetComponentInChildren<EntityFX>();
         anim = GetComponentInChildren<Animator>();
         rb = GetComponent<Rigidbody2D>();
+        sr = GetComponentInChildren<SpriteRenderer>();
     }
 
     protected virtual void Update()
@@ -56,6 +58,12 @@ public class Entity : MonoBehaviour
         rb.velocity = new Vector2(-facingDir * knockbackDir.x, knockbackDir.y);
         yield return new WaitForSeconds(knockbackDuration);
         isKnocked = false;
+    }
+
+    public void MakeTransparent(bool _isTransparent)
+    {
+        if (_isTransparent) sr.color = Color.clear;
+        else sr.color = Color.white;
     }
 
     #region Collision
