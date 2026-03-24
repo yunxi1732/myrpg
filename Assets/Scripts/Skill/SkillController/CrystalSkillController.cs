@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class CrystalSkillController : MonoBehaviour
@@ -15,6 +16,7 @@ public class CrystalSkillController : MonoBehaviour
     private bool canGrow;
     private float growSpeed = 3.5f;
     private Transform closestTarget;
+    [SerializeField] private LayerMask whatIsEnemy;
 
     public void SetUpCrystal(float _crystalDuration, bool _canExplode, bool _canMove, float _moveSpeed, Transform _closestTarget)
     {
@@ -23,6 +25,13 @@ public class CrystalSkillController : MonoBehaviour
         canMove = _canMove;
         moveSpeed = _moveSpeed;
         closestTarget = _closestTarget;
+    }
+
+    public void ChooseRanodmEnemy()
+    {
+        float radius = SkillManager.instance.blackhole.GetBlackholeRadius();
+        Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, radius, whatIsEnemy);
+        if (colliders.Length > 0) closestTarget = colliders[Random.Range(0, colliders.Length)].transform;
     }
 
     private void Update()
