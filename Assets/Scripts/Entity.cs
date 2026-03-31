@@ -27,6 +27,8 @@ public class Entity : MonoBehaviour
     public Rigidbody2D rb { get; private set; }
     public EntityFX fx { get; private set; }
     public SpriteRenderer sr { get; private set; }
+    public CharaterStats stats { get; private set; }
+    public CapsuleCollider2D cd { get; private set; }
     #endregion
 
     protected virtual void Awake()
@@ -39,6 +41,8 @@ public class Entity : MonoBehaviour
         anim = GetComponentInChildren<Animator>();
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponentInChildren<SpriteRenderer>();
+        stats = GetComponent<CharaterStats>();
+        cd = GetComponent<CapsuleCollider2D>();
     }
 
     protected virtual void Update()
@@ -46,11 +50,17 @@ public class Entity : MonoBehaviour
 
     }
 
-    public virtual void Damage()
+    public virtual void SlowEntityBy(float _slowPercentage, float _slowDuration)
     {
-        fx.AttackedFlashFX();
-        StartCoroutine(HitKnockBack());
+
     }
+
+    protected virtual void ReturnDefaultSpeed()
+    {
+        anim.speed = 1;
+    }
+
+    public virtual void DamageImpact() => StartCoroutine(HitKnockBack());
 
     private IEnumerator HitKnockBack()
     {
@@ -60,10 +70,11 @@ public class Entity : MonoBehaviour
         isKnocked = false;
     }
 
-    public void MakeTransparent(bool _isTransparent)
+    public System.Action OnFlipped;
+
+    public virtual void Die()
     {
-        if (_isTransparent) sr.color = Color.clear;
-        else sr.color = Color.white;
+         
     }
 
     #region Collision
@@ -83,6 +94,9 @@ public class Entity : MonoBehaviour
         facingDir *= -1;
         facingRight = !facingRight;
         transform.Rotate(0, 180, 0);
+
+        if (OnFlipped != null)
+            OnFlipped();
     }
 
     public virtual void FlipController(float _x)

@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class CrystalSkillController : MonoBehaviour
 {
+    private Player player;
     private Animator anim => GetComponent<Animator>();
     private CircleCollider2D cd => GetComponent<CircleCollider2D>();
     private float crystalExistTimer;
@@ -18,13 +19,14 @@ public class CrystalSkillController : MonoBehaviour
     private Transform closestTarget;
     [SerializeField] private LayerMask whatIsEnemy;
 
-    public void SetUpCrystal(float _crystalDuration, bool _canExplode, bool _canMove, float _moveSpeed, Transform _closestTarget)
+    public void SetUpCrystal(float _crystalDuration, bool _canExplode, bool _canMove, float _moveSpeed, Transform _closestTarget, Player _player)
     {
         crystalExistTimer = _crystalDuration;
         canExplode = _canExplode;
         canMove = _canMove;
         moveSpeed = _moveSpeed;
         closestTarget = _closestTarget;
+        player = _player;
     }
 
     public void ChooseRanodmEnemy()
@@ -56,7 +58,8 @@ public class CrystalSkillController : MonoBehaviour
         foreach (var hit in colliders)
         {
             Enemy enemy = hit.GetComponent<Enemy>();
-            if (enemy != null) enemy.Damage();
+            if (enemy != null)
+                player.stats.DoMagicalDamage(hit.GetComponent<CharaterStats>());
         }
     }
 

@@ -283,13 +283,13 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      Thunder_4: 2018676594
       Thunder_0: 585219575
-      Thunder_2: -1949963420
       Thunder_1: 1548086973
+      Thunder_2: -1949963420
       Thunder_3: -508672058
-      Thunder_6: -780843138
+      Thunder_4: 2018676594
       Thunder_5: 726128666
+      Thunder_6: -780843138
       Thunder_7: 2081559142
   spritePackingTag: 
   pSDRemoveMatte: 0
