@@ -12,7 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c11ab87d8597c147a3d7e956118bf66, type: 3}
   m_Name: Stolen Sword
   m_EditorClassIdentifier: 
-  itemType: 0
+  itemType: 1
   itemName: Stolen Sword
   icon: {fileID: 1526008332, guid: a9ca9a41598dd2e44b125928045c518f, type: 3}
   equipmentType: 0
+  strength: 0
+  agility: 5
+  intelligence: 0
+  vitality: 0
+  damage: 12
+  critChance: 7
+  critPower: 0
+  health: 0
+  armor: 0
+  evasion: 0
+  magicResistance: 0
+  fireDamage: 0
+  iceDamage: 0
+  lightningDamage: 0
