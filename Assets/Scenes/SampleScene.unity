@@ -6403,7 +6403,7 @@ MonoBehaviour:
     baseValue: 0
     modifiers: 
   damage:
-    baseValue: 15
+    baseValue: 50
     modifiers: 
   critChance:
     baseValue: 0
@@ -6477,7 +6477,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 54b700e10cb23c34c9dddb2c19bbd313, type: 2}
   - {fileID: 11400000, guid: 86022e92c97e2874cb150576a1fb4dec, type: 2}
   dropPrefab: {fileID: 3460175464311070586, guid: f720bc20244f28149ac292af7a4ed7df, type: 3}
-  item: {fileID: 11400000, guid: 54b700e10cb23c34c9dddb2c19bbd313, type: 2}
 --- !u!1 &1290565300
 GameObject:
   m_ObjectHideFlags: 0
@@ -6779,6 +6778,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f70251ec256a3784993299f0779c9e58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  startingItems:
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: e7599f6e79628a24a81a84acba9827a5, type: 2}
+  - {fileID: 11400000, guid: 54b700e10cb23c34c9dddb2c19bbd313, type: 2}
+  - {fileID: 11400000, guid: f6f49ceeea8ebd745b273a0cc81b744e, type: 2}
+  - {fileID: 11400000, guid: 86022e92c97e2874cb150576a1fb4dec, type: 2}
   equipment: []
   inventory: []
   stash: []
@@ -7719,6 +7725,7 @@ GameObject:
   - component: {fileID: 1707634061}
   - component: {fileID: 1707634062}
   - component: {fileID: 1707634063}
+  - component: {fileID: 1707634064}
   m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
@@ -7900,6 +7907,23 @@ MonoBehaviour:
   shockStrikePrefab: {fileID: 9188914614521870509, guid: c5e0e9109d361b041b0a4995942f7a3b, type: 3}
   currentHealth: 0
   player: {fileID: 1707634060}
+--- !u!114 &1707634064
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1707634055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fa0fe4c37fb0c74e8540ba91917de11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  possibleItemDrop: 0
+  possibleDrop: []
+  dropPrefab: {fileID: 3460175464311070586, guid: f720bc20244f28149ac292af7a4ed7df, type: 3}
+  chanceToLoseItems: 99
+  chanceToLoseMaterials: 99
 --- !u!1 &1726062470
 GameObject:
   m_ObjectHideFlags: 0
