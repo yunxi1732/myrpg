@@ -9,6 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 905452b173a72fa4d8ffe48d10032644, type: 3}
-  m_Name: Thunder Strike
+  m_Script: {fileID: 11500000, guid: f44a6471761df84458b39e898911dadd, type: 3}
+  m_Name: Ice and Fire effect
   m_EditorClassIdentifier: 
+  iceAndFirePrefab: {fileID: 736519785704452044, guid: d09faba1615d60444b5d90e3266f3af4, type: 3}
+  xVelocity: 10

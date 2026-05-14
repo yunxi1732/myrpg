@@ -8,7 +8,7 @@ public class PlayerPrimaryAttack : PlayerState
     {
     }
 
-    private int comboCounter;
+    public int comboCounter { get; private set; }
     private float lastTimeAttacked;
     private float comboWindow = 1.5f;
 
