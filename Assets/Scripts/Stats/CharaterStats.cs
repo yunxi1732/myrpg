@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
+[RequireComponent(typeof(EntityFX))]
 public class CharaterStats : MonoBehaviour
 {
     private EntityFX fx;
@@ -235,6 +236,17 @@ public class CharaterStats : MonoBehaviour
             Die();
 
         OnHealthChanged();
+    }
+
+    public virtual void IncreaseHealthBy(int _amount)
+    {
+        currentHealth += _amount;
+
+        if (currentHealth > GetMaxHealthValue())
+            currentHealth = GetMaxHealthValue();
+
+        if (OnHealthChanged != null)
+            OnHealthChanged();
     }
 
     public virtual void DecreaseHealthBy(int _damage)
