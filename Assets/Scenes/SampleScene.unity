@@ -7099,6 +7099,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9d436364b307e7b48b5651e33d4626c3, type: 2}
   - {fileID: 11400000, guid: 0c76cf42010dea54c826702cc8c25f8d, type: 2}
   - {fileID: 11400000, guid: 371a2e9e02b88e348a2d855fcc047c86, type: 2}
+  - {fileID: 11400000, guid: 9364afbb7720dc444a5d383fb1a00c97, type: 2}
+  - {fileID: 11400000, guid: ce6ca20392bf7d545abf56b98817b810, type: 2}
+  - {fileID: 11400000, guid: 5fbea46ec8b0e444e983745a0594b210, type: 2}
   equipment: []
   inventory: []
   stash: []
@@ -8555,13 +8558,13 @@ MonoBehaviour:
     baseValue: 1
     modifiers: 
   fireDamage:
-    baseValue: 1
+    baseValue: 0
     modifiers: 
   iceDamage:
-    baseValue: 1
+    baseValue: 0
     modifiers: 
   lightningDamage:
-    baseValue: 5
+    baseValue: 0
     modifiers: 
   isIgnited: 0
   isChilled: 0
