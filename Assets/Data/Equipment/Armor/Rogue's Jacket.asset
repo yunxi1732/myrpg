@@ -18,17 +18,18 @@ MonoBehaviour:
   dropChance: 0
   equipmentType: 1
   itemCooldown: 0
-  itemEffects: []
+  itemEffects:
+  - {fileID: 11400000, guid: 15202f78b789d324e8545fd729598571, type: 2}
   strength: 0
-  agility: 0
+  agility: 5
   intelligence: 0
   vitality: 0
   damage: 0
   critChance: 0
   critPower: 0
-  health: 0
+  health: 50
   armor: 0
-  evasion: 0
+  evasion: 5
   magicResistance: 0
   fireDamage: 0
   iceDamage: 0
