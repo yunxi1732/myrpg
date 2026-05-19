@@ -190,10 +190,10 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      artdecoUI_PIPO_wb_1: -1146079874
+      UI_White_Blue_0: 176419801
       UI_White_Blue_1: 561473370
       artdecoUI_PIPO_wb_0: -1762947064
-      UI_White_Blue_0: 176419801
+      artdecoUI_PIPO_wb_1: -1146079874
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
