@@ -1,6 +1,24 @@
 using System.Collections;
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.Rendering;
+public enum StatType
+{
+    strength,
+    agility,
+    intelligence,
+    vitality,
+    damage,
+    critChance,
+    critPower,
+    health,
+    armor,
+    evasion,
+    magicRes,
+    fireDamage,
+    iceDamage,
+    lightingDamage
+}
 
 [RequireComponent(typeof(EntityFX))]
 public class CharaterStats : MonoBehaviour
@@ -324,4 +342,24 @@ public class CharaterStats : MonoBehaviour
 
     public int GetMaxHealthValue() => maxHealth.GetValue() + 5 * vitality.GetValue();
     #endregion
+
+    public Stat GetStat(StatType buffType)
+    {
+        if (buffType == StatType.strength) return strength;
+        else if (buffType == StatType.agility) return agility;
+        else if (buffType == StatType.intelligence) return intelligence;
+        else if (buffType == StatType.vitality) return vitality;
+        else if (buffType == StatType.damage) return damage;
+        else if (buffType == StatType.critChance) return critChance;
+        else if (buffType == StatType.critPower) return critPower;
+        else if (buffType == StatType.health) return maxHealth;
+        else if (buffType == StatType.armor) return armor;
+        else if (buffType == StatType.evasion) return evasion;
+        else if (buffType == StatType.magicRes) return magicResistance;
+        else if (buffType == StatType.fireDamage) return fireDamage;
+        else if (buffType == StatType.iceDamage) return iceDamage;
+        else if (buffType == StatType.lightingDamage) return lightningDamage;
+
+        return null;
+    }
 }
