@@ -118,6 +118,9 @@ public class Player : Entity
     public void CheckForDashInput()
     {
         if (IsWallDetected()) return;
+
+        if (skill.dash.dashUnlocked == false)
+            return;
         
         dashDir = Input.GetAxisRaw("Horizontal");
         if (dashDir == 0) dashDir = facingDir;
