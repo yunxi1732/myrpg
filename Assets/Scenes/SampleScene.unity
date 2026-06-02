@@ -256,7 +256,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Dodge
-  skillDescription: 
+  skillDescription: You getting 10% of a evasion.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 507187094}
@@ -498,7 +498,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Dodge mirage
-  skillDescription: 
+  skillDescription: You can create mirage on dodge.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 48269214}
@@ -1279,7 +1279,7 @@ GameObject:
   - component: {fileID: 155106625}
   - component: {fileID: 155106624}
   m_Layer: 5
-  m_Name: SkillTreeSlot_UI - Dash - "Here i am"
+  m_Name: SkillTreeSlot_UI - Dash - "Here I am"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1297,8 +1297,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 515e68a07f2cedd4dae9f49b52d7ba1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: Dash - "Here i am"
-  skillDescription: 
+  skillName: Dash - "Here I am"
+  skillDescription: You leave mirage when you dash.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1874648789}
@@ -6957,7 +6957,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Controlled destruction
-  skillDescription: 
+  skillDescription: 'Crystal moves towards the enemy.
+
+    You can no longer teleport
+    to crystal.'
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1800646773}
@@ -7283,7 +7286,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Multiple mirage
-  skillDescription: 
+  skillDescription: 'Your mirage has 30% of your attack.
+
+    Your mirgae can spawn
+    another mirage.'
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1378285217}
@@ -7800,7 +7806,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Restore with parry
-  skillDescription: 
+  skillDescription: You restore a bit of health with succsesful parry.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1140109848}
@@ -9423,7 +9429,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Mirage blink
-  skillDescription: 
+  skillDescription: You leave your mirage instead of you when you blink.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1653639605}
@@ -9666,7 +9672,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Parry with a mirage
-  skillDescription: 
+  skillDescription: You create a clone with succsesful parry.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 396598965}
@@ -15647,7 +15653,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Parry
-  skillDescription: 
+  skillDescription: You can parry attack to avoid damage.
   unlocked: 0
   shouldBeUnlocked: []
   shouldBeLocked: []
@@ -18812,7 +18818,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Time mirage
-  skillDescription: 
+  skillDescription: 'Your mirage can attack targets.
+
+    Your mirage has 30% of
+    your damage.'
   unlocked: 0
   shouldBeUnlocked: []
   shouldBeLocked: []
@@ -19609,7 +19618,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Crystal mirage
-  skillDescription: 
+  skillDescription: "You create crystal instead of mirage\u3002\nWith all it's qualites."
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1811171249}
@@ -21583,7 +21592,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Blackhole
-  skillDescription: 
+  skillDescription: You trap enemies in a blackhole which allows you todo tons of
+    damage.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1378285217}
@@ -22901,7 +22911,7 @@ GameObject:
   - component: {fileID: 1630608665}
   - component: {fileID: 1630608664}
   m_Layer: 5
-  m_Name: SkillTreeSlot_UI - Dash - "Actually here i am"
+  m_Name: SkillTreeSlot_UI - Dash - "Actually here I am"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -23021,8 +23031,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 515e68a07f2cedd4dae9f49b52d7ba1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillName: Dash - "Actually here i am"
-  skillDescription: 
+  skillName: Dash - "Actually here I am"
+  skillDescription: You create mirage at your arrival.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 155106623}
@@ -23165,7 +23175,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Crystal
-  skillDescription: 
+  skillDescription: 'You create magic crystal that does magic damage.
+
+    By clickinb
+    ability again , you can teleport to your crystal.'
   unlocked: 0
   shouldBeUnlocked: []
   shouldBeLocked: []
@@ -24778,7 +24791,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Explosion
-  skillDescription: 
+  skillDescription: Crystal can explode.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1653639605}
@@ -24919,7 +24932,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Aggressive mirage
-  skillDescription: 
+  skillDescription: "Your mirage has 80% of your damage\u3002\nYour mirage can apply
+    on hit effects."
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 1378285217}
@@ -25358,7 +25372,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Dash
-  skillDescription: 
+  skillDescription: 'You can dash to avoid attacks.
+
+    You are invincible in the
+    time of dash.'
   unlocked: 0
   shouldBeUnlocked: []
   shouldBeLocked: []
@@ -26422,7 +26439,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillName: Multiple destruction
-  skillDescription: 
+  skillDescription: You can create up to 3 crystal at a time.
   unlocked: 0
   shouldBeUnlocked:
   - {fileID: 310226337}
