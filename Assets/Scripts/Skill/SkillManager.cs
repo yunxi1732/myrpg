@@ -11,6 +11,7 @@ public class SkillManager : MonoBehaviour
     public SwordSkill sword { get; private set; }
     public BlackholeSkill blackhole { get; private set; }
     public CrystalSkill crystal { get; private set; }
+    public ParrySkill parry { get; private set; }
     private void Awake()
     {
         if (instance != null) Destroy(instance.gameObject);
@@ -24,5 +25,6 @@ public class SkillManager : MonoBehaviour
         sword = GetComponent<SwordSkill>();
         blackhole = GetComponent<BlackholeSkill>();
         crystal = GetComponent<CrystalSkill>();
+        parry = GetComponent<ParrySkill>();
     }
 }

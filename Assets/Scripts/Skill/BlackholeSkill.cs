@@ -29,7 +29,7 @@ public class BlackholeSkill : Skill
         base.Update();
     }
 
-    protected override void UseSkill()
+    public override void UseSkill()
     {
         base.UseSkill();
         GameObject newBlackhole = Instantiate(blackholePrefab, player.transform.position, Quaternion.identity);

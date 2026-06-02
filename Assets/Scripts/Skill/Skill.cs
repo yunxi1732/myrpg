@@ -31,7 +31,7 @@ public class Skill : MonoBehaviour
         return false;
     }
 
-    protected virtual void UseSkill()
+    public virtual void UseSkill()
     {
 
     }
