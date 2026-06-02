@@ -20750,7 +20750,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   player: {fileID: 1707634060}
-  currency: 20
+  currency: 30
 --- !u!4 &1511188037
 Transform:
   m_ObjectHideFlags: 0
@@ -23737,11 +23737,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cooldown: 1.5
-  dashUnlocked: 0
   dashUnlockButton: {fileID: 1874648789}
-  cloneOnDashUnlocked: 0
   cloneOnDashUnlockButton: {fileID: 155106623}
-  cloneOnArrivalUnlocked: 0
   cloneOnArrivalUnlockButton: {fileID: 1630608667}
 --- !u!114 &1673280367
 MonoBehaviour:
@@ -23855,12 +23852,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cooldown: 0
   parryUnlockButton: {fileID: 1140109848}
-  parryUnlocked: 0
   restorageUnlockButton: {fileID: 396598965}
-  restorageUnlocked: 0
   restoreHealthPercentage: 0.1
   parryWithMirageUnlockButton: {fileID: 518134845}
-  parryWithMirageUnlocked: 0
 --- !u!1 &1674899309
 GameObject:
   m_ObjectHideFlags: 0
