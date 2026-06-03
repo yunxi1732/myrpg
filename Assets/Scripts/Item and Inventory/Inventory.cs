@@ -115,7 +115,7 @@ public class Inventory : MonoBehaviour
             foreach (KeyValuePair<ItemData_Equipment, InventoryItem> item in equipmentDictionary)
             {
                 if (item.Key.equipmentType == equipmentSlot[i].slotType)
-                    equipmentSlot[i].UpdateSlot(item.Value);            
+                    equipmentSlot[i].UpdateSlot(item.Value);
             }
         }
 
@@ -136,6 +136,11 @@ public class Inventory : MonoBehaviour
         {
             stashItemSlot[i].UpdateSlot(stash[i]);
         }
+        UpdateStatsUI();
+    }
+
+    public void UpdateStatsUI()
+    {
         for (int i = 0; i < statSlot.Length; i++)
         {
             statSlot[i].UpdateStatValueUI();
