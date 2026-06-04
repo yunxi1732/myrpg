@@ -125,6 +125,9 @@ public class CharaterStats : MonoBehaviour
 
         int totalDamage = damage.GetValue() + strength.GetValue();
 
+        if (CanCrit())
+            totalDamage = CalculateCriticalDamage(totalDamage);
+
         totalDamage = CheckTargetArmor(_targetStats, totalDamage);
         _targetStats.TakeDamage(totalDamage);
         
@@ -314,7 +317,7 @@ public class CharaterStats : MonoBehaviour
     }
 
     #region Start calculations
-    private int CheckTargetArmor(CharaterStats _targetStats, int totalDamage)
+    protected int CheckTargetArmor(CharaterStats _targetStats, int totalDamage)
     {
         if (_targetStats.isChilled)
             totalDamage -= Mathf.RoundToInt(_targetStats.armor.GetValue() * 0.8f);
@@ -337,7 +340,7 @@ public class CharaterStats : MonoBehaviour
 
     }
 
-    private bool TargetCanAvoidAttack(CharaterStats _targetStats)
+    protected bool TargetCanAvoidAttack(CharaterStats _targetStats)
     {
         int totalEvasion = _targetStats.evasion.GetValue() + _targetStats.agility.GetValue();
 
@@ -352,7 +355,7 @@ public class CharaterStats : MonoBehaviour
         return false;
     }
 
-    private bool CanCrit()
+    protected bool CanCrit()
     {
         int totalCritialChance = critChance.GetValue() + agility.GetValue();
         if (Random.Range(0, 100) <= totalCritialChance)
@@ -360,7 +363,7 @@ public class CharaterStats : MonoBehaviour
         return false;
     }
 
-    private int CalculateCriticalDamage(int _damage)
+    protected int CalculateCriticalDamage(int _damage)
     {
         float totalCriticalPower = (critPower.GetValue() + strength.GetValue()) * 0.01f;
         float critDamage = _damage * totalCriticalPower;
