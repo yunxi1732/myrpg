@@ -14,6 +14,11 @@ public class UI : MonoBehaviour
     public UI_StatTooltip statTooltip;
     public UI_CraftWindow craftWindow;
 
+    private void Awake()
+    {
+        SwitchTo(skillTreeUI);
+    }
+
     // Start is called before the first frame update
     void Start()
     {
