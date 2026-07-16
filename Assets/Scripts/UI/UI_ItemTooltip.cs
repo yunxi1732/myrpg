@@ -4,7 +4,7 @@ using TMPro;
 using TMPro.EditorUtilities;
 using UnityEngine;
 
-public class UI_ItemTooltip : MonoBehaviour
+public class UI_ItemTooltip : UI_Tooltip
 {
     [SerializeField] private TextMeshProUGUI itemNameText;
     [SerializeField] private TextMeshProUGUI itemTypeText;
@@ -21,6 +21,7 @@ public class UI_ItemTooltip : MonoBehaviour
         itemTypeText.text = item.equipmentType.ToString();
         itemDescription.text = item.GetDescription();
 
+        AdjustPosition();
         if (itemNameText.text.Length > 16)
             itemNameText.fontSize = (float)(itemNameText.fontSize * 0.7);
         else
