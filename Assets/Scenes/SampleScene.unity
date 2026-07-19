@@ -9780,6 +9780,10 @@ MonoBehaviour:
   fileName: rpgData
   gameData:
     currency: 0
+    inventory:
+      keys: []
+      values: 
+    equipmentId: []
 --- !u!4 &461208390
 Transform:
   m_ObjectHideFlags: 0
@@ -14520,7 +14524,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &823545750
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17046,8 +17050,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startingItems:
-  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
-  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
   - {fileID: 11400000, guid: e7599f6e79628a24a81a84acba9827a5, type: 2}
   - {fileID: 11400000, guid: 54b700e10cb23c34c9dddb2c19bbd313, type: 2}
   - {fileID: 11400000, guid: f6f49ceeea8ebd745b273a0cc81b744e, type: 2}
@@ -17056,6 +17058,21 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9d436364b307e7b48b5651e33d4626c3, type: 2}
   - {fileID: 11400000, guid: 0c76cf42010dea54c826702cc8c25f8d, type: 2}
   - {fileID: 11400000, guid: 371a2e9e02b88e348a2d855fcc047c86, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: 0dce44a12f3fb5843821562be830ef31, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
+  - {fileID: 11400000, guid: 3a73f9cffd1296d4d84a286a9a394b49, type: 2}
   equipment: []
   inventory: []
   stash: []
@@ -17063,6 +17080,8 @@ MonoBehaviour:
   stashSlotParent: {fileID: 1864954002}
   equipmentSlotParent: {fileID: 1997668348}
   statSlotParent: {fileID: 1403691124}
+  loadedItems: []
+  loadedEquipment: []
 --- !u!224 &1060982193 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 8443485138737496001, guid: ac5e5981fa5affe4b8d0c5f3781f35e1, type: 3}
