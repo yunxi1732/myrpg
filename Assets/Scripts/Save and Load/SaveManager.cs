@@ -9,7 +9,7 @@ public class SaveManager : MonoBehaviour
     public static SaveManager instance;
 
     [SerializeField] private string fileName;
-
+    [SerializeField] private bool encrypeData;
     public GameData gameData;
     private List<ISaveManager> saveManagers;
     private FileDataHandler dataHandler;
@@ -17,13 +17,13 @@ public class SaveManager : MonoBehaviour
     [ContextMenu("Delete saved file")]
     private void DeleteSavedData()
     {
-        dataHandler = new FileDataHandler(Application.persistentDataPath, fileName);
+        dataHandler = new FileDataHandler(Application.persistentDataPath, fileName, encrypeData);
         dataHandler.Delete();
     }
 
     private void Start()
     {
-        dataHandler = new FileDataHandler(Application.persistentDataPath, fileName);
+        dataHandler = new FileDataHandler(Application.persistentDataPath, fileName, encrypeData);
         saveManagers = FindAllSaveManagers();
 
         LoadGame();

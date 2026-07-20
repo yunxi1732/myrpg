@@ -9778,6 +9778,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fileName: rpgData
+  encrypeData: 1
   gameData:
     currency: 0
     skillTree:
