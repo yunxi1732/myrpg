@@ -60,4 +60,10 @@ public class BlackholeSkill : Skill
     }
 
     public float GetBlackholeRadius() => maxSize / 2;
+
+    protected override void CheckUnlock()
+    {
+        base.CheckUnlock();
+        UnlockBlackhole();
+    }
 }
