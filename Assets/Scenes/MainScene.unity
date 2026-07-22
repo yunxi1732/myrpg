@@ -20501,8 +20501,11 @@ MonoBehaviour:
   shockStrikePrefab: {fileID: 9188914614521870509, guid: c5e0e9109d361b041b0a4995942f7a3b, type: 3}
   currentHealth: 0
   enemy: {fileID: 1266922999}
-  level: 0
-  percentageModifier: 0
+  soulsDropAmount:
+    baseValue: 0
+    modifiers: 
+  level: 1
+  percentageModifier: 0.4
 --- !u!70 &1266923004
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -29592,6 +29595,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0accd94a211963b4caa90e1dd5d32049, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  id: 6cf93083-bc42-4ae5-9e88-a68909aaf299
+  activationStatus: 0
 --- !u!212 &1856565749
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -31406,8 +31411,11 @@ MonoBehaviour:
   shockStrikePrefab: {fileID: 9188914614521870509, guid: c5e0e9109d361b041b0a4995942f7a3b, type: 3}
   currentHealth: 0
   enemy: {fileID: 1971544597}
-  level: 0
-  percentageModifier: 0
+  soulsDropAmount:
+    baseValue: 0
+    modifiers: 
+  level: 1
+  percentageModifier: 0.4
 --- !u!114 &1971544595
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31985,6 +31993,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   checkpoints: []
+  closestCheckpointId: 
+  lostCurrencyPrefab: {fileID: 4669102808454747518, guid: f9c3ea60ab11fd940b76892888fa7816, type: 3}
+  lostCurrencyAmount: 0
+  lostCurrencyX: 0
+  lostCurrencyY: 0
 --- !u!4 &1992153946
 Transform:
   m_ObjectHideFlags: 0
@@ -32166,6 +32179,8 @@ MonoBehaviour:
   blackholeImage: {fileID: 1443178949}
   flaskImage: {fileID: 220747597}
   currentSouls: {fileID: 1150769409}
+  soulsAmount: 0
+  increaseRate: 500
 --- !u!114 &1996241421
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37050,6 +37065,10 @@ PrefabInstance:
     - target: {fileID: 3463909706045477360, guid: c421e263b60729f4bab431fff8d3e228, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3463909706045477362, guid: c421e263b60729f4bab431fff8d3e228, type: 3}
+      propertyPath: id
+      value: c423d8f4-15a3-4a49-914f-f1765d6be1f8
       objectReference: {fileID: 0}
     - target: {fileID: 3463909706045477365, guid: c421e263b60729f4bab431fff8d3e228, type: 3}
       propertyPath: m_Name
