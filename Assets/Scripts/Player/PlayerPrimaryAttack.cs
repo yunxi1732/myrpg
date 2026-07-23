@@ -15,7 +15,9 @@ public class PlayerPrimaryAttack : PlayerState
     public override void Enter()
     {
         base.Enter();
+
         if (Time.time > lastTimeAttacked + comboWindow || comboCounter > 2) comboCounter = 0;
+        AudioManager.instance.PlaySFX(comboCounter);
         player.anim.SetInteger("comboCounter", comboCounter);
         stateTimer = 0.1f;
         player.SetVelocity(player.attackMovement[comboCounter] * player.facingDir, 2);
