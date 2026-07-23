@@ -163,6 +163,7 @@ public class CharaterStats : MonoBehaviour
             {
                 canApplyIgnite = true;
                 _targetStats.ApplyAilments(canApplyIgnite, canApplyChill, canApplyShock);
+                AudioManager.instance.PlaySFX(7, null);
                 return;
             }
             if (Random.value < 0.5f && _iceDamage > 0)
@@ -175,6 +176,7 @@ public class CharaterStats : MonoBehaviour
             {
                 canApplyShock = true;
                 _targetStats.ApplyAilments(canApplyIgnite, canApplyChill, canApplyShock);
+                AudioManager.instance.PlaySFX(13, null);
                 return;
             }
         }

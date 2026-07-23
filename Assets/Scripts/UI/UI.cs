@@ -104,5 +104,9 @@ public class UI : MonoBehaviour
         restartButton.SetActive(true);
     }
 
-    public void RestartGameButton() => GameManager.instance.RestartScene();
+    public void RestartGameButton()
+    {
+        AudioManager.instance.PlaySFX(4, null);
+        GameManager.instance.RestartScene();
+    }
 }

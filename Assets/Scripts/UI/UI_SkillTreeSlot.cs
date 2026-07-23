@@ -40,6 +40,7 @@ public class UI_SkillTreeSlot : MonoBehaviour, IPointerEnterHandler, IPointerExi
 
     public void UnlockSkillSlot()
     {
+        AudioManager.instance.PlaySFX(4, null);
         for (int i = 0; i < shouldBeUnlocked.Length; i++)
         {
             if (shouldBeUnlocked[i].unlocked == false)

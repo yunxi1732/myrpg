@@ -96,6 +96,7 @@ public class SwordSkill : Skill
         else if (swordType == SwordType.Spin) newSwordController.SetUpSpin(true, maxTravelDistance, spinDuration, hitCooldown);
 
         newSwordController.SetUpSword(finalDir, swordGravity, player, freezeDuration, returnSpeed);
+        AudioManager.instance.PlaySFX(12, null);
         player.AssignNewSword(newSword);
         DotsActive(false);
     }

@@ -11,11 +11,15 @@ public class SkeletonMoveState : SkeletonGroundedState
     public override void Enter()
     {
         base.Enter();
+
+        AudioManager.instance.PlaySFX(6, enemy.transform);
     }
 
     public override void Exit()
     {
         base.Exit();
+
+        AudioManager.instance.StopSFX(6);
     }
 
     public override void Update()

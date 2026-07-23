@@ -20,8 +20,6 @@ public class SkeletonIdleState : EnemyState
     public override void Exit()
     {
         base.Exit();
-
-        AudioManager.instance.PlaySFX(6, enemy.transform);
     }
 
     public override void Update()

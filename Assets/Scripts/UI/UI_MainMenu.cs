@@ -17,17 +17,20 @@ public class UI_MainMenu : MonoBehaviour
 
     public void ContinueGame()
     {
+        AudioManager.instance.PlaySFX(4, null);
         StartCoroutine(LoadSceneWithFadeEffect(1.5f));
     }
 
     public void NewGame()
     {
+        AudioManager.instance.PlaySFX(4, null);
         SaveManager.instance.DeleteSavedData();
         StartCoroutine(LoadSceneWithFadeEffect(1.5f));
     }
 
     public void ExitGame()
     {
+        AudioManager.instance.PlaySFX(4, null);
         Debug.Log("Exit game!");
     }
 
