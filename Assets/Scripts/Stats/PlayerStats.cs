@@ -30,7 +30,11 @@ public class PlayerStats : CharaterStats
     public override void DecreaseHealthBy(int _damage)
     {
         base.DecreaseHealthBy(_damage);
-
+        if (_damage > GetMaxHealthValue() * 0.3f)
+        {
+            player.SetupKnockbackPower(new Vector2(5, 3));
+            Debug.Log("high damage taken");
+        }
         ItemData_Equipment currentArmor = Inventory.instance.GetEquipment(EquipmentType.Armor);
         if (currentArmor != null)
             currentArmor.Effect(player.transform);

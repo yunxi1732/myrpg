@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class Entity : MonoBehaviour
@@ -62,7 +63,7 @@ public class Entity : MonoBehaviour
         anim.speed = 1;
     }
 
-    public virtual void DamageImpact() => StartCoroutine("HitKnockBack");
+    public virtual void DamageImpact() => StartCoroutine(HitKnockBack());
 
     public virtual void SetupKonckbackDir(Transform _damageDirection)
     {
@@ -72,12 +73,20 @@ public class Entity : MonoBehaviour
             knockbackDir = -1;
     }
 
+    public void SetupKnockbackPower(Vector2 _kp) => knockbackPower = _kp;
+
     private IEnumerator HitKnockBack()
     {
         isKnocked = true;
         rb.velocity = new Vector2(-knockbackDir * knockbackPower.x, knockbackPower.y);
         yield return new WaitForSeconds(knockbackDuration);
         isKnocked = false;
+        SetupZeroKnockbackPlayer();
+    }
+
+    protected virtual void SetupZeroKnockbackPlayer()
+    {
+
     }
 
     public System.Action OnFlipped;
