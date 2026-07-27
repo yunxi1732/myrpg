@@ -22707,7 +22707,7 @@ MonoBehaviour:
     m_Bits: 8
   wallCheck: {fileID: 231580155}
   wallCheckDistance: 0.8
-  knockbackDir: {x: 10, y: 0}
+  knockbackPower: {x: 5, y: 8}
   knockbackDuration: 0.07
   attackCheck: {fileID: 2027428360}
   attackCheckRadius: 0.8
@@ -23433,7 +23433,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 515e68a07f2cedd4dae9f49b52d7ba1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillCost: 3
+  skillCost: 0
   skillName: Time stop
   skillDescription: When enemy hit by sword, his time stops.
   unlocked: 0
@@ -24707,7 +24707,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 515e68a07f2cedd4dae9f49b52d7ba1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillCost: 2
+  skillCost: 0
   skillName: Sword throw
   skillDescription: Throw sword to the enemy.
   unlocked: 0
@@ -30738,7 +30738,7 @@ MonoBehaviour:
     m_Bits: 8
   wallCheck: {fileID: 1559493068}
   wallCheckDistance: 0.15
-  knockbackDir: {x: 0, y: 0}
+  knockbackPower: {x: 0, y: 0}
   knockbackDuration: 0
   attackCheck: {fileID: 914025769}
   attackCheckRadius: 0.85
@@ -34229,7 +34229,7 @@ MonoBehaviour:
     m_Bits: 8
   wallCheck: {fileID: 2023406294}
   wallCheckDistance: 0.8
-  knockbackDir: {x: 10, y: 0}
+  knockbackPower: {x: 5, y: 8}
   knockbackDuration: 0.07
   attackCheck: {fileID: 1701473879}
   attackCheckRadius: 0.8

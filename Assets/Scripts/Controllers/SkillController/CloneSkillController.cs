@@ -60,6 +60,8 @@ public class CloneSkillController : MonoBehaviour
             {
                 //player.stats.DoDamage(hit.GetComponent<CharaterStats>());
 
+                hit.GetComponent<Entity>().SetupKonckbackDir(transform);
+
                 PlayerStats playerStats = player.GetComponent<PlayerStats>();
                 EnemyStats enemyStats = enemy.GetComponent<EnemyStats>();
                 playerStats.CloneDoDamage(enemyStats, attackMultiplier);

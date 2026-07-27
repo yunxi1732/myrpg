@@ -12,9 +12,11 @@ public class Entity : MonoBehaviour
     [SerializeField] protected float wallCheckDistance;
 
     [Header("Knockback Info")]
-    [SerializeField] protected Vector2 knockbackDir;
+    [SerializeField] protected Vector2 knockbackPower;
     [SerializeField] protected float knockbackDuration;
     protected bool isKnocked;
+
+    public int knockbackDir { get; private set;  }
 
     public Transform attackCheck;
     public float attackCheckRadius;
@@ -60,12 +62,20 @@ public class Entity : MonoBehaviour
         anim.speed = 1;
     }
 
-    public virtual void DamageImpact() => StartCoroutine(HitKnockBack());
+    public virtual void DamageImpact() => StartCoroutine("HitKnockBack");
+
+    public virtual void SetupKonckbackDir(Transform _damageDirection)
+    {
+        if (_damageDirection.position.x > transform.position.x)
+            knockbackDir = 1;
+        else if (_damageDirection.position.x < transform.position.x)
+            knockbackDir = -1;
+    }
 
     private IEnumerator HitKnockBack()
     {
         isKnocked = true;
-        rb.velocity = new Vector2(-facingDir * knockbackDir.x, knockbackDir.y);
+        rb.velocity = new Vector2(-knockbackDir * knockbackPower.x, knockbackPower.y);
         yield return new WaitForSeconds(knockbackDuration);
         isKnocked = false;
     }

@@ -86,10 +86,19 @@ public class UI : MonoBehaviour, ISaveManager
 
     private void CheckForInGameUI()
     {
-        for (int i = 0; i < transform.childCount; i++)
+        foreach (Transform child in transform)
         {
-            if (transform.GetChild(i).gameObject.activeSelf && transform.GetChild(i).GetComponent<UI_FadeScreen>() != null)
-                return;
+            if (!child.gameObject.activeSelf)
+                continue;
+
+            if (child.GetComponent<UI_FadeScreen>() != null)
+                continue;
+
+            if (child.gameObject == inGameUI)
+                continue;
+
+            // 还有其它菜单打开，不显示游戏UI
+            return;
         }
 
         SwitchTo(inGameUI);
