@@ -121,4 +121,12 @@ public class GameManager : MonoBehaviour, ISaveManager
             }
         }
     }
+
+    public void PauseGame(bool _pause)
+    {
+        if (_pause)
+            Time.timeScale = 0;
+        else
+            Time.timeScale = 1;
+    }
 }
