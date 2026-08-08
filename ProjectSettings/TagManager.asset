@@ -59,3 +59,6 @@ TagManager:
   - name: Player
     uniqueID: 3604274875
     locked: 0
+  - name: FX
+    uniqueID: 3271266325
+    locked: 0
