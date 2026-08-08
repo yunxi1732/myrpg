@@ -15,8 +15,10 @@ public class PlayerDashState : PlayerState
     {
         base.Enter();
         AudioManager.instance.PlaySFX(14, null);
-        stateTimer = player.dashDuraiton;
         player.skill.dash.CloneOnDash();
+        stateTimer = player.dashDuraiton;
+
+        player.stats.MakeInvincible(true);
     }
 
     public override void Exit()
@@ -24,6 +26,8 @@ public class PlayerDashState : PlayerState
         base.Exit();
         player.skill.dash.CloneOnArrival();
         player.SetVelocity(0, rb.velocity.y);
+
+        player.stats.MakeInvincible(false);
     }
 
     public override void Update()

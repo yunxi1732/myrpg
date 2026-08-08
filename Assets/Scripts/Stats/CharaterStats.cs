@@ -66,6 +66,7 @@ public class CharaterStats : MonoBehaviour
 
     public System.Action OnHealthChanged;
     public bool isDead { get; private set; }
+    public bool isInvincible { get; private set; }
     public bool isVulnerable { get; private set; }
 
     protected virtual void Start()
@@ -283,6 +284,9 @@ public class CharaterStats : MonoBehaviour
 
     public virtual void TakeDamage(int _damage)
     {
+        if (isInvincible)
+            return;
+
         DecreaseHealthBy(_damage);
         GetComponent<Entity>().DamageImpact();
         fx.AttackedFlashFX();
@@ -319,6 +323,8 @@ public class CharaterStats : MonoBehaviour
     {
         isDead = true;
     }
+
+    public void MakeInvincible(bool _i) => isInvincible = _i;
 
     #region Start calculations
     protected int CheckTargetArmor(CharaterStats _targetStats, int totalDamage)
