@@ -324,6 +324,12 @@ public class CharaterStats : MonoBehaviour
         isDead = true;
     }
 
+    public void KillEntity()
+    {
+        if (!isDead)
+            Die();
+    }
+
     public void MakeInvincible(bool _i) => isInvincible = _i;
 
     #region Start calculations
