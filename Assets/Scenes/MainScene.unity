@@ -44033,6 +44033,8 @@ MonoBehaviour:
   igniteFX: {fileID: 1050753666}
   shockFX: {fileID: 716191409}
   chillFX: {fileID: 1400986116}
+  hitFx: {fileID: 4242284621046059894, guid: 9fa70640455aabb468ff7d76aa58dab8, type: 3}
+  criticalHitFx: {fileID: 3548593109953814844, guid: c23adbe3d28c10c4ca57b6b33f1e5c77, type: 3}
 --- !u!114 &1707634063
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -44061,7 +44063,7 @@ MonoBehaviour:
     baseValue: 10
     modifiers: 
   critChance:
-    baseValue: 0
+    baseValue: 100
     modifiers: 
   critPower:
     baseValue: 0
@@ -58204,6 +58206,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 7174580690167316997, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+      propertyPath: criticalHitFx
+      value: 
+      objectReference: {fileID: 3548593109953814844, guid: c23adbe3d28c10c4ca57b6b33f1e5c77, type: 3}
     - target: {fileID: 7174580690167317001, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
       propertyPath: m_RootOrder
       value: 12

@@ -4939,6 +4939,7 @@ MonoBehaviour:
   igniteFX: {fileID: 7174580692104190338}
   shockFX: {fileID: 7174580690361801610}
   chillFX: {fileID: 7174580690112894412}
+  hitFx: {fileID: 4242284621046059894, guid: 9fa70640455aabb468ff7d76aa58dab8, type: 3}
 --- !u!114 &7174580690167316996
 MonoBehaviour:
   m_ObjectHideFlags: 0
