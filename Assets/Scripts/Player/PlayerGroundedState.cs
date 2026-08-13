@@ -41,11 +41,6 @@ public class PlayerGroundedState : PlayerState
         if (Input.GetKeyDown(KeyCode.Space) && player.IsGroundDetected()) 
             stateMachine.ChangeState(player.jumpState);
 
-        if (Input.GetKeyDown(KeyCode.Mouse1) && player.skill.sword.swordUnlocked == false)
-        {
-            player.skill.sword.CheckUnlock();
-        }
-
         if (Input.GetKeyDown(KeyCode.Mouse1) && HasNoSword() && player.skill.sword.swordUnlocked) 
             stateMachine.ChangeState(player.aimSwordState);
     }

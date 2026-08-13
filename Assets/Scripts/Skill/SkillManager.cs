@@ -28,5 +28,19 @@ public class SkillManager : MonoBehaviour
         crystal = GetComponent<CrystalSkill>();
         parry = GetComponent<ParrySkill>();
         dodge = GetComponent<DodgeSkill>();
+
+        StartCoroutine(CheckSkillUnlock());
+    }
+
+    private IEnumerator CheckSkillUnlock()
+    {
+        yield return new WaitForSeconds(Time.deltaTime);
+        dash.CheckUnlock();
+        clone.CheckUnlock();
+        sword.CheckUnlock();
+        blackhole.CheckUnlock();
+        crystal.CheckUnlock();
+        parry.CheckUnlock(); 
+        dodge.CheckUnlock();
     }
 }

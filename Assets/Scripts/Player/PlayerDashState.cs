@@ -36,5 +36,7 @@ public class PlayerDashState : PlayerState
         if (!player.IsGroundDetected() && player.IsWallDetected()) stateMachine.ChangeState(player.wallSlideState);
         player.SetVelocity(player.dashSpeed * player.dashDir, 0);
         if (stateTimer < 0) stateMachine.ChangeState(player.idleState);
+
+        player.fx.CreateAfterImage();
     }
 }

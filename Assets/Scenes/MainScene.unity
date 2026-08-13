@@ -28728,7 +28728,7 @@ BoxCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 500, y: 0}
+  m_Offset: {x: 450, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -28749,7 +28749,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1096610996}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 18.44, y: -8.73, z: 1.5513073}
+  m_LocalPosition: {x: 18.44, y: -10, z: 1.5513073}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -44067,6 +44067,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75d0151b9faf51746af20a5d533282b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  afterImagePrefab: {fileID: 7027263413717403816, guid: 5880c8d8bd3543248b565bce4f2bf259, type: 3}
+  colorLoseRate: 3
+  afterImageCooldown: 0.03
   hitMat: {fileID: 2100000, guid: ba7903d45f43db442af7cce024621158, type: 2}
   chillColor:
   - {r: 0.44705883, g: 0.6039216, b: 1, a: 1}
