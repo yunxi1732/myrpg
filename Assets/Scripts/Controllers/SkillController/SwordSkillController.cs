@@ -223,6 +223,7 @@ public class SwordSkillController : MonoBehaviour
         cd.enabled = false;
         rb.isKinematic = true;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
+        GetComponentInChildren<ParticleSystem>().Play();
         if (isBouncing && enemyTarget.Count > 0) return;
 
         anim.SetBool("Rotate", false);

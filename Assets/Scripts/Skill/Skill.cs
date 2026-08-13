@@ -22,7 +22,7 @@ public class Skill : MonoBehaviour
         cooldownTimer -= Time.deltaTime;
     }
 
-    protected virtual void CheckUnlock()
+    public virtual void CheckUnlock()
     {
 
     }
