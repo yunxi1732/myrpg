@@ -33,6 +33,7 @@ public class PlayerStats : CharaterStats
         if (_damage > GetMaxHealthValue() * 0.3f)
         {
             player.SetupKnockbackPower(new Vector2(5, 3));
+            player.fx.ScreenShake(player.fx.shakeHighDamage);
             Debug.Log("high damage taken");
         }
         ItemData_Equipment currentArmor = Inventory.instance.GetEquipment(EquipmentType.Armor);
