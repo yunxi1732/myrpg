@@ -44092,6 +44092,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75d0151b9faf51746af20a5d533282b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  popUpTextPrefab: {fileID: 5309596877416677346, guid: c31df5b7cdf61b144a3dc92762cf263e, type: 3}
   shakeMultiplier: 0.2
   shakeSwordImpact: {x: 1, y: 0.5, z: 0}
   shakeHighDamage: {x: 1.5, y: 1.5, z: 0}
