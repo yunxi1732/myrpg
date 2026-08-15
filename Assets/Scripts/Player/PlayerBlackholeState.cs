@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEditor.TextCore.Text;
 using UnityEngine;
 
 public class PlayerBlackholeState : PlayerState
@@ -47,7 +44,7 @@ public class PlayerBlackholeState : PlayerState
                 if (player.skill.blackhole.CanUseSkill()) skillUsed = true;
             }
         }
-        
+
         if (player.skill.blackhole.SkillCompleted()) stateMachine.ChangeState(player.airState);
     }
 }

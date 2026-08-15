@@ -1,6 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class Entity : MonoBehaviour
@@ -17,7 +15,7 @@ public class Entity : MonoBehaviour
     [SerializeField] protected float knockbackDuration;
     protected bool isKnocked;
 
-    public int knockbackDir { get; private set;  }
+    public int knockbackDir { get; private set; }
 
     public Transform attackCheck;
     public float attackCheckRadius;
@@ -91,7 +89,7 @@ public class Entity : MonoBehaviour
 
     public virtual void Die()
     {
-         
+
     }
 
     #region Collision
