@@ -4877,7 +4877,7 @@ MonoBehaviour:
     m_Bits: 8
   wallCheck: {fileID: 7174580691336877572}
   wallCheckDistance: 0.8
-  knockbackPower: {x: 3, y: 5}
+  knockbackPower: {x: 2, y: 2}
   knockbackDuration: 0.07
   attackCheck: {fileID: 7174580690985905655}
   attackCheckRadius: 0.8
@@ -4891,7 +4891,7 @@ MonoBehaviour:
   attackCooldown: 0.5
   lastTimeAttacked: 0
   stunnedDuration: 1
-  stunnedDir: {x: 10, y: 0}
+  stunnedDir: {x: 5, y: 0}
   counterImage: {fileID: 7174580691617748311}
 --- !u!50 &7174580690167316998
 Rigidbody2D:
@@ -4926,6 +4926,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75d0151b9faf51746af20a5d533282b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  popUpTextPrefab: {fileID: 5309596877416677346, guid: c31df5b7cdf61b144a3dc92762cf263e, type: 3}
   hitMat: {fileID: 2100000, guid: ba7903d45f43db442af7cce024621158, type: 2}
   chillColor:
   - {r: 0.4433962, g: 0.6020282, b: 1, a: 1}
@@ -4940,6 +4941,7 @@ MonoBehaviour:
   shockFX: {fileID: 7174580690361801610}
   chillFX: {fileID: 7174580690112894412}
   hitFx: {fileID: 4242284621046059894, guid: 9fa70640455aabb468ff7d76aa58dab8, type: 3}
+  criticalHitFx: {fileID: 3548593109953814844, guid: c23adbe3d28c10c4ca57b6b33f1e5c77, type: 3}
 --- !u!114 &7174580690167316996
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4965,7 +4967,7 @@ MonoBehaviour:
     baseValue: 0
     modifiers: 
   damage:
-    baseValue: 5
+    baseValue: 15
     modifiers: 
   critChance:
     baseValue: 0
@@ -4974,7 +4976,7 @@ MonoBehaviour:
     baseValue: 0
     modifiers: 
   maxHealth:
-    baseValue: 100
+    baseValue: 200
     modifiers: 
   armor:
     baseValue: 0
