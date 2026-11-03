@@ -1,0 +1,17 @@
+[
+  {
+    "Algorithm": "SHA256",
+    "Hash": "A90F6E1550BA682C4460CE3554CA3E082E300B1E252AF4A614CE76C95A1CB26B",
+    "Path": "C:\\Users\\谭心航\\AppData\\LocalLow\\DefaultCompany\\rpg\\Player-prev.log"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "BC4795EFC9513A68B2E2A1BD69CFBC084EFF52882CCE21B13DAD738BCC1AF563",
+    "Path": "C:\\Users\\谭心航\\AppData\\LocalLow\\DefaultCompany\\rpg\\Player.log"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "6FEA051BCE7479C247849413FF9546297854BBA2CC16579C64F3CC9F50AEACD3",
+    "Path": "C:\\Users\\谭心航\\AppData\\LocalLow\\DefaultCompany\\rpg\\rpgData"
+  }
+]

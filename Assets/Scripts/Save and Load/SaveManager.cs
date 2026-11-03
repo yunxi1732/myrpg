@@ -13,6 +13,8 @@ public class SaveManager : MonoBehaviour
     public GameData gameData;
     private List<ISaveManager> saveManagers;
     private FileDataHandler dataHandler;
+    public bool HasLoaded { get; private set; }
+    public bool LoadedFromSave { get; private set; }
 
     [ContextMenu("Delete saved file")]
     public void DeleteSavedData()
@@ -45,6 +47,7 @@ public class SaveManager : MonoBehaviour
     public void LoadGame()
     {
         gameData = dataHandler.Load();
+        LoadedFromSave = gameData != null;
 
         if (this.gameData == null)
         {
@@ -56,6 +59,7 @@ public class SaveManager : MonoBehaviour
         {
             saveManager.LoadData(gameData);
         }
+        HasLoaded = true;
     }
 
     public void SaveGame()
