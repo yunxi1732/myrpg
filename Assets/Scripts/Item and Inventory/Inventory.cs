@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Collections;
-using Unity.VisualScripting;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 [DefaultExecutionOrder(-100)]
@@ -31,10 +32,8 @@ public class Inventory : MonoBehaviour, ISaveManager
     [SerializeField] private Transform equipmentSlotParent;
     [SerializeField] private Transform statSlotParent;
 
-    private UI_ItemSlot[] inventoryItemSlot;
-    private UI_ItemSlot[] stashItemSlot;
-    private UI_EquipmentSlot[] equipmentSlot;
-    private UI_StatSlot[] statSlot;
+    private InventoryView inventoryView;
+    private InventoryStatsView statsView;
 
     public float flaskCooldown => inventorySystem == null ? 0 : inventorySystem.FlaskCooldown;
 
@@ -78,10 +77,8 @@ public class Inventory : MonoBehaviour, ISaveManager
     private IEnumerator Start()
     {
         if (instance != this) yield break;
-        inventoryItemSlot = inventorySlotParent.GetComponentsInChildren<UI_ItemSlot>(true);
-        stashItemSlot = stashSlotParent.GetComponentsInChildren<UI_ItemSlot>(true);
-        equipmentSlot = equipmentSlotParent.GetComponentsInChildren<UI_EquipmentSlot>(true);
-        statSlot = statSlotParent.GetComponentsInChildren<UI_StatSlot>(true);
+        inventoryView = new InventoryView(inventorySlotParent, stashSlotParent, equipmentSlotParent, inventoryArchitecture, Model);
+        statsView = new InventoryStatsView(statSlotParent);
 
         // Let scene Start methods (including player stats and save loading) finish first.
         yield return null;
@@ -89,15 +86,18 @@ public class Inventory : MonoBehaviour, ISaveManager
             yield return null;
         AddStartingItems();
         IsInitialized = true;
-        UpdateSlotUI();
+        NotifyInventoryChanged();
     }
 
     private void OnDestroy()
     {
+        inventoryView?.Dispose();
         inventoryArchitecture?.Dispose();
         inventoryArchitecture = null;
         Model = null;
         inventorySystem = null;
+        inventoryView = null;
+        statsView = null;
         if (instance == this)
             instance = null;
     }
@@ -133,75 +133,45 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     public void EquipItem(ItemData _item)
     {
-        int capacity = inventoryItemSlot == null ? 0 : inventoryItemSlot.Length;
-        if (!inventorySystem.EquipItem(_item, capacity) && inventoryItemSlot != null)
+        int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
+        if (!inventorySystem.EquipItem(_item, capacity) && inventoryView != null)
             Debug.Log("no more space");
-        UpdateSlotUI();
+        NotifyInventoryChanged();
     }
     public void UnequipItem(ItemData_Equipment itemToRemove)
     {
         inventorySystem.UnequipItem(itemToRemove);
+        NotifyInventoryChanged();
     }
 
-    private void UpdateSlotUI()
+    private void NotifyInventoryChanged()
     {
-        if (inventoryItemSlot == null || stashItemSlot == null || equipmentSlot == null || statSlot == null)
-            return;
-        for (int i = 0; i < equipmentSlot.Length; i++)
-        {
-            foreach (KeyValuePair<ItemData_Equipment, InventoryItem> item in equipmentDictionary)
-            {
-                if (item.Key.equipmentType == equipmentSlot[i].slotType)
-                    equipmentSlot[i].UpdateSlot(item.Value);
-            }
-        }
-
-        for (int i = 0; i < inventoryItemSlot.Length; i++)
-        {
-            inventoryItemSlot[i].CleanUpSlot();
-        }
-        for (int i = 0; i < stashItemSlot.Length; i++)
-        {
-            stashItemSlot[i].CleanUpSlot();
-        }
-
-        for (int i = 0; i < inventory.Count; i++)
-        {
-            inventoryItemSlot[i].UpdateSlot(inventory[i]);
-        }
-        for (int i = 0; i < stash.Count; i++)
-        {
-            stashItemSlot[i].UpdateSlot(stash[i]);
-        }
+        if (!IsInitialized) return;
+        inventoryArchitecture.SendEvent<InventoryChanged>(Model);
         UpdateStatsUI();
     }
 
     public void UpdateStatsUI()
     {
-        if (statSlot == null) return;
-        for (int i = 0; i < statSlot.Length; i++)
-        {
-            statSlot[i].UpdateStatValueUI();
-        }
+        statsView?.Refresh();
     }
-
     public void AddItem(ItemData _item)
     {
-        int capacity = inventoryItemSlot == null ? 0 : inventoryItemSlot.Length;
-        if (!inventorySystem.AddItem(_item, capacity) && _item.itemType == ItemType.Equipment && inventoryItemSlot != null)
+        int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
+        if (!inventorySystem.AddItem(_item, capacity) && _item.itemType == ItemType.Equipment && inventoryView != null)
             Debug.Log("no more space");
-        UpdateSlotUI();
+        NotifyInventoryChanged();
     }
     public void RemoveItem(ItemData _item)
     {
         inventorySystem.RemoveItem(_item);
-        UpdateSlotUI();
+        NotifyInventoryChanged();
     }
 
     public bool CanAddItem()
     {
-        if (inventoryItemSlot == null) return false;
-        if (!inventorySystem.CanAddItem(inventoryItemSlot.Length))
+        if (inventoryView == null) return false;
+        if (!inventorySystem.CanAddItem(inventoryView.InventoryCapacity))
         {
             Debug.Log("no more space");
             return false;
@@ -211,15 +181,15 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     public bool canCraft(ItemData_Equipment _itemToCraft, List<InventoryItem> _requiredMaterials)
     {
-        int capacity = inventoryItemSlot == null ? 0 : inventoryItemSlot.Length;
+        int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
         if (!inventorySystem.CanCraft(_itemToCraft, _requiredMaterials, capacity, out bool productAdded))
         {
             Debug.Log("not enough materials");
             return false;
         }
-        if (!productAdded && inventoryItemSlot != null)
+        if (!productAdded && inventoryView != null)
             Debug.Log("no more space");
-        UpdateSlotUI();
+        NotifyInventoryChanged();
         Debug.Log("here is your item - " + _itemToCraft.name);
         return true;
     }
@@ -259,51 +229,13 @@ public class Inventory : MonoBehaviour, ISaveManager
         receivedLoadData = true;
         if (loadedItems == null) loadedItems = new List<InventoryItem>();
         if (loadedEquipment == null) loadedEquipment = new List<ItemData_Equipment>();
-        loadedItems.Clear();
-        loadedEquipment.Clear();
-        foreach (KeyValuePair<string, int> pair in _data.inventory)
-        {
-            foreach (var item in itemDataBase)
-            {
-                if (item != null && item.itemId == pair.Key)
-                {
-                    InventoryItem itemToLoad = new InventoryItem(item);
-                    itemToLoad.stackSize = pair.Value;
-                    loadedItems.Add(itemToLoad);
-                }
-            }
-        }
-
-        foreach (string loadedItemId in _data.equipmentId)
-        {
-            foreach (var item in itemDataBase)
-            {
-                if (item != null && loadedItemId == item.itemId)
-                {
-                    loadedEquipment.Add(item as ItemData_Equipment);
-                }
-            }
-        }
+        InventorySaveMapper.Read(_data, itemDataBase, loadedItems, loadedEquipment);
     }
 
     void ISaveManager.SaveData(ref GameData _data)
     {
         if (!IsInitialized) return;
-        _data.inventory.Clear();
-        _data.equipmentId.Clear();
-        foreach (KeyValuePair<ItemData, InventoryItem> pair in inventoryDictionary)
-        {
-            _data.inventory.Add(pair.Key.itemId, pair.Value.stackSize);
-        }
-
-        foreach (KeyValuePair<ItemData, InventoryItem> pair in stashDictionary)
-        {
-            _data.inventory.Add(pair.Key.itemId, pair.Value.stackSize);
-        }
-        foreach (KeyValuePair<ItemData_Equipment, InventoryItem> pair in equipmentDictionary)
-        {
-            _data.equipmentId.Add(pair.Key.itemId);
-        }
+        InventorySaveMapper.Write(Model, _data);
     }
 #if UNITY_EDITOR
     [ContextMenu("Fill up item data base")]

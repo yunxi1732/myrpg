@@ -17,8 +17,10 @@ public class UI_EquipmentSlot : UI_ItemSlot
         if (item == null || item.data == null)
             return;
 
-        Inventory.instance.UnequipItem(item.data as ItemData_Equipment);
-        Inventory.instance.AddItem(item.data as ItemData_Equipment);
+        // Unload notification refreshes this slot synchronously; retain the item before it is cleared.
+        ItemData_Equipment equipment = item.data as ItemData_Equipment;
+        Inventory.instance.UnequipItem(equipment);
+        Inventory.instance.AddItem(equipment);
 
         ui.itemTooltip.HideTooltip();
         CleanUpSlot();

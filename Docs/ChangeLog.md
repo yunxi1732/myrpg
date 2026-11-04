@@ -26,3 +26,12 @@
 ## 待修改
 - Blackhole 技能：黑洞里出现血条，需检查来源和显示。
 - 背包药瓶：缺少对应 UI。
+
+## 2026-11-05
+- **槽位展示抽离**：原 Inventory 内背包/仓库/装备及属性刷新迁入普通C#展示类 InventoryView，原四个序列化父节点字段保留并传入，容量仍按原槽位数计算，原刷新入口直接转发。无需新增UI、挂组件或改场景引用，未接入事件。Unity 核对原四个引用，实际拾取/堆叠/移除、材料合成、穿戴替换及卸装，检查图标数量和属性刷新；反复开关界面及读档重进，运行 Verify Inventory Model。静态检查通过；Unity 编译及实际显示待验。
+- **属性面板刷新抽离**：InventoryView 的属性遍历移至独立 InventoryStatsView，原 statSlotParent 场景引用保留；UpdateSlotUI 仍先刷新槽位再调用公开 UpdateStatsUI，外部 DodgeSkill 调用不变。复用 UI_StatSlot 原属性计算，无新增UI或场景改动。Unity 换装A/B核对属性及反复开关面板，触发闪避技能解锁刷新验证外部入口。静态检查通过；Unity 编译、换装显示和技能刷新待验。
+- **槽位改用背包变化事件**：沿用架构 GameEventSystem（所给PGC2026脚本当前未找到）。Inventory 在添加、移除、穿戴替换、卸装、成功合成完成后同步发送 InventoryChanged，载荷为当前 Model；初始化批量填充后统一通知。InventoryView 构造时注册一次、销毁前注销，开关面板不重复注册；属性仍走原直接入口。装备槽先清空再填充，卸装点击提前缓存物品避免同步刷新清空引用。无需新增UI/场景绑定。Unity 实际拾取/移除/换装/合成核对显示，断点 InventoryView.OnInventoryChanged 检查每个完成操作一次回调、此时材料/产物或新旧装备已完成；反复开关面板后重测，退出重进不残留监听。静态检查通过；Unity 编译、事件断点与实际显示待验。
+- **UI订阅生命周期**：运行时在原三个槽位父节点挂生命周期转发组件，无需场景绑定；有可见面板时幂等订阅，全部禁用时注销，重新启用立即读取当前Model刷新，只更新可见槽位。销毁解绑全部回调，关闭期间数据仍可变化。Unity C/B等界面开关20次，在 OnInventoryChanged 断点确认单次操作仅一次通知；全部关闭时操作无UI回调，再打开核对最新数量/装备。静态检查通过；Unity 编译、20次开关及关闭期间操作待验。
+- **保存映射抽离**：原 Inventory.SaveData 的写入移至 InventorySaveMapper.Write，直接读取 Model 三个字典；普通背包与材料仍写 GameData.inventory 的原ID/数量，装备仍写 equipmentId，先清空后写入，不动其他存档字段及文件处理。原 ISaveManager 入口和初始化保护保留。Unity 记录物品ID/数量与已装备ID，退出保存后重进逐项核对，重复保存不累加；静态检查通过，Unity 编译及实际保存/重读待验。
+- **加载映射抽离**：原 LoadData 的ID匹配与堆叠/装备缓冲构建移至 InventorySaveMapper.Read，重复解析先清空缓冲；映射不加属性，原一次性初始化填充通过 EquipItem 应用装备属性，初始化后忽略重复背包加载。原字段/格式及数据库引用保留。Unity 执行 Verify Inventory Save Mapping 检查重复映射及JSON往返，再用旧备份存档实际重启核对物品/堆叠/装备与属性，保存重启再次核对，重复LoadGame检查无加倍；菜单不代表属性或磁盘读写验收。静态检查通过；Unity 编译、菜单、旧档重启与属性验收待执行。
+- **收尾审查与回归（尚未完整验收）**：原增删/穿脱/合成/冷却、槽位刷新及存取档映射已在此前迁移中替换，当前 Inventory 保留兼容字段/入口和一次性初始化协调，无第二份规则实现；删除未使用 VisualScripting 引用，将 UnityEditor 引用限制在编辑器编译。新增 Verify Migration Regression，必须在Play模式运行：已实测全部PASS，含IOC、初始化次数/逆序释放、事件、规则、存档JSON往返及20次空测试面板订阅开关。非Play执行的Host销毁断言曾失败，改为Play模式验收后通过。Unity编译0错误（原骷髅脚本有2条警告）。实际MainScene启动、护甲往返替换140→175→140及旧装回包通过；两次合成铁2→1→清零、皮7→5→3、剑堆叠5→7，缺料再点不消耗；退出再启动显示剑7、原装备和生命140，无运行错误。当前仍缺实际掉落拾取/满包、Ctrl移除、药瓶/护甲效果、新游戏及真实面板20次/隐藏期间变化的完整回归；不能标记阶段完成，也未进一步删除兼容数据。已退出Play，测试前/后存档保存在 SaveBackup/BeforeFinalRegression，原存档已恢复且哈希一致。
