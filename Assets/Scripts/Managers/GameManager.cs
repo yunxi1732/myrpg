@@ -122,11 +122,24 @@ public class GameManager : MonoBehaviour, ISaveManager
         }
     }
 
+    private bool menuPaused;
+    private readonly HashSet<object> pauseOwners = new HashSet<object>();
+    public bool IsMenuPaused => menuPaused;
+
+    // Existing UI calls own the menu request; other systems release only their own request.
     public void PauseGame(bool _pause)
     {
-        if (_pause)
-            Time.timeScale = 0;
-        else
-            Time.timeScale = 1;
+        menuPaused = _pause;
+        ApplyPause();
     }
+
+    public void SetPauseOwner(object owner, bool paused)
+    {
+        if (ReferenceEquals(owner, null)) return;
+        if (paused) pauseOwners.Add(owner);
+        else pauseOwners.Remove(owner);
+        ApplyPause();
+    }
+
+    private void ApplyPause() => Time.timeScale = menuPaused || pauseOwners.Count > 0 ? 0 : 1;
 }

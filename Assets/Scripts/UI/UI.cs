@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using UnityEngine.EventSystems;
 using UnityEngine;
 
 public class UI : MonoBehaviour, ISaveManager
@@ -25,12 +26,17 @@ public class UI : MonoBehaviour, ISaveManager
     [SerializeField] private UI_VolumeSlider[] volumeSettings;
 
     private readonly UISystem panels = new UISystem();
+    [SerializeField] private InteractionListView interactionList;
+    public InteractionManager Interactions { get; } = new InteractionManager();
+    [SerializeField] private KeyCode previousInteractionKey = KeyCode.PageUp;
+    [SerializeField] private KeyCode nextInteractionKey = KeyCode.PageDown;
 
     public BasePanel RegisterPanel(UIPanelId id, GameObject scenePanel) => panels.RegisterPanel(id, scenePanel);
     public BasePanel GetPanel(UIPanelId id) => panels.GetPanel(id);
 
     private void Awake()
     {
+        if (interactionList != null) interactionList.Bind(Interactions);
         RegisterScenePanel(UIPanelId.Character, characterUI);
         RegisterScenePanel(UIPanelId.SkillTree, skillTreeUI);
         RegisterScenePanel(UIPanelId.Craft, craftUI);
@@ -53,7 +59,12 @@ public class UI : MonoBehaviour, ISaveManager
             Debug.LogWarning("[UI] Scene panel is not assigned: " + id, this);
     }
 
-    private void OnDestroy() => panels.Clear();
+    private void OnDestroy()
+    {
+        if (interactionList != null) interactionList.Bind(null);
+        Interactions.Clear();
+        panels.Clear();
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -78,6 +89,23 @@ public class UI : MonoBehaviour, ISaveManager
 
         if (Input.GetKeyDown(KeyCode.O))
             SwitchWithKeyTo(optionsUI);
+
+        HandleInteractionInput();
+    }
+
+    private void HandleInteractionInput()
+    {
+        if (Time.timeScale <= 0 || Interactions.Options.Count == 0) return;
+        GameObject focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        if (focused != null && (focused.GetComponentInParent<UnityEngine.UI.InputField>() != null ||
+            focused.GetComponentInParent<TMP_InputField>() != null)) return;
+
+        float scroll = Input.mouseScrollDelta.y;
+        if (Input.GetKeyDown(previousInteractionKey) || scroll > 0.01f) Interactions.MoveSelection(-1);
+        else if (Input.GetKeyDown(nextInteractionKey) || scroll < -0.01f) Interactions.MoveSelection(1);
+        var selected = Interactions.GetSelected();
+        if (selected != null && selected.key != KeyCode.None && Input.GetKeyDown(selected.key))
+            Interactions.TryExecuteSelected();
     }
 
     public void SwitchTo(GameObject _menu)
