@@ -24,12 +24,36 @@ public class UI : MonoBehaviour, ISaveManager
 
     [SerializeField] private UI_VolumeSlider[] volumeSettings;
 
+    private readonly UISystem panels = new UISystem();
+
+    public BasePanel RegisterPanel(UIPanelId id, GameObject scenePanel) => panels.RegisterPanel(id, scenePanel);
+    public BasePanel GetPanel(UIPanelId id) => panels.GetPanel(id);
+
     private void Awake()
     {
+        RegisterScenePanel(UIPanelId.Character, characterUI);
+        RegisterScenePanel(UIPanelId.SkillTree, skillTreeUI);
+        RegisterScenePanel(UIPanelId.Craft, craftUI);
+        RegisterScenePanel(UIPanelId.Options, optionsUI);
+        RegisterScenePanel(UIPanelId.InGame, inGameUI);
+
+        // End-screen objects have their own lifecycle, outside the menu group.
+        if (endText != null) endText.SetActive(false);
+        if (restartButton != null) restartButton.SetActive(false);
         SwitchTo(skillTreeUI);
 
         fadeScreen.gameObject.SetActive(true);
     }
+
+    private void RegisterScenePanel(UIPanelId id, GameObject scenePanel)
+    {
+        if (scenePanel != null)
+            RegisterPanel(id, scenePanel);
+        else
+            Debug.LogWarning("[UI] Scene panel is not assigned: " + id, this);
+    }
+
+    private void OnDestroy() => panels.Clear();
 
     // Start is called before the first frame update
     void Start()
@@ -58,17 +82,19 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void SwitchTo(GameObject _menu)
     {
-        for (int i = 0; i < transform.childCount; i++)
+        if (_menu == null)
         {
-            bool fadeScreen = transform.GetChild(i).GetComponent<UI_FadeScreen>() != null;
-            if (fadeScreen == false)
-                transform.GetChild(i).gameObject.SetActive(false);
+            panels.CloseMenuGroup();
         }
-
-        if (_menu != null)
+        else
         {
+            if (!panels.TryGetPanelId(_menu, out UIPanelId id))
+            {
+                Debug.LogWarning("[UI] Cannot switch to an unregistered menu.", _menu);
+                return;
+            }
             AudioManager.instance.PlaySFX(4, null);
-            _menu.SetActive(true);
+            panels.ShowExclusive(id);
         }
 
         if (GameManager.instance != null)
@@ -85,32 +111,11 @@ public class UI : MonoBehaviour, ISaveManager
     {
         if (_menu != null && _menu.activeSelf)
         {
-            _menu.SetActive(false);
-            CheckForInGameUI();
+            SwitchTo(inGameUI);
             return;
         }
 
         SwitchTo(_menu);
-    }
-
-    private void CheckForInGameUI()
-    {
-        foreach (Transform child in transform)
-        {
-            if (!child.gameObject.activeSelf)
-                continue;
-
-            if (child.GetComponent<UI_FadeScreen>() != null)
-                continue;
-
-            if (child.gameObject == inGameUI)
-                continue;
-
-            // 还有其它菜单打开，不显示游戏UI
-            return;
-        }
-
-        SwitchTo(inGameUI);
     }
 
     public void SwitchOnEndScreen()

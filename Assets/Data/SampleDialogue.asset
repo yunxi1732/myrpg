@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62d33632fc8c4c25a0fedfd919c05429, type: 3}
+  m_Name: SampleDialogue
+  m_EditorClassIdentifier: 
+  startNodeId: start
+  nodes:
+  - id: start
+    content: 你好，旅行者。
+    nextNodeId: intro
+    choices: []
+  - id: intro
+    content: 前方有村庄和森林，你想去哪里？
+    nextNodeId: question
+    choices: []
+  - id: question
+    content: 请选择一条路。
+    nextNodeId: 
+    choices:
+    - text: 去村庄
+      nextNodeId: village_end
+    - text: 去森林
+      nextNodeId: forest_end
+  - id: village_end
+    content: 沿着左边的小路走，就能到村庄。一路平安！
+    nextNodeId: 
+    choices: []
+  - id: forest_end
+    content: 沿着右边的小路走，就能到森林。小心野兽！
+    nextNodeId: 
+    choices: []
