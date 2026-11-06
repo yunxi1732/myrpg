@@ -13,7 +13,7 @@ public sealed class InteractionListView : MonoBehaviour
     public void Bind(InteractionManager value)
     {
         Unsubscribe();
-        manager = value;
+        manager = value != null && !value.IsDisposed ? value : null;
         if (isActiveAndEnabled) Subscribe();
         else ClearRows();
     }
@@ -22,10 +22,12 @@ public sealed class InteractionListView : MonoBehaviour
 
     private void Subscribe()
     {
+        if (manager != null && manager.IsDisposed) manager = null;
         if (manager != null && !subscribed)
         {
             manager.OnListChanged += Refresh;
             manager.OnSelectionChanged += RefreshSelection;
+            manager.OnDisposed += OnManagerDisposed;
             subscribed = true;
         }
         Refresh();
@@ -78,8 +80,11 @@ public sealed class InteractionListView : MonoBehaviour
     {
         if (subscribed && manager != null) manager.OnListChanged -= Refresh;
         if (subscribed && manager != null) manager.OnSelectionChanged -= RefreshSelection;
+        if (subscribed && manager != null) manager.OnDisposed -= OnManagerDisposed;
         subscribed = false;
     }
+
+    private void OnManagerDisposed() => Bind(null);
 
     private void OnDisable()
     {

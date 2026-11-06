@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.EventSystems;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class UI : MonoBehaviour, ISaveManager
 {
@@ -27,15 +28,29 @@ public class UI : MonoBehaviour, ISaveManager
 
     private readonly UISystem panels = new UISystem();
     [SerializeField] private InteractionListView interactionList;
-    public InteractionManager Interactions { get; } = new InteractionManager();
+    private readonly InteractionManager interactions = new InteractionManager();
+    public InteractionManager Interactions
+    {
+        get { EnsureSceneLifetime(); return interactions; }
+    }
     [SerializeField] private KeyCode previousInteractionKey = KeyCode.PageUp;
     [SerializeField] private KeyCode nextInteractionKey = KeyCode.PageDown;
+    private GameManager blankMenuPauseManager;
+    public bool IsShuttingDown { get; private set; }
+    private bool sceneSubscribed;
+    private int boundSceneHandle;
 
-    public BasePanel RegisterPanel(UIPanelId id, GameObject scenePanel) => panels.RegisterPanel(id, scenePanel);
+    public BasePanel RegisterPanel(UIPanelId id, GameObject scenePanel)
+    {
+        if (IsShuttingDown) throw new System.ObjectDisposedException(nameof(UI));
+        EnsureSceneLifetime();
+        return panels.RegisterPanel(id, scenePanel);
+    }
     public BasePanel GetPanel(UIPanelId id) => panels.GetPanel(id);
 
     private void Awake()
     {
+        EnsureSceneLifetime();
         if (interactionList != null) interactionList.Bind(Interactions);
         RegisterScenePanel(UIPanelId.Character, characterUI);
         RegisterScenePanel(UIPanelId.SkillTree, skillTreeUI);
@@ -61,9 +76,23 @@ public class UI : MonoBehaviour, ISaveManager
 
     private void OnDestroy()
     {
-        if (interactionList != null) interactionList.Bind(null);
-        Interactions.Clear();
-        panels.Clear();
+        if (IsShuttingDown) return;
+        IsShuttingDown = true;
+        if (sceneSubscribed)
+        {
+            SceneManager.sceneUnloaded -= OnSceneUnloaded;
+            sceneSubscribed = false;
+        }
+        try { if (interactionList != null) interactionList.Bind(null); }
+        finally
+        {
+            try { interactions.Dispose(); }
+            finally
+            {
+                try { panels.Dispose(); }
+                finally { SetBlankMenuLock(false); }
+            }
+        }
     }
 
     // Start is called before the first frame update
@@ -95,7 +124,7 @@ public class UI : MonoBehaviour, ISaveManager
 
     private void HandleInteractionInput()
     {
-        if (Time.timeScale <= 0 || Interactions.Options.Count == 0) return;
+        if (Time.timeScale <= 0 || GameplayControlLock.IsActionInputBlocked || Interactions.Options.Count == 0) return;
         GameObject focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
         if (focused != null && (focused.GetComponentInParent<UnityEngine.UI.InputField>() != null ||
             focused.GetComponentInParent<TMP_InputField>() != null)) return;
@@ -110,8 +139,12 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void SwitchTo(GameObject _menu)
     {
+        if (IsShuttingDown) return;
+        EnsureSceneLifetime();
         if (_menu == null)
         {
+            // Preserve the legacy all-menus-hidden pause without releasing other owners.
+            SetBlankMenuLock(true);
             panels.CloseMenuGroup();
         }
         else
@@ -121,18 +154,45 @@ public class UI : MonoBehaviour, ISaveManager
                 Debug.LogWarning("[UI] Cannot switch to an unregistered menu.", _menu);
                 return;
             }
+            if (!panels.ShowExclusive(id)) return;
+            SetBlankMenuLock(false);
             AudioManager.instance.PlaySFX(4, null);
-            panels.ShowExclusive(id);
         }
+    }
 
-        if (GameManager.instance != null)
+    private void SetBlankMenuLock(bool locked)
+    {
+        if (locked)
         {
-            if (_menu == inGameUI)
-                GameManager.instance.PauseGame(false);
-            else
-                GameManager.instance.PauseGame(true);
-
+            if (GameplayControlLock.Acquire(this) && Application.isPlaying && PlayerManager.instance != null)
+                PlayerManager.instance.player?.CancelSwordAimForControlLock();
+            if (Application.isPlaying && blankMenuPauseManager == null && GameManager.instance != null)
+            {
+                blankMenuPauseManager = GameManager.instance;
+                blankMenuPauseManager.SetPauseOwner(this, true);
+            }
         }
+        else
+        {
+            if (GameplayControlLock.Release(this)) GameplayControlLock.SuppressActionInputForCurrentFrame();
+            if (blankMenuPauseManager != null) blankMenuPauseManager.SetPauseOwner(this, false);
+            blankMenuPauseManager = null;
+        }
+    }
+
+    private void OnDisable() => SetBlankMenuLock(false);
+
+    private void EnsureSceneLifetime()
+    {
+        if (sceneSubscribed || IsShuttingDown) return;
+        boundSceneHandle = gameObject.scene.handle;
+        SceneManager.sceneUnloaded += OnSceneUnloaded;
+        sceneSubscribed = true;
+    }
+
+    private void OnSceneUnloaded(Scene scene)
+    {
+        if (scene.handle == boundSceneHandle) OnDestroy();
     }
 
     public void SwitchWithKeyTo(GameObject _menu)

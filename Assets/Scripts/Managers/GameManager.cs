@@ -19,10 +19,20 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     private void Awake()
     {
-        if (instance != null)
+        if (instance != null && instance != this)
             Destroy(instance.gameObject);
-        else
-            instance = this;
+        instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        pauseOwners.Clear();
+        menuPaused = false;
+        if (ReferenceEquals(instance, this))
+        {
+            instance = null;
+            Time.timeScale = 1;
+        }
     }
 
     private void Start()
@@ -124,9 +134,10 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     private bool menuPaused;
     private readonly HashSet<object> pauseOwners = new HashSet<object>();
+    // The legacy bool request only; owner-based menu/dialogue requests remain independent.
     public bool IsMenuPaused => menuPaused;
 
-    // Existing UI calls own the menu request; other systems release only their own request.
+    // Compatibility entry point. Menus and dialogue now use owner-based pause requests.
     public void PauseGame(bool _pause)
     {
         menuPaused = _pause;
@@ -141,5 +152,10 @@ public class GameManager : MonoBehaviour, ISaveManager
         ApplyPause();
     }
 
-    private void ApplyPause() => Time.timeScale = menuPaused || pauseOwners.Count > 0 ? 0 : 1;
+    private void ApplyPause()
+    {
+        // Cleanup from an old scene must not overwrite the replacement manager's pause state.
+        if (ReferenceEquals(instance, this))
+            Time.timeScale = menuPaused || pauseOwners.Count > 0 ? 0 : 1;
+    }
 }

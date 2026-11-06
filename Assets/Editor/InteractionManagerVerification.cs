@@ -5,6 +5,49 @@ using UnityEngine;
 
 public static class InteractionManagerVerification
 {
+    [MenuItem("Tools/RPG/Verify Interaction Cleanup")]
+    public static void VerifyCleanup()
+    {
+        var manager = new InteractionManager();
+        var owner = new object();
+        int lists = 0, selections = 0, ended = 0, executions = 0;
+        manager.OnListChanged += () => lists++;
+        manager.OnSelectionChanged += () => selections++;
+        var option = new InteractionOptionData(owner, "talk", "对话", () => executions++);
+        manager.Register(option);
+        manager.OnDisposed += () =>
+        {
+            ended++;
+            Require(manager.IsDisposed && manager.Options.Count == 0 && manager.SelectedIndex == -1,
+                "Cleanup listeners see terminal empty state");
+            Require(!manager.Register(option) && !manager.TryExecuteSelected(), "Cannot reenter disposed manager");
+        };
+        manager.OnDisposed += () => { throw new InvalidOperationException("expected cleanup failure"); };
+        manager.OnDisposed += () => ended++;
+        bool aggregate = false;
+        try { manager.Dispose(); }
+        catch (AggregateException error) { aggregate = error.InnerExceptions.Count == 1; }
+        manager.Dispose();
+        Require(aggregate && ended == 2, "All cleanup listeners run once even if one fails");
+        Require(lists == 1 && selections == 1 && executions == 0 && !manager.Register(option) &&
+            !manager.Unregister(option) && manager.UnregisterOwner(owner) == 0 && !manager.Clear() &&
+            !manager.MoveSelection(1) && !manager.TryExecuteSelected(), "Late operations cannot revive callbacks or candidates");
+        foreach (string field in new[] { "OnListChanged", "OnSelectionChanged", "OnDisposed" })
+            Require(typeof(InteractionManager).GetField(field,
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(manager) == null,
+                "Event references cleared: " + field);
+        var fresh = new InteractionManager();
+        fresh.Register(option);
+        Require(fresh.Options.Count == 1 && fresh.TryExecuteSelected() && executions == 1,
+            "Fresh scene instance registers and executes independently");
+        fresh.Dispose();
+        var selfDisposing = new InteractionManager();
+        selfDisposing.Register(new InteractionOptionData(owner, "self", "退出", () => selfDisposing.Dispose()));
+        Require(selfDisposing.TryExecuteSelected() && selfDisposing.IsDisposed && selfDisposing.Options.Count == 0,
+            "Execution callback may dispose its own manager");
+        Debug.Log("[InteractionCleanup] PASS: terminal disposal, event release, late calls and fresh registration");
+    }
+
     [MenuItem("Tools/RPG/Verify Interaction Selection")]
     public static void VerifySelection()
     {

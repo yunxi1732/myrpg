@@ -12,8 +12,9 @@ public enum UIPanelId
 }
 
 /// <summary>Scene-owned panel registry. Registration does not change visibility.</summary>
-public sealed class UISystem
+public sealed class UISystem : IDisposable
 {
+    public bool IsDisposed { get; private set; }
     private static readonly UIPanelId[] menuGroup =
     {
         UIPanelId.Character, UIPanelId.Craft, UIPanelId.SkillTree,
@@ -25,6 +26,7 @@ public sealed class UISystem
 
     public BasePanel RegisterPanel(UIPanelId id, GameObject scenePanel)
     {
+        if (IsDisposed) throw new ObjectDisposedException(nameof(UISystem));
         if (scenePanel == null)
             throw new ArgumentNullException(nameof(scenePanel));
 
@@ -39,6 +41,12 @@ public sealed class UISystem
         if (panel == null)
             panel = scenePanel.AddComponent<BasePanel>();
         panels[id] = panel;
+        if (id != UIPanelId.InGame)
+        {
+            MenuControlLock menuLock = scenePanel.GetComponent<MenuControlLock>();
+            if (menuLock == null) menuLock = scenePanel.AddComponent<MenuControlLock>();
+            menuLock.Configure();
+        }
         return panel;
     }
 
@@ -67,8 +75,16 @@ public sealed class UISystem
     public bool OpenPanel(UIPanelId id, params object[] args)
     {
         BasePanel panel = GetPanel(id);
-        if (panel == null) return false;
+        if (panel == null || !panel.enabled ||
+            (panel.transform.parent != null && !panel.transform.parent.gameObject.activeInHierarchy)) return false;
+        MenuControlLock menuLock = id == UIPanelId.InGame ? null : panel.GetComponent<MenuControlLock>();
+        if (menuLock != null && !menuLock.PrepareOpen()) return false;
         panel.OnShow(args);
+        if (!panel.gameObject.activeInHierarchy)
+        {
+            if (menuLock != null) menuLock.Release();
+            return false;
+        }
         return true;
     }
 
@@ -77,15 +93,31 @@ public sealed class UISystem
         BasePanel panel = GetPanel(id);
         if (panel == null) return false;
         panel.OnClose();
+        // Also handles already-inactive panels and repeated close requests.
+        if (id != UIPanelId.InGame) panel.GetComponent<MenuControlLock>()?.Release();
         return true;
     }
 
     /// <summary>Only the four menus and HUD participate; overlays are independent.</summary>
     public bool ShowExclusive(UIPanelId id)
     {
-        if (GetPanel(id) == null) return false;
-        CloseMenuGroup();
-        return OpenPanel(id);
+        BasePanel target = GetPanel(id);
+        if (target == null || !target.enabled ||
+            (target.transform.parent != null && !target.transform.parent.gameObject.activeInHierarchy)) return false;
+        MenuControlLock targetLock = id == UIPanelId.InGame ? null : target.GetComponent<MenuControlLock>();
+        if (targetLock != null && !targetLock.PrepareOpen()) return false;
+        bool opened = false;
+        try
+        {
+            foreach (UIPanelId other in menuGroup)
+                if (other != id) ClosePanel(other);
+            opened = OpenPanel(id);
+            return opened;
+        }
+        finally
+        {
+            if (!opened && targetLock != null) targetLock.Release();
+        }
     }
 
     public void CloseMenuGroup()
@@ -95,5 +127,17 @@ public sealed class UISystem
     }
 
     /// <summary>Release scene references; scene objects remain owned by Unity.</summary>
-    public void Clear() => panels.Clear();
+    public void Clear()
+    {
+        foreach (BasePanel panel in panels.Values)
+            if (panel != null) panel.GetComponent<MenuControlLock>()?.Unconfigure();
+        panels.Clear();
+    }
+
+    public void Dispose()
+    {
+        if (IsDisposed) return;
+        IsDisposed = true;
+        Clear();
+    }
 }

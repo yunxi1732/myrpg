@@ -67,9 +67,10 @@ public static class NpcDialogueVerification
                 "Invalid data leaves no stuck session or NPC association");
             a.dialogue = data;
             Require(a.TryStartTalk(), "Failed start does not block a later valid session");
-            SetRange(a, false);
+            ui.Interactions.Dispose();
             Require(view.CurrentNpc == null && !first.IsRunning && ui.Interactions.Options.Count == 0,
-                "Owner exit closes dialogue and removes prompt");
+                "Manager disposal removes NPC candidate and ends owned dialogue");
+            Require(!a.IsPlayerInRange && !a.TryStartTalk(), "Disposed scene clears NPC range ownership");
             Debug.Log("[NpcTalk] PASS: range candidates, NPC metadata, session association, busy guard and cleanup");
         }
         finally
@@ -77,6 +78,7 @@ public static class NpcDialogueVerification
             view.Close();
             a.SendMessage("OnDisable");
             b.SendMessage("OnDisable");
+            ui.SendMessage("OnDestroy");
             UnityEngine.Object.DestroyImmediate(aRoot);
             UnityEngine.Object.DestroyImmediate(bRoot);
             UnityEngine.Object.DestroyImmediate(uiRoot);

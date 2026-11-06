@@ -26,6 +26,7 @@ public class PlayerState
 
     public virtual void Enter()
     {
+        ClearMovementInput();
         player.anim.SetBool(animBoolName, true);
         rb = player.rb;
         triggerCalled = false;
@@ -33,10 +34,20 @@ public class PlayerState
 
     public virtual void Update()
     {
-        xInput = Input.GetAxisRaw("Horizontal");
-        yInput = Input.GetAxisRaw("Vertical");
+        if (GameplayControlLock.IsLocked) ClearMovementInput();
+        else
+        {
+            xInput = Input.GetAxisRaw("Horizontal");
+            yInput = Input.GetAxisRaw("Vertical");
+        }
         player.anim.SetFloat("yVelocity", rb.velocity.y);
         stateTimer -= Time.deltaTime;
+    }
+
+    public void ClearMovementInput()
+    {
+        xInput = 0;
+        yInput = 0;
     }
 
     public virtual void Exit()

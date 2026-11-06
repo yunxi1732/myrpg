@@ -80,6 +80,7 @@ public class Player : Entity
 
     protected override void Update()
     {
+        if (GameplayControlLock.IsLocked) ClearLockedMovement();
         if (Time.timeScale == 0)
             return;
 
@@ -87,10 +88,10 @@ public class Player : Entity
         stateMachine.currentState.Update();
         CheckForDashInput();
 
-        if (Input.GetKeyDown(KeyCode.F) && skill.crystal.crystalUnlocked) 
+        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.F) && skill.crystal.crystalUnlocked)
             skill.crystal.CanUseSkill();
 
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Alpha1))
             Inventory.instance.UseFlask();
     }
 
@@ -122,6 +123,11 @@ public class Player : Entity
 
     public void CheckForDashInput()
     {
+        if (GameplayControlLock.IsActionInputBlocked)
+        {
+            dashDir = 0;
+            return;
+        }
         if (IsWallDetected()) return;
 
         if (skill.dash.dashUnlocked == false)
@@ -133,6 +139,28 @@ public class Player : Entity
         {
             stateMachine.ChangeState(dashState);
         }
+    }
+
+    private void ClearLockedMovement()
+    {
+        CancelSwordAimForControlLock();
+        PlayerState current = stateMachine?.currentState;
+        current?.ClearMovementInput();
+        dashDir = 0;
+        if (current == null || rb == null) return;
+        // A dash must not keep forcing y=0 after the dialogue releases its lock.
+        if (current == dashState)
+            stateMachine.ChangeState(IsGroundDetected() ? (PlayerState)idleState : airState);
+        if (current == moveState || current == airState || current == jumpState ||
+            current == wallJumpState || current == wallSlideState || current == dashState)
+            SetVelocity(0, rb.velocity.y);
+    }
+
+    public void CancelSwordAimForControlLock()
+    {
+        skill?.sword?.CancelAim();
+        if (aimSwordState != null && stateMachine?.currentState == aimSwordState && rb != null)
+            aimSwordState.CancelForControlLock();
     }
 
     public void AnimationTrigger() => stateMachine.currentState.AnimationFinishTrigger();

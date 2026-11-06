@@ -49,7 +49,7 @@ public class BlackholeSkillController : MonoBehaviour
             else FinishBlackholeAbility();
         }
 
-        if (Input.GetKeyDown(KeyCode.R)) ReleaseCloneAttack();
+        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R)) ReleaseCloneAttack();
 
         CloneAttackLogic();
 

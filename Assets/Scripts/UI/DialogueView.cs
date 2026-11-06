@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 /// <summary>Dialogue text and generated choices. The hidden root can be started explicitly.</summary>
 public sealed class DialogueView : MonoBehaviour
@@ -15,6 +16,8 @@ public sealed class DialogueView : MonoBehaviour
     [SerializeField] private DialogueAsset testDialogue;
     private DialogueRunner runner;
     private GameManager pauseManager;
+    private bool sceneSubscribed;
+    private int boundSceneHandle;
     private readonly List<DialogueOptionView> options = new List<DialogueOptionView>();
 
     /// <summary>Current binding; null after end, close, disable or destruction.</summary>
@@ -37,6 +40,9 @@ public sealed class DialogueView : MonoBehaviour
         runner = value;
         runner.OnNodeChanged += Refresh;
         runner.OnEnded += Close;
+        boundSceneHandle = gameObject.scene.handle;
+        SceneManager.sceneUnloaded += OnSceneUnloaded;
+        sceneSubscribed = true;
         if (clickArea != null) clickArea.onClick.AddListener(Advance);
         if (closeButton != null) closeButton.onClick.AddListener(Close);
         // An idle runner can be bound while the root is hidden, then started explicitly.
@@ -110,6 +116,13 @@ public sealed class DialogueView : MonoBehaviour
         if (dialogOptions != null) dialogOptions.SetActive(runner.HasChoices);
         if (clickArea != null) clickArea.interactable = !runner.HasChoices;
         gameObject.SetActive(true);
+        if (!isActiveAndEnabled)
+        {
+            Close();
+            return;
+        }
+        if (GameplayControlLock.Acquire(this) && Application.isPlaying && PlayerManager.instance != null)
+            PlayerManager.instance.player?.CancelSwordAimForControlLock();
         if (Application.isPlaying && isActiveAndEnabled && pauseManager == null && GameManager.instance != null)
         {
             pauseManager = GameManager.instance;
@@ -146,16 +159,23 @@ public sealed class DialogueView : MonoBehaviour
         if (npcName != null) npcName.text = "";
         if (npcProfession != null) npcProfession.text = "";
         if (dialogContent != null) dialogContent.text = "";
-        gameObject.SetActive(false);
+        if (this != null) gameObject.SetActive(false);
     }
     private void OnDisable() => Close();
 
     // Detach before End so its callbacks cannot re-enter this view or retain it.
     private void ReleaseSession()
     {
+        if (sceneSubscribed)
+        {
+            SceneManager.sceneUnloaded -= OnSceneUnloaded;
+            sceneSubscribed = false;
+        }
         DialogueRunner previous = runner;
         runner = null;
         CurrentNpc = null;
+        if (GameplayControlLock.Release(this))
+            GameplayControlLock.SuppressActionInputForCurrentFrame();
         if (previous != null)
         {
             previous.OnNodeChanged -= Refresh;
@@ -163,10 +183,19 @@ public sealed class DialogueView : MonoBehaviour
         }
         if (clickArea != null) clickArea.onClick.RemoveListener(Advance);
         if (closeButton != null) closeButton.onClick.RemoveListener(Close);
-        ClearOptions();
-        if (pauseManager != null) pauseManager.SetPauseOwner(this, false);
+        GameManager pausedBy = pauseManager;
         pauseManager = null;
-        previous?.End();
+        try { ClearOptions(); }
+        finally
+        {
+            try { if (pausedBy != null) pausedBy.SetPauseOwner(this, false); }
+            finally { previous?.End(); }
+        }
+    }
+
+    private void OnSceneUnloaded(Scene scene)
+    {
+        if (scene.handle == boundSceneHandle) Close();
     }
 
     private void OnDestroy() => ReleaseSession();

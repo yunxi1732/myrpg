@@ -11,6 +11,7 @@ public static class DialogueViewVerification
     {
         GameObject root = PrefabUtility.LoadPrefabContents("Assets/Prefabs/Dialogue/DialogueBox.prefab");
         var asset = ScriptableObject.CreateInstance<DialogueAsset>();
+        var otherLockOwner = new object();
         try
         {
             Require(!root.activeSelf, "Dialogue root is initially hidden");
@@ -101,12 +102,19 @@ public static class DialogueViewVerification
             }
             view.StartDialogue(asset, "引路人", "村民");
             DialogueRunner closingSession = view.Runner;
+            int holdersWithDialogue = GameplayControlLock.HolderCount;
+            Require(GameplayControlLock.IsLocked, "Running dialogue holds gameplay input lock");
+            GameplayControlLock.Acquire(otherLockOwner);
             int endedCount = 0, changedCount = 0;
             view.Runner.OnEnded += () => endedCount++;
             view.Runner.OnNodeChanged += () => changedCount++;
             close.onClick.Invoke();
             close.onClick.Invoke();
             view.Close();
+            Require(GameplayControlLock.IsLocked && GameplayControlLock.HolderCount == holdersWithDialogue,
+                "Dialogue close releases only its own lock");
+            GameplayControlLock.Release(otherLockOwner);
+            Require(GameplayControlLock.IsActionInputBlocked, "Dialogue closing frame cannot trigger attack/parry");
             Require(endedCount == 1 && changedCount == 0, "Close ends once without advancing");
             Require(!root.activeSelf && view.Runner == null && !closingSession.IsRunning && closingSession.Current == null &&
                 closingSession.NpcName == null && closingSession.NpcProfession == null && container.childCount == 0,
@@ -119,6 +127,8 @@ public static class DialogueViewVerification
         }
         finally
         {
+            GameplayControlLock.Release(otherLockOwner);
+            root.GetComponent<DialogueView>().Close();
             PrefabUtility.UnloadPrefabContents(root);
             UnityEngine.Object.DestroyImmediate(asset);
         }
@@ -147,6 +157,7 @@ public static class DialogueViewVerification
             var view = root.GetComponent<DialogueView>();
             var next = root.transform.Find("DialogBox/ClickArea").GetComponent<Button>();
             var close = root.transform.Find("DialogBox/CloseButton").GetComponent<Button>();
+            int baselineLocks = GameplayControlLock.HolderCount;
             for (int i = 0; i < 20; i++)
             {
                 var session = new DialogueRunner();
@@ -155,12 +166,14 @@ public static class DialogueViewVerification
                 view.Bind(session);
                 view.Bind(session);
                 session.Start(asset);
+                Require(GameplayControlLock.IsLocked, "Dialogue lifecycle acquires input lock");
                 if (manager != null) Require(Time.timeScale == 0, "Dialogue pauses gameplay");
                 next.onClick.Invoke();
                 Require(session.Current.id == "end", "Repeated bind does not duplicate advance callbacks");
                 root.SetActive(false);
                 Require(endCount == 1 && !session.IsRunning && session.Current == null && view.Runner == null,
                     "Disable ends once and releases runner");
+                Require(GameplayControlLock.HolderCount == baselineLocks, "Disable releases dialogue input lock");
                 session.Start(asset);
                 next.onClick.Invoke();
                 close.onClick.Invoke();

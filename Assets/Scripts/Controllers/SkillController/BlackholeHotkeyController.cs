@@ -24,7 +24,7 @@ public class BlackholeHotkeyController : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(myHotkey))
+        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(myHotkey))
         {
             blackhole.AddEnemyToList(myEnemy);
             myText.color = Color.clear;

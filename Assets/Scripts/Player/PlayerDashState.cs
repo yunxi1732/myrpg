@@ -33,6 +33,12 @@ public class PlayerDashState : PlayerState
     public override void Update()
     {
         base.Update(); 
+        if (GameplayControlLock.IsLocked)
+        {
+            player.SetVelocity(0, rb.velocity.y);
+            stateMachine.ChangeState(player.IsGroundDetected() ? (PlayerState)player.idleState : player.airState);
+            return;
+        }
         if (!player.IsGroundDetected() && player.IsWallDetected()) stateMachine.ChangeState(player.wallSlideState);
         player.SetVelocity(player.dashSpeed * player.dashDir, 0);
         if (stateTimer < 0) stateMachine.ChangeState(player.idleState);

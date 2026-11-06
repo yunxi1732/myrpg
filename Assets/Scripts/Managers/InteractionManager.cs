@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>Scene-owned candidates and selection. Input polling and presentation remain outside.</summary>
-public sealed class InteractionManager
+public sealed class InteractionManager : IDisposable
 {
     private readonly List<InteractionOptionData> options = new List<InteractionOptionData>();
     public IReadOnlyList<InteractionOptionData> Options { get; }
     public event Action OnListChanged;
     public event Action OnSelectionChanged;
+    public event Action OnDisposed;
+    public bool IsDisposed { get; private set; }
     public int SelectedIndex { get; private set; } = -1;
     private bool executing;
 
@@ -19,7 +21,7 @@ public sealed class InteractionManager
     /// <summary>Duplicates are ignored, preserving the original item and insertion order.</summary>
     public bool Register(InteractionOptionData data)
     {
-        if (data == null) return false;
+        if (IsDisposed || data == null) return false;
         foreach (InteractionOptionData option in options)
             if (ReferenceEquals(option.owner, data.owner) &&
                 string.Equals(option.id, data.id, StringComparison.Ordinal)) return false;
@@ -33,6 +35,7 @@ public sealed class InteractionManager
     /// <summary>Remove this exact registration. A stale/duplicate object cannot remove another item.</summary>
     public bool Unregister(InteractionOptionData data)
     {
+        if (IsDisposed) return false;
         var previous = GetSelected();
         int previousIndex = SelectedIndex;
         if (data == null || !options.Remove(data)) return false;
@@ -42,7 +45,7 @@ public sealed class InteractionManager
 
     public int UnregisterOwner(object owner)
     {
-        if (ReferenceEquals(owner, null)) return 0;
+        if (IsDisposed || ReferenceEquals(owner, null)) return 0;
         var previous = GetSelected();
         int previousIndex = SelectedIndex;
         int count = options.RemoveAll(option => ReferenceEquals(option.owner, owner));
@@ -52,7 +55,7 @@ public sealed class InteractionManager
 
     public bool Clear()
     {
-        if (options.Count == 0) return false;
+        if (IsDisposed || options.Count == 0) return false;
         var previous = GetSelected();
         int previousIndex = SelectedIndex;
         options.Clear();
@@ -65,7 +68,7 @@ public sealed class InteractionManager
 
     public bool MoveSelection(int direction)
     {
-        if (direction == 0 || options.Count == 0) return false;
+        if (IsDisposed || direction == 0 || options.Count == 0) return false;
         int next = (SelectedIndex + (direction > 0 ? 1 : -1) + options.Count) % options.Count;
         if (next == SelectedIndex) return false;
         SelectedIndex = next;
@@ -76,7 +79,7 @@ public sealed class InteractionManager
     public bool TryExecuteSelected()
     {
         var selected = GetSelected();
-        if (executing || selected == null || selected.onExecute == null) return false;
+        if (IsDisposed || executing || selected == null || selected.onExecute == null) return false;
         executing = true;
         try { selected.onExecute(); }
         finally { executing = false; }
@@ -91,5 +94,32 @@ public sealed class InteractionManager
         bool changed = previousIndex != SelectedIndex || !ReferenceEquals(previous, GetSelected());
         OnListChanged?.Invoke();
         if (changed) OnSelectionChanged?.Invoke();
+    }
+
+    public void Dispose()
+    {
+        if (IsDisposed) return;
+        IsDisposed = true;
+        options.Clear();
+        SelectedIndex = -1;
+        Action listeners = OnDisposed;
+        OnListChanged = null;
+        OnSelectionChanged = null;
+        OnDisposed = null;
+        List<Exception> errors = null;
+        try
+        {
+            if (listeners != null)
+                foreach (Action listener in listeners.GetInvocationList())
+                    try { listener(); }
+                    catch (Exception error) { (errors ?? (errors = new List<Exception>())).Add(error); }
+        }
+        finally
+        {
+            OnListChanged = null;
+            OnSelectionChanged = null;
+            OnDisposed = null;
+        }
+        if (errors != null) throw new AggregateException("InteractionManager cleanup failed.", errors);
     }
 }

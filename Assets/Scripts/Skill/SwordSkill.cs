@@ -48,6 +48,7 @@ public class SwordSkill : Skill
     public bool vulnerableUnlocked { get; private set; }
 
     private Vector2 finalDir;
+    private bool throwRequested;
 
     [Header("Aim Dots Info")]
     [SerializeField] private int numberOfDots;
@@ -79,12 +80,49 @@ public class SwordSkill : Skill
     }
     protected override void Update()
     {
-        if (Input.GetKeyUp(KeyCode.Mouse1)) finalDir = new Vector2(AimDirection().normalized.x * launchingForce.x, AimDirection().normalized.y * launchingForce.y);
-
-        if (Input.GetKey(KeyCode.Mouse1))
+        if (GameplayControlLock.IsActionInputBlocked)
+        {
+            CancelAim();
+            return;
+        }
+        if (player.stateMachine.currentState == player.aimSwordState && Input.GetKey(KeyCode.Mouse1))
         {
             for (int i = 0; i < dots.Length; i++) dots[i].transform.position = DotsPosition(i * spaceBetweenDots);
         }
+    }
+
+    public void BeginAim()
+    {
+        if (GameplayControlLock.IsActionInputBlocked) { CancelAim(); return; }
+        throwRequested = false;
+        finalDir = Vector2.zero;
+        DotsActive(true);
+    }
+
+    public bool RequestThrow()
+    {
+        if (GameplayControlLock.IsActionInputBlocked) { CancelAim(); return false; }
+        Vector2 direction = AimDirection().normalized;
+        finalDir = new Vector2(direction.x * launchingForce.x, direction.y * launchingForce.y);
+        throwRequested = true;
+        return true;
+    }
+
+    public void CancelAim()
+    {
+        throwRequested = false;
+        finalDir = Vector2.zero;
+        DotsActive(false);
+    }
+
+    // Animation events may arrive after cancellation. Only a fresh, permitted release can throw.
+    public bool TryCreateSwordFromInput()
+    {
+        if (GameplayControlLock.IsActionInputBlocked) { CancelAim(); return false; }
+        if (!throwRequested) return false;
+        throwRequested = false;
+        CreateSword();
+        return true;
     }
     public void CreateSword()
     {
@@ -164,7 +202,9 @@ public class SwordSkill : Skill
 
     public void DotsActive(bool _isActive)
     {
-        for (int i = 0; i < dots.Length; i++) dots[i].SetActive(_isActive);
+        if (dots == null) return;
+        for (int i = 0; i < dots.Length; i++)
+            if (dots[i] != null) dots[i].SetActive(_isActive);
     }
 
     private void GenerateDots()

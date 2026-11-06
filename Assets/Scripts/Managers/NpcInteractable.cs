@@ -51,7 +51,7 @@ public sealed class NpcInteractable : MonoBehaviour
             RemoveTalkOption();
             CloseOwnedDialogue();
         }
-        OnPlayerRangeChanged?.Invoke(inside);
+        if (IsPlayerInRange == inside) OnPlayerRangeChanged?.Invoke(inside);
     }
 
     private void RegisterTalkOption()
@@ -62,7 +62,9 @@ public sealed class NpcInteractable : MonoBehaviour
             Debug.LogWarning("[NpcInteractable] 请绑定场景 UI 和 DialogueView。", this);
             return;
         }
+        if (interactionUi.IsShuttingDown || interactionUi.Interactions.IsDisposed) return;
         registeredManager = interactionUi.Interactions;
+        registeredManager.OnDisposed += OnInteractionManagerDisposed;
         registeredManager.Register(new InteractionOptionData(this, "talk", actionDisplayName,
             ExecuteTalk, keyTip, key));
     }
@@ -80,7 +82,15 @@ public sealed class NpcInteractable : MonoBehaviour
     {
         InteractionManager previous = registeredManager;
         registeredManager = null;
+        if (previous != null) previous.OnDisposed -= OnInteractionManagerDisposed;
         previous?.UnregisterOwner(this);
+    }
+
+    private void OnInteractionManagerDisposed()
+    {
+        if (registeredManager != null) registeredManager.OnDisposed -= OnInteractionManagerDisposed;
+        registeredManager = null;
+        ClearRange();
     }
 
     private void CloseOwnedDialogue()
@@ -98,5 +108,9 @@ public sealed class NpcInteractable : MonoBehaviour
     }
 
     private void OnDisable() => ClearRange();
-    private void OnDestroy() => ClearRange();
+    private void OnDestroy()
+    {
+        try { ClearRange(); }
+        finally { OnPlayerRangeChanged = null; }
+    }
 }

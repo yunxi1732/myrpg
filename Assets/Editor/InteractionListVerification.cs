@@ -48,12 +48,20 @@ public static class InteractionListVerification
             Require(container.childCount == 0 && !container.gameObject.activeSelf, "Unbound source cannot update display");
             view.Bind(manager);
             CheckRow(container.GetChild(0), "对话", "E");
+            manager.Dispose();
+            Require(container.childCount == 0 && !container.gameObject.activeSelf,
+                "Manager disposal unbinds and hides the prompt list");
+            var fresh = new InteractionManager();
+            view.Bind(fresh);
+            fresh.Register(trade);
+            CheckRow(container.GetChild(0), "交易", "F");
+            fresh.Dispose();
             Debug.Log("[InteractionPromptList] PASS: layout, text/key, row reuse, empty hide and binding");
         }
         finally
         {
             root.GetComponent<InteractionListView>().Bind(null);
-            manager.Clear();
+            manager.Dispose();
             PrefabUtility.UnloadPrefabContents(root);
         }
     }
