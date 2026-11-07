@@ -42,8 +42,8 @@ public class EntityFX : MonoBehaviour
         float randomX = Random.Range(-1, 1);
         float randomY = Random.Range(3, 5);
         Vector3 posOffset = new Vector3(randomX, randomY, 0);
-        GameObject newText = Instantiate(popUpTextPrefab, transform.position + posOffset, Quaternion.identity);
-        newText.GetComponent<TextMeshPro>().text = _t;
+        var newText = TemporaryEffectPool.ForScene(gameObject.scene).Take(popUpTextPrefab, transform.position + posOffset, Quaternion.identity);
+        newText.GetComponent<PopUpTextFX>().Play(_t);
     }
 
     public void MakeTransparent(bool _isTransparent)
@@ -140,9 +140,9 @@ public class EntityFX : MonoBehaviour
             hitFxRotation = new Vector3(0, yRotation, zRotation);
         }
 
-        GameObject newHitFx = Instantiate(hitPrefab, _t.position + new Vector3(xPos, yPos), Quaternion.identity);
-        newHitFx.transform.Rotate(hitFxRotation);
-
-        Destroy(newHitFx, 0.5f);
+        Vector3 position = _t.position + new Vector3(xPos, yPos);
+        Quaternion rotation = Quaternion.Euler(hitFxRotation);
+        var instance = TemporaryEffectPool.ForScene(_t.gameObject.scene).Take(hitPrefab, position, rotation);
+        instance.GetComponent<HitEffectFX>().Play(position, rotation);
     }
 }

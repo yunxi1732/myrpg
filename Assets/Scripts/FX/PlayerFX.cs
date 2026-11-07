@@ -42,8 +42,8 @@ public class PlayerFX : EntityFX
         if (afterImageTimer < 0)
         {
             afterImageTimer = afterImageCooldown;
-            GameObject newAfterImage = Instantiate(afterImagePrefab, transform.position, transform.rotation);
-            newAfterImage.GetComponent<AfterImageFx>().SetupAfterImage(colorLoseRate, sr.sprite);
+            var newAfterImage = TemporaryEffectPool.ForScene(gameObject.scene).Take(afterImagePrefab, transform.position, transform.rotation);
+            newAfterImage.GetComponent<AfterImageFx>().Play(colorLoseRate, sr.sprite, transform.position, transform.rotation);
         }
     }
 
