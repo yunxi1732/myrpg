@@ -16,7 +16,7 @@ public class PlayerPrimaryAttack : PlayerState
     {
         base.Enter();
 
-        if (Time.time > lastTimeAttacked + comboWindow || comboCounter > 2) comboCounter = 0;
+        if (GameSimulationClock.Time > lastTimeAttacked + comboWindow || comboCounter > 2) comboCounter = 0;
         AudioManager.instance.PlaySFX(comboCounter, null);
         player.anim.SetInteger("comboCounter", comboCounter);
         stateTimer = 0.1f;
@@ -27,7 +27,7 @@ public class PlayerPrimaryAttack : PlayerState
     {
         base.Exit();
         comboCounter++;
-        lastTimeAttacked = Time.time;
+        lastTimeAttacked = GameSimulationClock.Time;
 
     }
 

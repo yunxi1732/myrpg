@@ -126,7 +126,7 @@ public class CrystalSkill : Skill
         {
             if (crystalLeft.Count > 0)
             {
-                if (crystalLeft.Count == amountOfStacks) Invoke("ResetAbility", useTimeWindow);
+                if (crystalLeft.Count == amountOfStacks) GameSimulationClock.Schedule(this, ResetAbility, nameof(ResetAbility), useTimeWindow);
 
                 cooldown = 0;
                 GameObject crystalToSpawn = crystalLeft[crystalLeft.Count - 1];

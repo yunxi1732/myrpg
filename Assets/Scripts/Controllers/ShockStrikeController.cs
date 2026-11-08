@@ -29,7 +29,7 @@ public class ShockStrikeController : MonoBehaviour
         if (!targetStats || isTriggered)
             return;
 
-        transform.position = Vector2.MoveTowards(transform.position, targetStats.transform.position, speed * Time.deltaTime);
+        transform.position = Vector2.MoveTowards(transform.position, targetStats.transform.position, speed * GameSimulationClock.DeltaTime);
         transform.right = transform.position - targetStats.transform.position;
 
         if (Vector2.Distance(transform.position, targetStats.transform.position) < 0.1f)
@@ -41,7 +41,7 @@ public class ShockStrikeController : MonoBehaviour
 
             isTriggered = true;
             anim.SetTrigger("Hit");
-            Invoke("DamageAndSelfDestroy", 0.2f);
+            GameSimulationClock.Schedule(this, DamageAndSelfDestroy, nameof(DamageAndSelfDestroy), 0.2f);
         }
     }
 
@@ -49,6 +49,6 @@ public class ShockStrikeController : MonoBehaviour
     {
         targetStats.ApplyShock(true);
         targetStats.TakeDamage(damage);
-        Destroy(gameObject, 0.4f);
+        GameSimulationClock.DestroyAfter(gameObject, 0.4f);
     }
 }

@@ -8,13 +8,15 @@ public class PlayerStateMachine
 
     public void Initialize(PlayerState _startState)
     {
+        if (_startState == null || !_startState.CanSimulate) return;
         currentState = _startState;
         currentState.Enter();
     }
 
     public void ChangeState(PlayerState _newState)
     {
-        currentState.Exit();
+        if (_newState == null || !_newState.CanSimulate) return;
+        currentState?.Exit();
         currentState = _newState;
         currentState.Enter();
     }

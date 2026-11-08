@@ -28,7 +28,7 @@ public class EnemyState
     }
     public virtual void Update()
     {
-        stateTimer -= Time.deltaTime;
+        stateTimer -= GameSimulationClock.DeltaTime;
     }
 
     public virtual void Exit()

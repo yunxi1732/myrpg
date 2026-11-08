@@ -33,7 +33,8 @@ public class EntityFX : MonoBehaviour
     protected virtual void Start()
     {
         sr = GetComponentInChildren<SpriteRenderer>();
-        player = PlayerManager.instance.player;
+        player = GetComponent<Player>();
+        if (player == null && PlayerManager.instance != null) player = PlayerManager.instance.player;
         originalMat = sr.material;
     }
 

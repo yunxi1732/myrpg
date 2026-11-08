@@ -36,6 +36,8 @@ public class Inventory : MonoBehaviour, ISaveManager
     private InventoryStatsView statsView;
 
     public float flaskCooldown => inventorySystem == null ? 0 : inventorySystem.FlaskCooldown;
+    public float FlaskCooldownRemaining => inventorySystem == null ? 0 :
+        inventorySystem.GetFlaskCooldownRemaining(GameSimulationClock.Time);
 
     [Header("Data base")]
     public List<ItemData> itemDataBase;
@@ -44,6 +46,7 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     private void Awake()
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) { enabled = false; return; }
         if (instance == null)
             instance = this;
         else
@@ -76,7 +79,7 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     private IEnumerator Start()
     {
-        if (instance != this) yield break;
+        if (instance != this || !Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) yield break;
         inventoryView = new InventoryView(inventorySlotParent, stashSlotParent, equipmentSlotParent, inventoryArchitecture, Model);
         statsView = new InventoryStatsView(statSlotParent);
 
@@ -84,6 +87,7 @@ public class Inventory : MonoBehaviour, ISaveManager
         yield return null;
         while (SaveManager.instance != null && !SaveManager.instance.HasLoaded)
             yield return null;
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) yield break;
         AddStartingItems();
         IsInitialized = true;
         NotifyInventoryChanged();
@@ -133,6 +137,7 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     public void EquipItem(ItemData _item)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
         if (!inventorySystem.EquipItem(_item, capacity) && inventoryView != null)
             Debug.Log("no more space");
@@ -140,6 +145,7 @@ public class Inventory : MonoBehaviour, ISaveManager
     }
     public void UnequipItem(ItemData_Equipment itemToRemove)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         inventorySystem.UnequipItem(itemToRemove);
         NotifyInventoryChanged();
     }
@@ -157,6 +163,7 @@ public class Inventory : MonoBehaviour, ISaveManager
     }
     public void AddItem(ItemData _item)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
         if (!inventorySystem.AddItem(_item, capacity) && _item.itemType == ItemType.Equipment && inventoryView != null)
             Debug.Log("no more space");
@@ -164,12 +171,14 @@ public class Inventory : MonoBehaviour, ISaveManager
     }
     public void RemoveItem(ItemData _item)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         inventorySystem.RemoveItem(_item);
         NotifyInventoryChanged();
     }
 
     public bool CanAddItem()
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return false;
         if (inventoryView == null) return false;
         if (!inventorySystem.CanAddItem(inventoryView.InventoryCapacity))
         {
@@ -181,6 +190,7 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     public bool canCraft(ItemData_Equipment _itemToCraft, List<InventoryItem> _requiredMaterials)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return false;
         int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
         if (!inventorySystem.CanCraft(_itemToCraft, _requiredMaterials, capacity, out bool productAdded))
         {
@@ -212,19 +222,25 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     public void UseFlask()
     {
+        // Network flask use still requires the later authoritative request/result adaptation.
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this) || !IsInitialized || GameplayControlLock.IsActionInputBlocked ||
+            Time.timeScale <= 0 || PlayerManager.instance == null || PlayerManager.instance.player == null ||
+            PlayerManager.instance.player.stats == null || PlayerManager.instance.player.stats.isDead) return;
         if (GetEquipment(EquipmentType.Flask) == null) return;
-        if (!inventorySystem.UseFlask(Time.time))
+        if (!inventorySystem.UseFlask(GameSimulationClock.Time))
             Debug.Log("Flask on cooldown");
     }
 
     public bool CanUseArmor()
     {
-        if (inventorySystem.CanUseArmor(Time.time)) return true;
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return false;
+        if (inventorySystem.CanUseArmor(GameSimulationClock.Time)) return true;
         Debug.Log("armor on cooldown");
         return false;
     }
     void ISaveManager.LoadData(GameData _data)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;
         if (IsInitialized) return;
         receivedLoadData = true;
         if (loadedItems == null) loadedItems = new List<InventoryItem>();
@@ -234,6 +250,7 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     void ISaveManager.SaveData(ref GameData _data)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;
         if (!IsInitialized) return;
         InventorySaveMapper.Write(Model, _data);
     }

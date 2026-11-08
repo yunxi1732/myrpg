@@ -106,7 +106,7 @@ public class CloneSkill : Skill
 
     private IEnumerator CloneDelayCoroutine(Transform _transform, Vector3 _offset)
     {
-        yield return new WaitForSeconds(0.4f);
+        yield return GameSimulationClock.Wait(0.4f);
         CreateClone(_transform, _offset);
     }
 }

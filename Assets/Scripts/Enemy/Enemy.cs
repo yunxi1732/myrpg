@@ -43,28 +43,32 @@ public class Enemy : Entity
 
     protected override void Update()
     {
+        if (!IsAuthoritative) return;
         base.Update();
-        stateMachine.currentState.Update();
+        stateMachine.currentState?.Update();
     }
 
     public virtual void AssignLastAnimName(string _animBoolName) => lastAnimBoolName = _animBoolName;
 
     public override void SlowEntityBy(float _slowPercentage, float _slowDuration)
     {
+        if (!IsAuthoritative) return;
         moveSpeed *= (1 -  _slowPercentage);
         anim.speed *= (1 - _slowPercentage);
 
-        Invoke("ReturnDefaultSpeed", _slowDuration);
+        GameSimulationClock.Schedule(this, ReturnDefaultSpeed, nameof(ReturnDefaultSpeed), _slowDuration);
     }
 
     protected override void ReturnDefaultSpeed()
     {
+        if (!IsAuthoritative) return;
         base.ReturnDefaultSpeed();
         moveSpeed = defaultMoveSpeed;
     }
 
     public virtual void FreezeTime(bool _timeFrozen)
     {
+        if (!IsAuthoritative) return;
         if (_timeFrozen)
         {
             moveSpeed = 0;
@@ -77,30 +81,33 @@ public class Enemy : Entity
         }
     }
 
-    public virtual void FreezeTimeFor(float _duration) => StartCoroutine(FreezeTimeCoroutine(_duration));
+    public virtual void FreezeTimeFor(float _duration) { if (IsAuthoritative) StartCoroutine(FreezeTimeCoroutine(_duration)); }
 
     protected virtual IEnumerator FreezeTimeCoroutine(float _seconds)
     {
         FreezeTime(true);
-        yield return new WaitForSeconds(_seconds);
+        yield return GameSimulationClock.Wait(_seconds);
         FreezeTime(false);
     }
 
     #region Counter Attack Window
     public virtual void OpenCounterAttackWindow()
     {
+        if (!IsAuthoritative) return;
         canBeStunned = true;
         counterImage.SetActive(true);
     }
 
     public virtual void CloseCounterAttackWindow()
     {
+        if (!IsAuthoritative) return;
         canBeStunned = false;
         counterImage.SetActive(false);
     }
     #endregion
     public virtual bool CanBeStunned()
     {
+        if (!IsAuthoritative) return false;
         if (canBeStunned)
         {
             CloseCounterAttackWindow();
@@ -108,7 +115,7 @@ public class Enemy : Entity
         }
         return false;
     }
-    public virtual void AnimationFinishTrigger() =>stateMachine.currentState.AnimationFinishTrigger();
+    public virtual void AnimationFinishTrigger() { if (IsAuthoritative) stateMachine?.currentState?.AnimationFinishTrigger(); }
 
     public virtual RaycastHit2D isPlayerDetected() => Physics2D.Raycast(wallCheck.position, Vector2.right * facingDir, 50, whatIsPlayer);
 

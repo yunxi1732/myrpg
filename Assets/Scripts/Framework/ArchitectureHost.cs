@@ -15,6 +15,8 @@ public sealed class ArchitectureHost : MonoBehaviour
         }
     }
 
+    private void Update() => current?.Update();
+
     private void OnApplicationQuit() => Close();
     private void OnDestroy() => Close();
 

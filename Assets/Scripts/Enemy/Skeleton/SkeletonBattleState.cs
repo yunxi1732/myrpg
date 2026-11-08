@@ -48,9 +48,9 @@ public class SkeletonBattleState : SkeletonGroundedState
 
     private bool CanAttack()
     {
-        if (Time.time > enemy.lastTimeAttacked + enemy.attackCooldown)
+        if (GameSimulationClock.Time > enemy.lastTimeAttacked + enemy.attackCooldown)
         {
-            enemy.lastTimeAttacked = Time.time;
+            enemy.lastTimeAttacked = GameSimulationClock.Time;
             return true;
         }
         return false;

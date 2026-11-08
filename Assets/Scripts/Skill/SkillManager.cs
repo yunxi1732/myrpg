@@ -15,6 +15,12 @@ public class SkillManager : MonoBehaviour
     public DodgeSkill dodge { get; private set; }
     private void Awake()
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this))
+        {
+            foreach (Skill component in GetComponents<Skill>()) component.enabled = false;
+            enabled = false;
+            return;
+        }
         if (instance != null) Destroy(instance.gameObject);
         else instance = this;
     }
@@ -34,7 +40,7 @@ public class SkillManager : MonoBehaviour
 
     private IEnumerator CheckSkillUnlock()
     {
-        yield return new WaitForSeconds(Time.deltaTime);
+        yield return GameSimulationClock.Wait(GameSimulationClock.DeltaTime);
         dash.CheckUnlock();
         clone.CheckUnlock();
         sword.CheckUnlock();

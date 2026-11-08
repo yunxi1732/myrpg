@@ -13,6 +13,7 @@ public class EnemySkeletonAnimatorTriggers : MonoBehaviour
 
     private void AttackTrigger()
     {
+        if (enemy == null || !enemy.IsAuthoritative) return;
         Collider2D[] collider = Physics2D.OverlapCircleAll(enemy.attackCheck.position, enemy.attackCheckRadius);
         foreach (var hit in collider)
         {

@@ -2,6 +2,7 @@ using System.Collections;
 using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Rpg.Networking;
 public enum StatType
 {
     strength,
@@ -23,6 +24,8 @@ public enum StatType
 [RequireComponent(typeof(EntityFX))]
 public class CharaterStats : MonoBehaviour
 {
+    public bool IsAuthoritative => EntityRuntimePermissions.CanSimulate(this);
+    public bool IsRuntimeInitialized { get; private set; }
     private EntityFX fx;
 
     [Header("Major stats")]
@@ -71,17 +74,19 @@ public class CharaterStats : MonoBehaviour
 
     protected virtual void Start()
     {
-        currentHealth = GetMaxHealthValue();
-
         fx = GetComponent<EntityFX>();
+        IsRuntimeInitialized = true;
+        if (!IsAuthoritative) return;
+        currentHealth = GetMaxHealthValue();
     }
 
     protected virtual void Update()
     {
-        ignitedTimer -= Time.deltaTime;
-        chillTimer -= Time.deltaTime;
-        shockedTimer -= Time.deltaTime;
-        igniteDamageTimer -= Time.deltaTime;
+        if (!IsAuthoritative) return;
+        ignitedTimer -= GameSimulationClock.DeltaTime;
+        chillTimer -= GameSimulationClock.DeltaTime;
+        shockedTimer -= GameSimulationClock.DeltaTime;
+        igniteDamageTimer -= GameSimulationClock.DeltaTime;
 
         if (ignitedTimer < 0)
             isIgnited = false;
@@ -95,6 +100,7 @@ public class CharaterStats : MonoBehaviour
 
     public void MakeVulnerableFor(float _duration)
     {
+        if (!IsAuthoritative) return;
         StartCoroutine(VulnerableForCoroutine(_duration));
     }
 
@@ -102,25 +108,27 @@ public class CharaterStats : MonoBehaviour
     {
         isVulnerable = true;
 
-        yield return new WaitForSeconds(_duration);
+        yield return GameSimulationClock.Wait(_duration);
 
         isVulnerable = false;
     }
 
     public virtual void IncreaseStatBy(int _modifier, float _duration, Stat _statToModify)
     {
+        if (!IsAuthoritative) return;
         StartCoroutine(StatModCoroutine(_modifier, _duration, _statToModify));
     }
 
     private IEnumerator StatModCoroutine(int _modifier, float _duration, Stat _statToModify)
     {
         _statToModify.AddModifier(_modifier);
-        yield return new WaitForSeconds(_duration);
+        yield return GameSimulationClock.Wait(_duration);
         _statToModify.RemoveModifier(_modifier);
     }
 
     public virtual void DoDamage(CharaterStats _targetStats)
     {
+        if (!EntityRuntimePermissions.CanDamage(this, _targetStats)) return;
         bool criticalStrike = false;
         if (TargetCanAvoidAttack(_targetStats))
             return;
@@ -146,6 +154,7 @@ public class CharaterStats : MonoBehaviour
     #region Magical damage and aliments
     public virtual void DoMagicalDamage(CharaterStats _targetStats)
     {
+        if (!EntityRuntimePermissions.CanDamage(this, _targetStats)) return;
         int _fireDamage = fireDamage.GetValue();
         int _iceDamage = iceDamage.GetValue();
         int _lightningDamage = lightningDamage.GetValue();
@@ -201,6 +210,7 @@ public class CharaterStats : MonoBehaviour
 
     public void ApplyAilments(bool _ignite, bool _chill, bool _shock)
     {
+        if (!IsAuthoritative) return;
         bool canApplyIgnite = !isShocked && !isIgnited && !isChilled;
         bool canApplyChill = !isShocked && !isIgnited && !isChilled;
         bool canApplyShock = !isIgnited && !isChilled;
@@ -238,6 +248,7 @@ public class CharaterStats : MonoBehaviour
 
     public void ApplyShock(bool _shock)
     {
+        if (!IsAuthoritative) return;
         if (isShocked)
             return;
 
@@ -283,13 +294,14 @@ public class CharaterStats : MonoBehaviour
         }
     }
 
-    public void SetupIgniteDamage(int _damage) => igniteDamage = _damage;
+    public void SetupIgniteDamage(int _damage) { if (IsAuthoritative) igniteDamage = _damage; }
 
     private void SetUpShockDamage(int _damage) => shockDamage = _damage;
     #endregion
 
     public virtual void TakeDamage(int _damage)
     {
+        if (!IsAuthoritative) return;
         if (isInvincible)
             return;
 
@@ -299,11 +311,12 @@ public class CharaterStats : MonoBehaviour
         if (currentHealth <= 0 && !isDead) 
             Die();
 
-        OnHealthChanged();
+        OnHealthChanged?.Invoke();
     }
 
     public virtual void IncreaseHealthBy(int _amount)
     {
+        if (!IsAuthoritative) return;
         currentHealth += _amount;
 
         if (currentHealth > GetMaxHealthValue())
@@ -315,6 +328,7 @@ public class CharaterStats : MonoBehaviour
 
     public virtual void DecreaseHealthBy(int _damage)
     {
+        if (!IsAuthoritative) return;
         if (isVulnerable)
             _damage = Mathf.RoundToInt(_damage * 1.1f);
 
@@ -330,16 +344,18 @@ public class CharaterStats : MonoBehaviour
 
     protected virtual void Die()
     {
+        if (!IsAuthoritative) return;
         isDead = true;
     }
 
     public void KillEntity()
     {
+        if (!IsAuthoritative) return;
         if (!isDead)
             Die();
     }
 
-    public void MakeInvincible(bool _i) => isInvincible = _i;
+    public void MakeInvincible(bool _i) { if (IsAuthoritative) isInvincible = _i; }
 
     #region Start calculations
     protected int CheckTargetArmor(CharaterStats _targetStats, int totalDamage)

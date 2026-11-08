@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public sealed class InventorySystem : ISystem
 {
     private readonly InventoryModel model;
-    private float lastTimeUsedFlask;
+    private float flaskReadyAt = float.NegativeInfinity;
     private float lastTimeUsedArmor;
     private float armorCooldown;
     public float FlaskCooldown { get; private set; }
@@ -14,12 +14,18 @@ public sealed class InventorySystem : ISystem
     public bool UseFlask(float time)
     {
         ItemData_Equipment flask = GetEquipment(EquipmentType.Flask);
-        if (flask == null || time <= lastTimeUsedFlask + FlaskCooldown) return false;
-        FlaskCooldown = flask.itemCooldown;
+        if (flask == null || float.IsNaN(time) || float.IsInfinity(time) || time < flaskReadyAt ||
+            float.IsNaN(flask.itemCooldown) || float.IsInfinity(flask.itemCooldown) || flask.itemCooldown < 0 ||
+            flask.itemEffects == null || flask.itemEffects.Length == 0) return false;
+        foreach (ItemEffect effect in flask.itemEffects) if (effect == null) return false;
         flask.Effect(null);
-        lastTimeUsedFlask = time;
+        // Only a completed use starts cooldown. The slot retains it across unequip/equip operations.
+        FlaskCooldown = flask.itemCooldown;
+        flaskReadyAt = time + FlaskCooldown;
         return true;
     }
+
+    public float GetFlaskCooldownRemaining(float time) => System.Math.Max(0f, flaskReadyAt - time);
 
     public bool CanUseArmor(float time)
     {

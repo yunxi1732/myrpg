@@ -7,6 +7,7 @@ public interface IArchitecture : System.IDisposable
     T GetSystem<T>() where T : class, ISystem;
     T GetUtility<T>() where T : class, IUtility;
     void InitAllModules();
+    void Update();
     void RegistEvent<T>(System.Action<object> onEvent);
     void UnRegistEvent<T>(System.Action<object> onEvent);
     void SendEvent<T>(object data);

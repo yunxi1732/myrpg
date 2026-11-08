@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using UnityEngine;
+using Rpg.Networking;
 
 public class EnemyStats : CharaterStats
 {
@@ -17,6 +18,7 @@ public class EnemyStats : CharaterStats
 
     protected override void Start()
     {
+        if (!IsAuthoritative) return;
         soulsDropAmount.SetDefaultValue(100);
         ApplyLevelModifiers();
 
@@ -65,12 +67,13 @@ public class EnemyStats : CharaterStats
 
     protected override void Die()
     {
+        if (!IsAuthoritative) return;
         base.Die();
         enemy.Die();
 
-        PlayerManager.instance.currency += soulsDropAmount.GetValue();
+        if (EntityRuntimePermissions.CanUseLegacyWorld(this)) PlayerManager.instance.currency += soulsDropAmount.GetValue();
         myDropSystem.GenerateDrop();
 
-        Destroy(gameObject, 5f);
+        GameSimulationClock.DestroyAfter(gameObject, 5f);
     }
 }

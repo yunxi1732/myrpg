@@ -17,7 +17,7 @@ MonoBehaviour:
   itemIcon: {fileID: -410334530, guid: a9ca9a41598dd2e44b125928045c518f, type: 3}
   dropChance: 0
   equipmentType: 3
-  itemCooldown: 0
+  itemCooldown: 15
   itemEffects:
   - {fileID: 11400000, guid: 7fbf738bdc908bf45b813691405de018, type: 2}
   strength: 0

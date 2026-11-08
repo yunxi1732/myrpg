@@ -8,7 +8,8 @@ public class LostCurrencyController : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.GetComponent<Player>() != null)
+        var player = collision.GetComponentInParent<Player>();
+        if (Rpg.Networking.EntityRuntimePermissions.CanUseLegacyActions(player))
         {
             PlayerManager.instance.currency += currency;
             Destroy(this.gameObject);

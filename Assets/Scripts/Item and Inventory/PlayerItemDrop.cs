@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Rpg.Networking;
 
 public class PlayerItemDrop : ItemDrop
 {
@@ -10,6 +11,7 @@ public class PlayerItemDrop : ItemDrop
 
     public override void GenerateDrop()
     {
+        if (!EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         Inventory inventory = Inventory.instance;
         List<InventoryItem> itemsToUnequip = new List<InventoryItem>();
         List<InventoryItem> materialsToLose = new List<InventoryItem>();

@@ -120,3 +120,66 @@
 
 - **第三阶段：暂停与恢复的游戏时间生命周期检查**：静态核对三类效果移动/渐隐/生命周期均使用 Time.deltaTime，两个命中 Animator 的 m_UpdateMode=0（Normal），没有改为 unscaledDeltaTime、Realtime 等计时。DialogueView.Refresh 通过 GameManager.SetPauseOwner(this,true) 暂停为 timeScale=0，Close 仅释放自身暂停请求。三类 Update 增加 Time.deltaTime<=0 时无操作，暂停期间既不推进，也不在零步长执行结束归还；恢复沿用现有播放状态、计时和动画进度，不在暂停/恢复时重置或再次 Play。未修改对话、菜单、状态粒子或角色 EntityFX 的清理逻辑。
   新增 Tools > RPG > Verify Effect Dialogue Pause (Play Mode)，在 MainScene 未暂停 Play 中运行：创建独立测试池及四种实际预制体（普通/暴击分别检查），播放推进后使用实际 DialogueBox/DialogueView.StartDialogue 暂停，等待0.75秒真实时间，核对位移/颜色/计时/Animator进度冻结且对象仍借出；Close 后等待游戏时间，检查原计时和动画继续而非重置，最终每个实例只归还一次，无额外实例。finally 仅关闭自己的测试对话、释放自己的池与资源，不全局恢复 timeScale 或清输入锁。运行时与编辑器验证代码通过真实 Unity 引用独立编译，差异检查通过；尚未在 Unity 执行该跨帧入口，实际对话暂停/恢复验收仍待完成。测试需要无其他界面同时改变暂停状态，并在正常帧率下运行。
+
+- **第四阶段 4-01：长度前缀封包与唯一协议入口**：精简迁移 NetPacket，改为显式小端 int32 包体长度＋int16 协议号＋UTF-8 JSON，包体含协议号，收发均限制1MiB；区分正常EOF、半包断开和非法长度。Networking/Protocol 统一维护 ProtocolId、最小握手/验证DTO、ProtocolCodec 和唯一 SchemaVersion；未来玩法协议默认要求握手通过，实际握手留待4-08。未接连接或场景。独立字节层运行、真实Unity引用编译及 Unity 非Play菜单 `Tools > RPG > Verify Network Packet and Protocol` 均通过，覆盖中文往返、拆包、连续多包、非法长度和半包断开。
+
+- **第四阶段 4-02：单条 TCP 连接收发**：从 NetSystem 提取 NetConnection，支持 Connect 主动连接及 Adopt 接管已接受的 TcpClient；每实例独立流、后台接收线程和加锁队列，发送加锁防串包，沿用统一编解码与封包入口。接收线程只读包入队，不解析JSON、不调用游戏逻辑；暂不接主线程派发、房间或场景。提供基础 Dispose 释放资源，主动连接当前为阻塞接口，后续界面需异步调用。新增 `Tools > RPG > Verify TCP Connection`，非Play模式使用本机临时监听端双向各发64条消息，检查队列隔离、顺序与内容。真实Unity引用独立编译通过；操作验收由用户执行，尚未实测。
+- **第三阶段验证菜单清理**：按要求删除第三阶段临时效果/对象池的10个 Verification 编辑器脚本及对应 .meta，共移除11个 Tools/RPG/Verify 菜单入口。保留对象池与三类效果的运行时代码、其他阶段验证入口。上文第三阶段验证菜单描述为历史记录，相关入口现已移除。
+
+- **第二阶段验证菜单清理**：按要求删除UI面板、对话、NPC/交互和输入锁相关的13个Verification编辑器脚本及对应.meta，共移除19个Tools/RPG/Verify菜单入口。保留第一阶段框架/事件/背包验证、网络阶段验证，以及DialogueAssetEditor的Inspector配置错误检查；正式运行时代码和场景/预制体不变。上文第二阶段验证菜单名称为历史记录，对应入口现已删除。本次不恢复或改动现有第三阶段验证脚本删除。
+
+- **第一阶段验证菜单清理（2026-11-08）**：删除框架、事件、背包及存档映射的7个Verification编辑器脚本与对应.meta，移除7个Tools/RPG/Verify入口；保留运行时代码、原场景引用及网络阶段验证。上文第一阶段菜单描述保留为历史记录，对应入口现已移除。引用检查通过；Unity重编译待执行。
+
+- **第四阶段 4-03：Unity 主线程派发**：原连接仅收包入队；新增 IUpdateModule，由 ArchitectureHost.Update 驱动 Architecture.Update，初始化成功后调用 NetworkSystem，随架构释放连接。主线程通过原 ProtocolCodec 的同一映射统一解码、字段/数值校验并按 DTO 类型发送架构事件；未知协议、坏 JSON、无效字段及回调异常逐包隔离，不新增协议注册表或版本。默认每帧最多处理32包，接收队列最多256包/4MiB（可配置），超限关闭连接并记录错误，不静默丢包。新增 `Tools > RPG > Verify Network Dispatch (Play Mode)`，检查主线程回调、坏消息隔离、帧预算及队列包数/字节上限。真实 Unity 引用独立编译与差异检查通过；操作验收由用户执行，未运行菜单。未接房间、玩法或场景配置，保留现有验证脚本删除改动。
+
+- **4-03 验收问题修复**：用户反馈封包及单连接菜单PASS，派发菜单在队列超限时失败。原因是 InvalidDataException 不继承 IOException，接收线程捕获条件漏掉它；现显式捕获，非法帧及队列超限均记录 LastError 后关闭连接，不再逃逸线程。保留原验收条件。真实 Unity 引用独立编译通过；请重新运行派发菜单验收。
+
+- **第四阶段 4-04：单次会话关闭**：原连接仅限时等待线程；现 CloseSession 先使本地会话代号失效，解绑 RegistSessionEvent 管理的本会话订阅，再显式关闭流/连接、确认接收线程结束并清空队列。关闭可重复调用，未完成关闭时保留重试入口；新连接使用新代号，消息携带本地代号，派发核对连接与代号，回调中关闭也阻止旧订阅继续执行。不改线协议/SchemaVersion，不清理其他架构事件。新增非Play菜单 `Tools > RPG > Verify Network Session Close`，覆盖连续10次建立/关闭、半包阻塞时退出、队列清空、重复关闭、订阅解绑和旧消息注入隔离。真实Unity引用独立编译及差异检查通过；菜单由用户验收，尚未实测。此前4-03派发菜单已获用户反馈PASS。
+
+- **第四阶段 4-05：房间面板准备**：复用用户已制作的 MainMenu/RoomPanel，新增 RoomPanel 继承 BasePanel，并通过 UISystem 注册；联机按钮打开、返回关闭，恢复原菜单按钮可见状态，开关/销毁正确解绑。补齐缺失的取消连接按钮并绑定地址、端口、状态及退出引用，调整状态区与按钮重叠。共用入口标为 Create / Join；本步只准备UI，创建/加入、取消和退出按钮禁用，不接网络或修改单机存档，自动创建/加入规则留待业务接入（连接失败不能视为房间不存在）。未改原新游戏/继续逻辑。运行时代码真实Unity引用独立编译及场景引用检查通过；用户在MainMenu验收联机打开、输入、反复返回、原单机入口及网络按钮禁用状态。
+
+- **4-05 状态提示调整**：状态文字改为默认隐藏，后续结果处理调用 RoomPanel.ShowStatus 后显示1秒（非缩放时间），再次提示重新计时，关闭面板清理文字及计时。新增组件右键 Preview Status Message (Play Mode) 仅预览提示，不模拟网络成功。创建/加入、取消和退出仍禁用，颜色变淡来自 Button 的 Disabled Color；Cancel 留待连接尝试进行中使用。独立编译通过；用户验收默认隐藏、提示1秒消失及关闭重开无残留。
+
+- **4-05 移除取消连接入口**：按用户要求删除Cancel按钮、文字及脚本引用，退出按钮居中。补充连接等待UI状态：等待时禁用地址、端口、重复提交、Exit和Return；收到成功/失败结果后解除等待并显示1秒提示，未接业务的按钮仍保持禁用。提供组件右键 Preview Connection Waiting/Finished (Play Mode) 预览等待和结束，不执行网络。运行时代码独立编译通过；用户验收Cancel已移除、等待时Return不可点、结束后恢复及提示消失。
+
+- **第四阶段 4-06：A 创建监听房间**：新增 TcpRoomHost，使用本机 IPv4 全网卡监听指定端口，经架构Update非阻塞检查待接连接，仅接管一个B，额外连接关闭，每帧接受检查限8次；重复创建幂等，端口占用明确失败并可重试。主菜单共用Create / Join按钮本步仅接创建；IP暂禁用留待B加入，成功提示1秒，按钮持续显示Waiting for B/B connected，地址端口和创建锁定。Exit/Return本步仅停止本地监听并释放连接；尚无离房通知、B加入业务、握手、地图或角色生成。新增非Play菜单 `Tools > RPG > Verify Room Listener` 覆盖端口占用重试、重复创建、单B容量和资源释放。运行时及验证代码真实Unity引用独立编译通过；菜单与UI由用户验收。局域网、防火墙均未实测，首次授权弹窗或拦截现象待用户记录。
+
+- **4-06 Return保留监听**：修正Return误调用StopRoom：现在仅隐藏面板并返回主菜单，重新打开仍保留Waiting for B/B connected及Exit Room可用状态；Exit Room才主动停止监听，场景销毁/停止运行仍释放资源。独立编译通过；用户验收创建→Return→Online Game仍在等待，再点Exit Room恢复创建状态。
+
+- **第四阶段 4-07：B 异步连接指定地址**：新增 TcpRoomClient，ConnectAsync建立TCP，主线程架构Update应用结果，默认5秒非缩放超时；非法IP/端口、拒绝、失败、取消均可恢复操作，取消/超时/销毁使尝试代号失效并关闭socket，迟到完成不接管，后台仅观察异常不调用UI。共用入口先按“IP留空创建，填写IP加入”，连接失败不自动创建；保留无Cancel按钮及连接期间锁Exit/Return的约定，组件右键 Cancel Connection Attempt (Play Mode) 供临时验收取消。成功/失败/取消提示1秒，Connecting/TCP connected用按钮状态表示；Return保留连接，Exit本步仅本地释放。TCP成功不等同握手入房，未接身份、地图或角色。新增非Play `Tools > RPG > Verify Room Client`，覆盖本机异步连接、输入错误、拒绝、取消迟到、注入挂起超时及重试。运行时/验证代码真实Unity引用独立编译通过，菜单由用户执行；同机双实例、局域网及防火墙现象待用户验收记录。
+
+- **第四阶段 4-08：入房握手和身份分配**：TCP连通后进入Joining，B发送唯一SchemaVersion，A校验版本/单B容量并返回统一目录新增的HandshakeResult；拒绝版本不符、满房和无效握手，5秒未确认关闭。A生成房间RoomSessionId并分配不同playerId/entityId，按实际连接绑定归属；B只应用A的确认结果，重复握手/伪造身份字段不能改归属。复用NetworkSystem与原ProtocolCodec派发，确认后才打开玩法协议门禁；本地连接代号与房间会话标识分开，关闭清空身份/会话，新房间使用新标识，后续排序去重沿用此命名空间。UI成功改为Room joined，结果提示1秒；不生成角色或加载地图。新增非Play `Tools > RPG > Verify Room Handshake`，检查版本/容量拒绝、身份一致、连接归属、冒用/重放及新会话；原Room Client菜单补握手回包夹具。运行时及网络验证脚本真实Unity引用独立编译通过，操作验收由用户执行。
+
+- **4-08 握手超时排查修复**：发现项目runInBackground=0，双窗口切换时后台构建程序可能暂停主线程握手。主菜单在监听、连接/握手或已入房期间临时启用Application.runInBackground，Exit/关闭网络及销毁后恢复原值，Return保留网络时继续后台运行；不全局修改单机设置。B失败信息拆分为回包解析/派发错误、对端关闭、未收到确认超时，并输出Console警告。独立编译通过；用户需重构建后双端重启并切换窗口验收，未将此次排查视为实测通过。
+
+- **第四阶段 4-09：心跳、断线与统一模拟时间**：握手后每1秒发送带房间标识/递增序号的心跳，5秒无有效新心跳超时；EOF、收发错误及超时统一发一次NetworkDisconnectedEvent，清理对应会话，A保留监听、B返回入口；入房前仍为Failed，入房后为Disconnected。计时统一基于Stopwatch单调源，不依赖timeScale；旧房间/重复心跳不续命。心跳成为必需协议，唯一SchemaVersion升为2，两端需重构建。GameSimulationClock接入玩家/AI状态和攻击间隔、技能/冷却/持续效果、延迟动作及掉落相关对象清理；联机timeScale保持1、界面只锁本地输入，物理保留自动FixedUpdate并生成authorityTick，不手动Simulate；单机沿用原缩放时间/暂停。新增非Play `Verify Heartbeat Disconnect`（约8秒）及MainScene Play中的 `Verify Network Simulation Time (Play Mode)`；前者验心跳/超时/事件分类，后者验单机暂停、联机时钟/动作/生命周期与物理继续。运行时及验证脚本独立编译通过，操作验收由用户执行，战斗及各技能回归尚待验收；不据此宣称联机战斗已完成。4-08双端握手已获用户反馈可用。
+
+- **第四阶段 4-10：房间主动退出**：在唯一协议目录追加GuestLeave/RoomClosed及校验，A的CloseRoom先通知B再停止监听、释放所有连接；B的LeaveRoom通知A并清空身份/会话，A按房间标识及实际连接释放客人席位、保留监听。主动退出统一RoomExitEvent，避免与断线重复提示；发送失败仍清理，断线识别兜底。再次加入使用新连接代号、新playerId/entityId，A房间标识和自身身份保留。Exit Room和正常清理入口接业务，Return仍只隐藏面板，提示1秒；不处理场景或实体。新增非Play `Tools > RPG > Verify Room Exit` 检查B离开/重新加入、A关闭通知、重复调用及线程/队列/身份清理。运行时及网络验证脚本真实Unity引用独立编译通过，菜单和双端操作由用户验收。
+
+- **第四阶段 4-11：同场景进入握手**：唯一协议目录追加SceneLoad/Ready/Start/Failed，SchemaVersion升为3；A指定固定MainScene及加载编号，按房间/连接/加载编号核对B就绪，A本地与B均就绪后仅发一次SceneInitializationAllowed许可，不生成实体。保留房间Canvas/架构跨场景运行，异步加载期间继续心跳，60秒等待超时关闭房间；旧回调、重复加载及旧会话不能触发许可。MainScene场景上下文准备仅开放静态地图/镜头，原单机角色、管理器和HUD暂挂起供后续适配；联机不走NewGame，禁止读写/删除单机存档。加载失败/中断或离房后回入口并提示原因，A在B单独离开时保留房间。新增非Play `Tools > RPG > Verify Room Scene Handshake` 验协议门槛；真实双端加载由用户验收，可在Canvas的RoomSceneCoordinator中设Validation Ready Delay Seconds模拟慢就绪，组件右键Verify Scene Preparation Failure模拟失败。运行时及验证脚本独立编译通过；实际加载、失败返回及存档保持未代验。
+
+- **4-11 场景显示/输入修复**：用户反馈Scene ready后仍像主菜单且不能操作；代码发现持久化Canvas背景遮挡MainScene、原EventSystem随旧场景销毁。现切场景前将房间EventSystem随Canvas保留，MainScene加载后隐藏原菜单背景/装饰，双方就绪自动收起房间面板，Esc重开/收起，Exit仍走离房。新增实际活动场景日志。角色仍挂起，不提前接入移动。独立编译通过；用户重构建后验收地图可见、Esc/离房可用以及实际场景日志，不能仅凭Scene ready判通过。
+
+- **HUD药瓶绑定修正**：Flask_UI改读Character当前装备的Flask，无装备隐藏整个槽位，换装同步图标及遮罩Sprite。移除HUD对按1的重复判定，沿用Player→Inventory唯一使用入口，执行装备药瓶效果后才记录冷却；遮罩在LateUpdate读取后端实际剩余时间，重复按键不重置，卸下/换装保留槽位冷却。修正首次使用时间边界，校验空效果/非法冷却并拦住死亡、输入锁及未适配联机使用；Fire Flask冷却由0改为15秒，与另外两瓶一致，效果配置不变。绑定MainScene的Flask_UI根/图标引用，默认隐藏。独立编译及引用检查通过；用户在单机验收无装备隐藏、三种药瓶图标/效果、15秒冷却、换装/卸下与暂停恢复。
+
+- **第四阶段：HUD、世界血条与镜头身份绑定**：原HUD读取单机全局玩家、血条自动取父角色、镜头固定跟随场景玩家；联机改用房间会话内的身份绑定，整个InGame_UI按本地playerId显示确认状态，EntityStatusUI按entityId独立更新，未就绪隐藏，离房解绑，A保留自身绑定并移除离开的B。B在显示实体更新后驱动原Cinemachine平滑跟随，保留当前视野/构图/阻尼配置。新增会话显示上下文供后续实体初始化注册，不提前生成角色、不接玩法同步、不改协议版本，单机保留。新增非Play菜单 `Tools > RPG > Verify Network Presentation`，需先打开MainScene，克隆实际HUD/血条/镜头到临时预览场景检查身份、状态排序、未就绪隐藏及清理，不保存场景。真实Unity引用独立编译通过；菜单、双端操作及后续有实体时的镜头移动由用户验收，尚未代验。
+
+- **第四阶段：角色身份与运行权限**：原角色默认读取本机输入并执行本地逻辑；新增NetworkEntityIdentity/NetworkEntityRole，由已握手房间身份分配，独立标记本地输入归属与权威权限：A两名角色均权威，B两名均显示且只有自己拥有输入归属。显示/未绑定实体禁止状态机、物理、动画攻击、伤害、持续效果、死亡掉落、拾取及存档；A客人不读A键盘，未适配的全局技能/背包/拾取继续限制联机使用。离房撤销权限，不回退单机；镜头按本地playerId核对显示实体并沿用原平滑配置。复用注册入口，不生成角色、不接输入同步、不新增协议。扩展临时预览验证，非Play打开MainScene运行 `Tools > RPG > Verify Network Entity Identity`，检查权限组合、显示端入口拦截、离房、镜头及单机权限保留。真实Unity引用独立编译通过；Unity菜单与实际单机/双端操作由用户验收，未代验。
+
+- **身份/HUD验收异常修复**：用户反馈InGame_UI缺少CanvasGroup。将HUD、世界血条及身份组件的`GetComponent ?? AddComponent`改为Unity显式判空后补建，兼容编辑器假空/已销毁引用；HUD解绑只隐藏已有组件，不在清理时新增。验证入口补缺失组件重建检查，清理逐项执行并保留原始异常，确保临时预览场景关闭。独立编译通过；用户重新运行 `Verify Network Entity Identity` 验收。
+
+- **身份验证入口调用修复**：非Play预览场景中使用SendMessage触发ShouldRunBehaviour断言，反射基类虚方法Start实际进入未执行Awake的Player.Start。现改为直接调用指定组件的托管检查方法，权威移动测试只准备刚体引用，不启动预览角色状态机；反射异常保留实际原因。仅修改验证脚本，权限规则不变。独立编译通过；用户清空Console后重新运行 `Verify Network Entity Identity` 验收。
+
+- **第四阶段：按房间身份初始化双玩家**：原来只准备场景及身份，现用entityId字典管理A/B，复用MainScene现有RPG Player本体作为模板，建立Spawn_A/Spawn_B，不复制单例管理器、HUD或镜头。先绑定身份/权限再激活，双方角色组件及A确认的初始数据就绪后才开放本地镜头/HUD；重复初始化不重复创建或绑定。A通过原协议目录新增的一次性PlayerInitialization消息下发出生位置、初始生命等，SchemaVersion升为4，两端需重构建；未接周期移动同步，本步锁定移动并保留B的镜头平滑参数。B离开只移除客人实体，A自身保留，再加入使用新身份。扩展原协议/场景握手验证，新增Coordinator右键Repeat Player Initialization临时验重入口。独立编译及玩家资源结构检查通过；用户验收双端各两个角色、本地镜头/HUD、重复初始化、离开重入及单机回归，尚未代验。
+
+- **第四阶段：离房实体与场景统一清理**：原退出/断线分别清玩家，现统一进入房间对象生命周期入口RoomNetworkObjects，玩家按房间/归属注册；后续技能、投射物和掉落可用RegisterOwned继承来源并注册解绑回调。B离开只撤销并销毁客人及其归属对象，A本体、镜头/HUD和房间保留；A关闭或B本地退出则解绑镜头/HUD、清空实体/订阅和网络对象并返回入口，场景卸载及拥有者销毁幂等兜底。清理开始即失效权限，取消未完成初始化，旧房间/旧连接事件及旧注册代号不能误清新玩家。血条解绑不补建组件，兼容销毁时序。协议及SchemaVersion不变。新增非Play `Tools > RPG > Verify Room Object Cleanup` 检查按归属销毁、派生对象、订阅、重复/重入与旧会话隔离；独立编译通过，菜单与双端退出/重入由用户验收，未代验。
+
+- **第四阶段第二部分：抽离左右移动输入**：原状态直接读取横向Input，现统一读取各角色PlayerInputData，单机及A本地采集接通；初始化完成仅解锁A本地移动，A客人及B显示实体仍锁定，未接B网络输入或移动状态同步。联机权威移动改随固定模拟步执行，状态计时读取统一非缩放时钟；timeScale保持1，2D物理仅自动FixedUpdate步进，离房恢复原模拟模式，单机暂停保留。未改协议、UI或场景。真实Unity引用独立编译通过；单机移动/暂停、同机A移动与B不响应、联机菜单不暂停物理及离房回归由用户验收。
+
+- **第四阶段第二部分：B发送当前横向输入**：原B输入未接入，现唯一协议目录追加MovementInput={inputSeq,currentAxis}，SchemaVersion升为5，双端需重构建。B仅采集自身横轴，变化按默认40ms最小间隔合并发送（Coordinator可配30～50ms），100ms补发，每次实际发送递增序号，松键/菜单/失焦发送零值；不上传位置或复用移动补发执行跳跃等事件。A按连接绑定客人，仅接受有限[-1,1]及新序号，覆盖其InputData并驱动已初始化权威角色；本机采集不再清空客人网络状态，离房/重入隔离旧连接和输入。B仍不模拟，未接A→B移动同步。扩展原协议菜单验证发送节奏/合并/零值及原场景握手菜单验证连接归属/初始化门禁/旧序号；真实Unity引用独立编译通过，菜单与双端移动、菜单停止、离房重入由用户验收。
+
+- **第四阶段第二部分：A同步玩家权威位置**：原B仅显示出生位置，现参考LocalPlayerStateSender定时结构，以统一非缩放时间每100ms由A发送双玩家权威刚体2D位置；整包共用一次读取的authorityTick及递增stateSeq，唯一协议目录新增PlayerPositions，SchemaVersion升为6，双端需重构建。B按连接/房间/加载编号/已分配实体校验，位置流按每实体tick与seq判旧并直接应用，初始位置建立排序基线，血量/HUD流独立，不使用本地墙上时间；初始化未完成先保留最新快照，退出清理。未加插值、预测或动画同步，单机保留。扩展原协议、场景握手、显示绑定菜单覆盖快照结构、会话/实体隔离及位置判旧；真实Unity引用独立编译通过，菜单和同机双端移动/停止/离房重入由用户验收。
+
+- **第四阶段第二部分：B位置插值与物理归属**：原B收到位置直接应用，现精简复用RemotePlayerView表现职责，按authorityTick/seq缓存并用既有统一固定步长建立约100ms延后时间轴，缓存最多32条、移除过期状态，缺包停在最新确认位置不外推；出生/重新初始化/明显跳变清缓存直接定位。跳变阈值默认5世界单位，可在Coordinator的Position Teleport Distance或B显示组件中配置。复用NetworkEntityIdentity/NetworkEntityRole作为通用2D物理归属组件：A两角色保留权威移动及原物理配置，B关闭刚体模拟/重力/刚体插值和全部父子Collider2D，未保留查询碰撞体，不参与推挤、伤害或拾取；无3D CharacterController，后续非玩家实体可复用。显示LateUpdate(9000)后由镜头(10000)手动更新并保留原阻尼；离房清缓存。协议仍为6，未适配后续怪物/技能/掉落网络业务。扩展原Network Presentation菜单覆盖时间轴、过期/跳变/重置、物理隔离及非玩家组件复用；真实Unity引用独立编译通过，菜单及双端平滑移动/跳变/离房重入由用户验收。
+
+- **插值脚本导入修复**：RemotePlayerView.cs.meta的GUID误为33位，Unity编译清单遗漏该脚本，导致NetworkEntityIdentity报CS0246；已修正为32位，Networking目录meta格式及重复检查通过，不改插值/物理逻辑。用户回Unity刷新或Reimport该脚本后确认重新编译无该错误。

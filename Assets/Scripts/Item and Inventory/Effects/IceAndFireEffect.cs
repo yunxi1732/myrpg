@@ -19,7 +19,7 @@ public class IceAndFireEffect : ItemEffect
             GameObject newIceAndFire = Instantiate(iceAndFirePrefab, _respawnPosition.position, player.transform.rotation);
             newIceAndFire.GetComponent<Rigidbody2D>().velocity = new Vector2(xVelocity * player.facingDir, 0);
 
-            Destroy(newIceAndFire, 10f);
+            GameSimulationClock.DestroyAfter(newIceAndFire, 10f);
         }
     }
 }

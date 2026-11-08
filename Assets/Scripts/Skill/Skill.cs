@@ -19,7 +19,7 @@ public class Skill : MonoBehaviour
 
     protected virtual void Update()
     {
-        cooldownTimer -= Time.deltaTime;
+        cooldownTimer -= GameSimulationClock.DeltaTime;
     }
 
     public virtual void CheckUnlock()
@@ -29,6 +29,7 @@ public class Skill : MonoBehaviour
 
     public virtual bool CanUseSkill()
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyActions(player)) return false;
         if (cooldownTimer < 0)
         {
             UseSkill();

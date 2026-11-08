@@ -38,21 +38,21 @@ public class CrystalSkillController : MonoBehaviour
 
     private void Update()
     {
-        crystalExistTimer -= Time.deltaTime;
+        crystalExistTimer -= GameSimulationClock.DeltaTime;
         if (crystalExistTimer < 0) FinishCrystal();
         if (canMove)
         {
             if (closestTarget == null)
                 return;
 
-            transform.position = Vector2.MoveTowards(transform.position, closestTarget.position, moveSpeed * Time.deltaTime);
+            transform.position = Vector2.MoveTowards(transform.position, closestTarget.position, moveSpeed * GameSimulationClock.DeltaTime);
             if (Vector2.Distance(transform.position, closestTarget.position) < 1)
             {
                 FinishCrystal();
                 canMove = false;
             }
         }
-        if (canGrow) transform.localScale = Vector2.Lerp(transform.localScale, new Vector2(3, 3), growSpeed * Time.deltaTime);
+        if (canGrow) transform.localScale = Vector2.Lerp(transform.localScale, new Vector2(3, 3), growSpeed * GameSimulationClock.DeltaTime);
     }
 
     private void AnimationExplodeEvent()

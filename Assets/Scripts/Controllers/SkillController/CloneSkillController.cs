@@ -25,8 +25,8 @@ public class CloneSkillController : MonoBehaviour
 
     private void Update()
     {
-        cloneTimer -= Time.deltaTime;
-        if (cloneTimer < 0) sr.color = new Color(1, 1, 1, sr.color.a - cloneLosingSpeed * Time.deltaTime);
+        cloneTimer -= GameSimulationClock.DeltaTime;
+        if (cloneTimer < 0) sr.color = new Color(1, 1, 1, sr.color.a - cloneLosingSpeed * GameSimulationClock.DeltaTime);
         if (sr.color.a < 0) Destroy(gameObject);
     }
 

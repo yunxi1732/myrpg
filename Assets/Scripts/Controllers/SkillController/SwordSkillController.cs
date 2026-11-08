@@ -42,7 +42,7 @@ public class SwordSkillController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         cd = GetComponent<CircleCollider2D>();
         if (rb == null)
-            Debug.LogError("Rigidbody2D ¶ªÁË£¡");
+            Debug.LogError("Rigidbody2D ï¿½ï¿½ï¿½Ë£ï¿½");
     }
 
     private void DestroyMe() => Destroy(gameObject);
@@ -52,7 +52,7 @@ public class SwordSkillController : MonoBehaviour
         if (canRotate) transform.right = rb.velocity;
         if (isReturning)
         {
-            transform.position = Vector2.MoveTowards(rb.transform.position, player.transform.position, returnSpeed * Time.fixedDeltaTime);
+            transform.position = Vector2.MoveTowards(rb.transform.position, player.transform.position, returnSpeed * GameSimulationClock.FixedDeltaTime);
             if (Vector2.Distance(transform.position, player.transform.position) < 1) player.CatchTheSword();
         }
         BounceLogic();
@@ -69,15 +69,15 @@ public class SwordSkillController : MonoBehaviour
             }
             if (isStopped)
             {
-                spinTimer -= Time.fixedDeltaTime;
-                transform.position = Vector2.MoveTowards(transform.position, new Vector2(transform.position.x + spinDirection, transform.position.y), 1.5f * Time.fixedDeltaTime);
+                spinTimer -= GameSimulationClock.FixedDeltaTime;
+                transform.position = Vector2.MoveTowards(transform.position, new Vector2(transform.position.x + spinDirection, transform.position.y), 1.5f * GameSimulationClock.FixedDeltaTime);
                 if (spinTimer < 0)
                 {
                     isSpinning = false;
                     isReturning = true;
                 }
 
-                hitTimer -= Time.fixedDeltaTime;
+                hitTimer -= GameSimulationClock.FixedDeltaTime;
                 if (hitTimer < 0)
                 {
                     hitTimer = hitCooldown;
@@ -103,7 +103,7 @@ public class SwordSkillController : MonoBehaviour
     {
         if (isBouncing && enemyTarget.Count > 0)
         {
-            transform.position = Vector2.MoveTowards(transform.position, enemyTarget[targetIndex].position, bounceSpeed * Time.fixedDeltaTime);
+            transform.position = Vector2.MoveTowards(transform.position, enemyTarget[targetIndex].position, bounceSpeed * GameSimulationClock.FixedDeltaTime);
             if (Vector2.Distance(transform.position, enemyTarget[targetIndex].position) < 0.1f)
             {
                 SwordSkillDamage(enemyTarget[targetIndex].GetComponent<Enemy>());
@@ -128,7 +128,7 @@ public class SwordSkillController : MonoBehaviour
         returnSpeed = _returnSpeed;
         if (pierceAmount <= 0) anim.SetBool("Rotate", true);
         spinDirection = Mathf.Clamp(rb.velocity.x, -1, 1);
-        Invoke("DestroyMe", 7);
+        GameSimulationClock.Schedule(this, DestroyMe, nameof(DestroyMe), 7);
     }
 
     public void SetUpBounce(bool _isBouncing, int _bounceAmount, float _bounceSpeed)

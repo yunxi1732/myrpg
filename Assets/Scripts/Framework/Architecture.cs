@@ -58,6 +58,14 @@ public class Architecture : IArchitecture
         finally { initializing = false; }
     }
 
+    public void Update()
+    {
+        if (!completed || disposed) return;
+        // initialized contains each object once, including modules registered through multiple interfaces.
+        for (int i = 0; i < initialized.Count && !disposed; i++)
+            (initialized[i] as IUpdateModule)?.Update();
+    }
+
     /// <summary>Dispose participating modules in reverse initialization order, then drop all references.</summary>
     public void Dispose()
     {

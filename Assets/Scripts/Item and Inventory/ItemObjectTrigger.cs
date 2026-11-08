@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Rpg.Networking;
 
 public class ItemObjectTrigger : MonoBehaviour
 {
@@ -8,9 +9,10 @@ public class ItemObjectTrigger : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.GetComponent<Player>() != null)
+        Player player = collision.GetComponentInParent<Player>();
+        if (player != null && EntityRuntimePermissions.CanUseLegacyActions(player))
         {
-            if (collision.GetComponent<CharaterStats>().isDead)
+            if (player.GetComponent<CharaterStats>().isDead)
                 return;
 
             Debug.Log("Picked up item");

@@ -8742,6 +8742,8 @@ MonoBehaviour:
   - {fileID: 51156001}
   - {fileID: 493421660}
   interactionList: {fileID: 920000003}
+  previousInteractionKey: 280
+  nextInteractionKey: 281
 --- !u!1 &406539420
 GameObject:
   m_ObjectHideFlags: 0
@@ -20283,8 +20285,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   npcId: test_guide_01
-  npcName: 测试引路人
-  npcProfession: ""
+  npcName: "\u6D4B\u8BD5\u5F15\u8DEF\u4EBA"
+  npcProfession: 
   dialogue: {fileID: 11400000, guid: 85a16f8e24914b6fb10eddb3f4f0d575, type: 2}
   interactionRange: {fileID: 910000008}
   interactionPlayer: {fileID: 1707634060}
@@ -20293,7 +20295,7 @@ MonoBehaviour:
     m_Bits: 64
   interactionUi: {fileID: 403607932}
   dialogueView: {fileID: 930000001}
-  actionDisplayName: 对话
+  actionDisplayName: "\u5BF9\u8BDD"
   keyTip: E
   key: 101
 --- !u!1 &910000003
@@ -20517,6 +20519,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e19219a004fd4f16b98c0f23f7c8ae2c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &930000001 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 900000000000000005, guid: 1eda10a211da401994eff086105e9805, type: 3}
+  m_PrefabInstance: {fileID: 900000001}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb95e921752344cdaf8785173c955858, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &936351728
@@ -43560,7 +43573,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1855855054
 RectTransform:
   m_ObjectHideFlags: 0
@@ -46064,6 +46077,8 @@ MonoBehaviour:
   swordImage: {fileID: 108284649}
   blackholeImage: {fileID: 1443178949}
   flaskImage: {fileID: 220747597}
+  flaskUI: {fileID: 1855855053}
+  flaskIcon: {fileID: 1855855055}
   currentSouls: {fileID: 1150769409}
   soulsAmount: 0
   increaseRate: 500
@@ -51566,15 +51581,3 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ac5e5981fa5affe4b8d0c5f3781f35e1, type: 3}
-
---- !u!114 &930000001 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 900000000000000005, guid: 1eda10a211da401994eff086105e9805, type: 3}
-  m_PrefabInstance: {fileID: 900000001}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fb95e921752344cdaf8785173c955858, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

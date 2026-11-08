@@ -40,8 +40,8 @@ public class BlackholeSkillController : MonoBehaviour
 
     private void Update()
     {
-        cloneAttackTimer -= Time.deltaTime;
-        blackholeTimer -= Time.deltaTime;
+        cloneAttackTimer -= GameSimulationClock.DeltaTime;
+        blackholeTimer -= GameSimulationClock.DeltaTime;
         if (blackholeTimer < 0)
         {
             blackholeTimer = Mathf.Infinity;
@@ -55,11 +55,11 @@ public class BlackholeSkillController : MonoBehaviour
 
         if (canGrow && !canShrink)
         {
-            transform.localScale = Vector2.Lerp(transform.localScale, new Vector2(maxSize, maxSize), growSpeed * Time.deltaTime);
+            transform.localScale = Vector2.Lerp(transform.localScale, new Vector2(maxSize, maxSize), growSpeed * GameSimulationClock.DeltaTime);
         }
         if (canShrink)
         {
-            transform.localScale = Vector2.Lerp(transform.localScale, new Vector2(-1, -1), shrinkSpeed * Time.deltaTime);
+            transform.localScale = Vector2.Lerp(transform.localScale, new Vector2(-1, -1), shrinkSpeed * GameSimulationClock.DeltaTime);
             if (transform.localScale.x <= 0) Destroy(gameObject);
         }
     }
@@ -99,7 +99,7 @@ public class BlackholeSkillController : MonoBehaviour
             amountOfAttack--;
             if (amountOfAttack <= 0)
             {
-                Invoke("FinishBlackholeAbility", 0.5f);
+                GameSimulationClock.Schedule(this, FinishBlackholeAbility, nameof(FinishBlackholeAbility), 0.5f);
             }
         }
     }

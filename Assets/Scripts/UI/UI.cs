@@ -50,6 +50,12 @@ public class UI : MonoBehaviour, ISaveManager
 
     private void Awake()
     {
+        // Network scene-entry prepares static context first; HUD/entity binding belongs to later steps.
+        if (Rpg.Networking.RoomSceneCoordinator.ProtectSaves && gameObject.scene.name == Rpg.Networking.Protocol.RoomScene.Name)
+        {
+            enabled = false;
+            return;
+        }
         EnsureSceneLifetime();
         if (interactionList != null) interactionList.Bind(Interactions);
         RegisterScenePanel(UIPanelId.Character, characterUI);
@@ -228,6 +234,7 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void LoadData(GameData _data)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;
         foreach (KeyValuePair<string, float> kvp in _data.volumeSettings)
         {
             foreach (UI_VolumeSlider item in volumeSettings)
@@ -240,6 +247,7 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void SaveData(ref GameData _data)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;
         _data.volumeSettings.Clear();
 
         foreach (UI_VolumeSlider item in volumeSettings)

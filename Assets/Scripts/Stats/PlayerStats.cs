@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Rpg.Networking;
 
 public class PlayerStats : CharaterStats
 {
@@ -8,6 +9,7 @@ public class PlayerStats : CharaterStats
 
     protected override void Start()
     {
+        player = GetComponent<Player>();
         base.Start();
     }
 
@@ -18,8 +20,10 @@ public class PlayerStats : CharaterStats
 
     protected override void Die()
     {
+        if (!IsAuthoritative) return;
         base.Die();
         player.Die();
+        if (!EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
 
         GameManager.instance.lostCurrencyAmount = PlayerManager.instance.currency;
         PlayerManager.instance.currency = 0;
@@ -29,7 +33,9 @@ public class PlayerStats : CharaterStats
 
     public override void DecreaseHealthBy(int _damage)
     {
+        if (!IsAuthoritative) return;
         base.DecreaseHealthBy(_damage);
+        if (!EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         if (_damage > GetMaxHealthValue() * 0.3f)
         {
             player.SetupKnockbackPower(new Vector2(5, 3));
@@ -43,11 +49,13 @@ public class PlayerStats : CharaterStats
 
     public override void OnEvasion()
     {
+        if (!EntityRuntimePermissions.CanUseLegacyActions(this)) return;
         player.skill.dodge.CreateMirageOnDodge();
     }
 
     public void CloneDoDamage(CharaterStats _targetStats, float _multiplier)
     {
+        if (!EntityRuntimePermissions.CanDamage(this, _targetStats)) return;
         if (TargetCanAvoidAttack(_targetStats))
             return;
 

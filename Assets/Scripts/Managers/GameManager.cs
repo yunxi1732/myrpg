@@ -49,6 +49,7 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     public void LoadData(GameData _data)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;
         StartCoroutine(LoadWithDelay(_data));
     }
 
@@ -81,6 +82,7 @@ public class GameManager : MonoBehaviour, ISaveManager
     private IEnumerator LoadWithDelay(GameData _data)
     {
         yield return new WaitForSeconds(0.1f);
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) yield break;
         LoadCheckpoints(_data);
         LoadClosestCheckpoint(_data);
         LoadLostCurrency(_data);
@@ -88,6 +90,7 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     public void SaveData(ref GameData _data)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;
         _data.lostCurrencyAmount = lostCurrencyAmount;
         _data.lostCurrencyX = player.position.x;
         _data.lostCurrencyY = player.position.y;
@@ -156,6 +159,8 @@ public class GameManager : MonoBehaviour, ISaveManager
     {
         // Cleanup from an old scene must not overwrite the replacement manager's pause state.
         if (ReferenceEquals(instance, this))
-            Time.timeScale = menuPaused || pauseOwners.Count > 0 ? 0 : 1;
+            Time.timeScale = GameSimulationClock.IsNetwork ? 1 : menuPaused || pauseOwners.Count > 0 ? 0 : 1;
     }
+
+    public void RefreshPauseState() => ApplyPause();
 }

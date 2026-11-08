@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Rpg.Networking;
 
 public class ItemDrop : MonoBehaviour
 {
@@ -13,6 +14,7 @@ public class ItemDrop : MonoBehaviour
 
     public virtual void GenerateDrop()
     {
+        if (!EntityRuntimePermissions.CanSimulate(this)) return;
         dropList.Clear();
 
         for (int i = 0; i < possibleDrop.Length; i++)
@@ -32,6 +34,7 @@ public class ItemDrop : MonoBehaviour
 
     protected void DropItem(ItemData _itemData)
     {
+        if (!EntityRuntimePermissions.CanSimulate(this)) return;
         GameObject newDrop = Instantiate(dropPrefab, transform.position, Quaternion.identity);
         Vector2 randomVelocity = new Vector2(Random.Range(-5, 5), Random.Range(15, 20));
         newDrop.GetComponent<ItemObject>().SetUpItem(_itemData, randomVelocity);

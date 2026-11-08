@@ -21,7 +21,8 @@ public class Checkpoint : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.GetComponent<Player>() != null)
+        var player = collision.GetComponentInParent<Player>();
+        if (Rpg.Networking.EntityRuntimePermissions.CanUseLegacyActions(player))
         {
             ActiveCheckpoint();
         }
@@ -29,6 +30,7 @@ public class Checkpoint : MonoBehaviour
 
     public void ActiveCheckpoint()
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         if (!activationStatus)
             AudioManager.instance.PlaySFX(3, transform);
 

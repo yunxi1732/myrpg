@@ -1,0 +1,281 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Rpg.Networking.Protocol;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace Rpg.Networking
+{
+    /// <summary>Scene-owned entityId dictionary. Clones only the RPG Player body; never duplicates singleton managers.</summary>
+    public sealed class RoomPlayerEntities : IDisposable
+    {
+        private readonly Dictionary<int, Player> entities = new Dictionary<int, Player>();
+        private readonly Dictionary<int, RoomNetworkObjects.Registration> registrations = new Dictionary<int, RoomNetworkObjects.Registration>();
+        private readonly RoomNetworkObjects networkObjects;
+        private readonly RoomNetworkObjects.Registration rootRegistration;
+        private readonly Player template;
+        private readonly float teleportDistance;
+        private readonly GameObject root;
+        private readonly Transform playersRoot, staging;
+        private RoomPresentationContext context;
+        private RoomPlayerIdentity hostIdentity, guestIdentity;
+        private long nextStateSeq, appliedStateSeq;
+        private bool disposed;
+        public Transform HostSpawn { get; }
+        public Transform GuestSpawn { get; }
+        public IReadOnlyDictionary<int, Player> Entities => entities;
+        public bool AllStarted
+        {
+            get
+            {
+                if (disposed || entities.Count != 2) return false;
+                foreach (Player player in entities.Values)
+                    if (player == null || !player.gameObject.activeInHierarchy || !player.IsRuntimeInitialized ||
+                        player.stats == null || !player.stats.IsRuntimeInitialized) return false;
+                return true;
+            }
+        }
+
+        public RoomPlayerEntities(Scene scene, Player playerTemplate, Vector2 hostOffset, Vector2 guestOffset, RoomNetworkObjects networkObjects, float teleportDistance = 5f)
+        {
+            if (!scene.isLoaded || playerTemplate == null || playerTemplate.gameObject.scene != scene)
+                throw new ArgumentException("Use the prepared MainScene RPG player template.");
+            this.networkObjects = networkObjects ?? throw new ArgumentNullException(nameof(networkObjects));
+            template = playerTemplate;
+            this.teleportDistance = Mathf.Max(0.01f, teleportDistance);
+            ValidateTemplate(template);
+            root = new GameObject("NetworkPlayers");
+            SceneManager.MoveGameObjectToScene(root, scene);
+            HostSpawn = Child("Spawn_A", root.transform);
+            GuestSpawn = Child("Spawn_B", root.transform);
+            HostSpawn.position = template.transform.position + (Vector3)hostOffset;
+            GuestSpawn.position = template.transform.position + (Vector3)guestOffset;
+            playersRoot = Child("Players", root.transform);
+            staging = Child("Inactive staging", root.transform);
+            staging.gameObject.SetActive(false);
+            try { rootRegistration = networkObjects.Register(networkObjects.RoomSessionId, 0, root); }
+            catch { DestroyObject(root); throw; }
+        }
+
+        public static Player FindSceneTemplate(Scene scene)
+        {
+            Player found = null;
+            foreach (GameObject sceneRoot in scene.GetRootGameObjects())
+                foreach (Player player in sceneRoot.GetComponentsInChildren<Player>(true))
+                {
+                    if (player.GetComponent<NetworkEntityIdentity>() != null) continue;
+                    if (found != null) throw new InvalidOperationException("MainScene must have one unbound RPG player template.");
+                    found = player;
+                }
+            if (found == null) throw new InvalidOperationException("MainScene RPG player template was not found.");
+            return found;
+        }
+
+        public void EnsurePlayers(RoomPresentationContext owner, RoomPlayerIdentity host, RoomPlayerIdentity guest, PlayerInitializationDto baseline = null)
+        {
+            if (disposed) throw new ObjectDisposedException(nameof(RoomPlayerEntities));
+            if (networkObjects.IsDisposed) throw new ObjectDisposedException(nameof(RoomNetworkObjects));
+            if (owner == null || host == null || guest == null || host.RoomSessionId != owner.RoomSessionId || guest.RoomSessionId != owner.RoomSessionId)
+                throw new ArgumentException("Use the current admitted room identities.");
+            if (context != null && !ReferenceEquals(context, owner)) throw new InvalidOperationException("Dispose old room entities before replacing their context.");
+            if (owner.IsGuest)
+            {
+                ProtocolCodec.ValidateMessage(baseline, true);
+                var a = ProtocolCodec.FindPlayer(baseline, host.PlayerId, host.EntityId);
+                var b = ProtocolCodec.FindPlayer(baseline, guest.PlayerId, guest.EntityId);
+                if (baseline.roomSessionId != owner.RoomSessionId || a == null || b == null)
+                    throw new InvalidDataException("Initial entities do not match admitted identities.");
+                HostSpawn.position = Position(a); GuestSpawn.position = Position(b);
+            }
+            context = owner; hostIdentity = host; guestIdentity = guest;
+            EnsurePlayer(host, HostSpawn.position, "A");
+            EnsurePlayer(guest, GuestSpawn.position, "B");
+        }
+
+        private void EnsurePlayer(RoomPlayerIdentity identity, Vector3 position, string slot)
+        {
+            if (entities.TryGetValue(identity.EntityId, out Player existing))
+            {
+                if (existing == null || existing.GetComponent<NetworkEntityIdentity>().PlayerId != identity.PlayerId)
+                    throw new InvalidOperationException("An initialized entity ID cannot change ownership.");
+                return;
+            }
+            GameObject clone = UnityEngine.Object.Instantiate(template.gameObject, staging);
+            try
+            {
+                clone.SetActive(false);
+                clone.name = $"Player_{slot} (player={identity.PlayerId}, entity={identity.EntityId})";
+                clone.transform.SetParent(playersRoot, false);
+                clone.transform.position = position;
+                Player player = clone.GetComponent<Player>();
+                player.enabled = true;
+                clone.GetComponent<PlayerStats>().enabled = true;
+                context.RegisterEntity(identity.EntityId, identity.PlayerId, clone.transform);
+                if (context.IsGuest) clone.GetComponent<RemotePlayerView>().TeleportDistance = teleportDistance;
+                clone.GetComponent<NetworkEntityIdentity>().HoldMovement();
+                entities.Add(identity.EntityId, player);
+                registrations.Add(identity.EntityId, networkObjects.Register(context.RoomSessionId, identity.PlayerId, clone, () =>
+                {
+                    try { context?.RemoveEntity(identity.EntityId); }
+                    finally
+                    {
+                        entities.Remove(identity.EntityId);
+                        registrations.Remove(identity.EntityId);
+                    }
+                }));
+                clone.SetActive(true); // Identity, role, spawn and input hold are set before Awake/Start.
+            }
+            catch
+            {
+                if (registrations.TryGetValue(identity.EntityId, out var registration)) registration.Dispose();
+                else
+                {
+                    context.RemoveEntity(identity.EntityId);
+                    entities.Remove(identity.EntityId);
+                    DestroyObject(clone);
+                }
+                throw;
+            }
+        }
+
+        public PlayerInitializationDto CaptureInitialState(long loadId, ulong authorityTick)
+        {
+            if (context == null || context.IsGuest || !AllStarted) throw new InvalidOperationException("A must finish both actor initializations first.");
+            var value = new PlayerInitializationDto
+            {
+                roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = authorityTick, stateSeq = ++nextStateSeq,
+                players = new[] { Capture(hostIdentity), Capture(guestIdentity) }
+            };
+            ProtocolCodec.ValidateMessage(value, true);
+            return value;
+        }
+
+        private InitialPlayerDto Capture(RoomPlayerIdentity identity)
+        {
+            Player player = entities[identity.EntityId];
+            int maximum = player.stats.GetMaxHealthValue();
+            return new InitialPlayerDto
+            {
+                playerId = identity.PlayerId, entityId = identity.EntityId,
+                position = new[] { player.transform.position.x, player.transform.position.y },
+                health = player.stats.currentHealth, maxHealth = maximum, currency = 0
+            };
+        }
+
+        public void ApplyInitialState(PlayerInitializationDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!AllStarted || value.roomSessionId != context.RoomSessionId ||
+                ProtocolCodec.FindPlayer(value, hostIdentity.PlayerId, hostIdentity.EntityId) == null ||
+                ProtocolCodec.FindPlayer(value, guestIdentity.PlayerId, guestIdentity.EntityId) == null)
+                throw new InvalidOperationException("Both assigned scene entities must finish initialization before presentation binding.");
+            if (value.stateSeq <= appliedStateSeq) return;
+            foreach (var state in value.players)
+            {
+                Player player = entities[state.entityId];
+                if (!context.TryGetEntity(state.entityId, out var presentation)) throw new InvalidOperationException("Player registration was lost.");
+                if (context.IsGuest)
+                {
+                    presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq, Position(state), true);
+                    player.stats.currentHealth = state.health; // A-confirmed initial value; no local damage or healing calculation.
+                    player.anim.SetBool("Idle", true);
+                    player.anim.SetFloat("yVelocity", 0);
+                }
+                if (!presentation.ApplyHealth(value.roomSessionId, value.authorityTick, value.stateSeq, state.health, state.maxHealth) ||
+                    !presentation.ApplyHud(value.roomSessionId, value.authorityTick, value.stateSeq, state.currency, null, 0, new float[5]))
+                    throw new InvalidDataException("Initial state is older than the player's current presentation state.");
+            }
+            appliedStateSeq = value.stateSeq;
+            foreach (var state in value.players)
+                if (context.TryGetEntity(state.entityId, out var presentation)) presentation.MarkReady();
+        }
+
+        public void Dispose()
+        {
+            if (disposed) return;
+            disposed = true;
+            foreach (var registration in new List<RoomNetworkObjects.Registration>(registrations.Values)) registration.Dispose();
+            rootRegistration.Dispose();
+            registrations.Clear(); entities.Clear();
+            context = null;
+        }
+
+        public void EnableAuthoritativeMovement()
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0) return;
+            foreach (Player player in entities.Values)
+                player.GetComponent<NetworkEntityIdentity>().ReleaseAuthoritativeMovement();
+        }
+
+        public PlayerPositionsDto CapturePositions(long loadId)
+        {
+            if (disposed || context == null || context.IsGuest || !AllStarted || appliedStateSeq == 0)
+                throw new InvalidOperationException("Only initialized A authority can capture player positions.");
+            ulong tick = GameSimulationClock.AuthorityTick; // Read once for the entire snapshot.
+            return new PlayerPositionsDto
+            {
+                roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = tick, stateSeq = ++nextStateSeq,
+                players = new[] { CapturePosition(hostIdentity), CapturePosition(guestIdentity) }
+            };
+        }
+
+        private PlayerPositionDto CapturePosition(RoomPlayerIdentity identity)
+        {
+            Vector2 position = entities[identity.EntityId].rb.position;
+            return new PlayerPositionDto { entityId = identity.EntityId, position = new[] { position.x, position.y } };
+        }
+
+        public void ApplyPositions(PlayerPositionsDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (disposed || context == null || !context.IsGuest || !AllStarted || appliedStateSeq == 0 ||
+                value.roomSessionId != context.RoomSessionId ||
+                ProtocolCodec.FindPosition(value, hostIdentity.EntityId) == null ||
+                ProtocolCodec.FindPosition(value, guestIdentity.EntityId) == null) return;
+            foreach (var state in value.players)
+            {
+                if (!entities.TryGetValue(state.entityId, out Player player) || player == null || player.IsAuthoritative ||
+                    !context.TryGetEntity(state.entityId, out var presentation)) continue;
+                // Each entity's position stream decides freshness independently of health/HUD and other entities.
+                presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
+                    new Vector2(state.position[0], state.position[1]));
+            }
+        }
+
+        public bool ApplyGuestMovementInput(RoomPlayerIdentity source, MovementInputDto input)
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
+                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
+                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
+                player == null || !player.IsAuthoritative || player.IsLocalInputOwner ||
+                player.GetComponent<NetworkEntityIdentity>().MovementHeld) return false;
+            return player.InputData.TryApplyNetworkInput(input);
+        }
+
+        private static Transform Child(string name, Transform parent)
+        {
+            var value = new GameObject(name).transform;
+            value.SetParent(parent, false); return value;
+        }
+        private static Vector3 Position(InitialPlayerDto value) => new Vector3(value.position[0], value.position[1], 0);
+        private static void DestroyObject(GameObject value)
+        {
+            value.SetActive(false);
+            if (Application.isPlaying) UnityEngine.Object.Destroy(value);
+            else UnityEngine.Object.DestroyImmediate(value);
+        }
+
+        private static void ValidateTemplate(Player value)
+        {
+            if (value.GetComponent<PlayerStats>() == null || value.GetComponent<Rigidbody2D>() == null || value.GetComponentInChildren<Animator>(true) == null)
+                throw new InvalidOperationException("RPG Player template requires PlayerStats, Rigidbody2D and Animator.");
+            foreach (MonoBehaviour component in value.GetComponentsInChildren<MonoBehaviour>(true))
+                if (component is PlayerManager || component is SkillManager || component is Inventory || component is SaveManager ||
+                    component is GameManager || component is AudioManager || component is UI || component is UI_MainMenu)
+                    throw new InvalidOperationException("The Player template must contain the character body only, without singleton managers.");
+            if (value.GetComponentInChildren<Camera>(true) != null || value.GetComponentInChildren<AudioListener>(true) != null)
+                throw new InvalidOperationException("Use the scene camera; do not clone cameras with room players.");
+        }
+    }
+}

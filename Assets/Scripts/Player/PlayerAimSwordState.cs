@@ -13,7 +13,7 @@ public class PlayerAimSwordState : PlayerState
     {
         base.Enter();
         throwCommitted = false;
-        if (GameplayControlLock.IsActionInputBlocked) { CancelForControlLock(); return; }
+        if (!player.CanUseLegacyActions || GameplayControlLock.IsActionInputBlocked) { CancelForControlLock(); return; }
         player.skill.sword.BeginAim();
     }
 
@@ -27,7 +27,7 @@ public class PlayerAimSwordState : PlayerState
     public override void Update()
     {
         base.Update();
-        if (GameplayControlLock.IsActionInputBlocked) { CancelForControlLock(); return; }
+        if (!player.CanUseLegacyActions || GameplayControlLock.IsActionInputBlocked) { CancelForControlLock(); return; }
 
         player.SetVelocity(0, 0);
         if (Input.GetKeyUp(KeyCode.Mouse1))

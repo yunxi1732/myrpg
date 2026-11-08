@@ -2,9 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.TextCore;
+using Rpg.Networking;
 
 public class Player : Entity
 {
+    public bool CanReadSimulationInput => EntityRuntimePermissions.CanReadSimulationInput(this);
+    public bool CanUseLegacyActions => EntityRuntimePermissions.CanUseLegacyActions(this);
+    public PlayerInputData InputData { get; } = new PlayerInputData();
+    public bool IsRuntimeInitialized { get; private set; }
     public bool isBusy { get; private set; }
     [Header("Attack Details")]
     public float[] attackMovement;
@@ -49,7 +54,7 @@ public class Player : Entity
     protected override void Awake()
     {
         base.Awake();
-        skill = SkillManager.instance;
+        skill = CanUseLegacyActions ? SkillManager.instance : null;
         stateMachine = new PlayerStateMachine();
         
         idleState = new PlayerIdleState(this, stateMachine, "Idle");
@@ -71,58 +76,96 @@ public class Player : Entity
     {
         base.Start();
         fx = GetComponent <PlayerFX>();
-        stateMachine.Initialize(idleState);
+        if (IsAuthoritative) stateMachine.Initialize(idleState);
 
         defaultMoveSpeed = moveSpeed;
         defaultJumpForce = jumpForce;
         defaultDashSpeed = dashSpeed;
+        IsRuntimeInitialized = true;
     }
 
     protected override void Update()
     {
-        if (GameplayControlLock.IsLocked) ClearLockedMovement();
-        if (Time.timeScale == 0)
+        var identity = EntityRuntimePermissions.Identity(this);
+        if (IsLocalInputOwner)
+        {
+            // B collects its own input without running simulation. A never samples keys for B.
+            bool ready = identity == null ? CanReadSimulationInput : identity.CanCollectMovementInput;
+            if (ready && Application.isFocused && !GameplayControlLock.IsLocked)
+                InputData.SetCurrentAxis(Input.GetAxisRaw("Horizontal"));
+            else
+                InputData.Clear();
+        }
+        else if (!IsAuthoritative || identity?.MovementHeld == true)
+            InputData.Clear();
+
+        if (!IsAuthoritative || EntityRuntimePermissions.Identity(this)?.MovementHeld == true) return;
+        if (!GameSimulationClock.IsNetwork && Time.timeScale == 0)
             return;
 
-        base.Update();
-        stateMachine.currentState.Update();
+        if (!GameSimulationClock.IsNetwork) SimulateMovement();
         CheckForDashInput();
 
-        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.F) && skill.crystal.crystalUnlocked)
+        if (CanUseLegacyActions && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.F) && skill.crystal.crystalUnlocked)
             skill.crystal.CanUseSkill();
 
-        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Alpha1))
+        if (CanUseLegacyActions && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Alpha1))
             Inventory.instance.UseFlask();
     }
 
+    private void FixedUpdate()
+    {
+        // Network authority advances once per clock/automatic Physics2D fixed step, never again in Update.
+        if (!GameSimulationClock.IsNetwork || !IsRuntimeInitialized || !IsAuthoritative ||
+            EntityRuntimePermissions.Identity(this)?.MovementHeld == true) return;
+        SimulateMovement();
+    }
+
+    private void SimulateMovement()
+    {
+        if (IsLocalInputOwner && GameplayControlLock.IsLocked)
+        {
+            InputData.Clear();
+            ClearLockedMovement();
+        }
+        base.Update();
+        stateMachine.currentState?.Update();
+    }
+
+    private void OnDisable() => InputData.Clear();
+
     public override void SlowEntityBy(float _slowPercentage, float _slowDuration)
     {
+        if (!IsAuthoritative) return;
         moveSpeed *= (1 - _slowPercentage);
         jumpForce *= (1 - _slowPercentage);
         dashSpeed *= (1 - _slowPercentage);
         anim.speed *= (1 - _slowPercentage);
 
-        Invoke("ReturnDefaultSpeed", _slowDuration);
+        GameSimulationClock.Schedule(this, ReturnDefaultSpeed, nameof(ReturnDefaultSpeed), _slowDuration);
     }
 
     protected override void ReturnDefaultSpeed()
     {
+        if (!IsAuthoritative) return;
         base.ReturnDefaultSpeed();
         moveSpeed = defaultMoveSpeed;
         jumpForce = defaultJumpForce;
         dashSpeed = defaultDashSpeed;
     }
 
-    public void AssignNewSword(GameObject _newSword) => sword = _newSword;
+    public void AssignNewSword(GameObject _newSword) { if (IsAuthoritative) sword = _newSword; }
 
     public void CatchTheSword()
     {
+        if (!IsAuthoritative) return;
         stateMachine.ChangeState(catchSwordState);
         Destroy(sword);
     }    
 
     public void CheckForDashInput()
     {
+        if (!CanUseLegacyActions) return;
         if (GameplayControlLock.IsActionInputBlocked)
         {
             dashDir = 0;
@@ -133,7 +176,7 @@ public class Player : Entity
         if (skill.dash.dashUnlocked == false)
             return;
         
-        dashDir = Input.GetAxisRaw("Horizontal");
+        dashDir = InputData.CurrentAxis;
         if (dashDir == 0) dashDir = facingDir;
         if (Input.GetKeyDown(KeyCode.LeftShift) && SkillManager.instance.dash.CanUseSkill())
         {
@@ -158,24 +201,27 @@ public class Player : Entity
 
     public void CancelSwordAimForControlLock()
     {
+        if (!CanUseLegacyActions) return;
         skill?.sword?.CancelAim();
         if (aimSwordState != null && stateMachine?.currentState == aimSwordState && rb != null)
             aimSwordState.CancelForControlLock();
     }
 
-    public void AnimationTrigger() => stateMachine.currentState.AnimationFinishTrigger();
+    public void AnimationTrigger() { if (IsAuthoritative) stateMachine?.currentState?.AnimationFinishTrigger(); }
 
     public IEnumerator BusyFor(float _seconds)
     {
+        if (!IsAuthoritative) yield break;
         isBusy = true;
 
-        yield return new WaitForSeconds(_seconds);
+        yield return GameSimulationClock.Wait(_seconds);
 
         isBusy = false;
     }
 
     public override void Die()
     {
+        if (!IsAuthoritative) return;
         base.Die();
         stateMachine.ChangeState(deadState);
     }

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Rpg.Networking;
 
 public class ItemObject : MonoBehaviour
 {
@@ -26,6 +27,8 @@ public class ItemObject : MonoBehaviour
 
     public void PickUpItem()
     {
+        // Legacy pickup has no per-player inventory. Do not consume a network drop through it.
+        if (!EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         if (!Inventory.instance.CanAddItem() && itemData.itemType == ItemType.Equipment)
         {
             rb.velocity = new Vector2(0, 5);

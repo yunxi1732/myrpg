@@ -27,6 +27,7 @@ public class EnemySkeleton : Enemy
     protected override void Start()
     {
         base.Start();
+        if (!IsAuthoritative) return;
         stateMachine.Initialize(idleState);
     }
 
@@ -47,6 +48,7 @@ public class EnemySkeleton : Enemy
 
     public override void Die()
     {
+        if (!IsAuthoritative) return;
         base.Die();
         stateMachine.ChangeState(deadState);
     }

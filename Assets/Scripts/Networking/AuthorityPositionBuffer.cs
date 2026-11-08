@@ -1,0 +1,65 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Rpg.Networking
+{
+    /// <summary>A bounded position timeline in A's fixed simulation ticks, not packet arrival timestamps.</summary>
+    public sealed class AuthorityPositionBuffer
+    {
+        private struct Sample { public ulong Tick; public Vector2 Position; }
+        private readonly List<Sample> samples = new List<Sample>(32);
+        public int Count => samples.Count;
+        public double RenderTick { get; private set; }
+        public ulong LatestTick { get; private set; }
+        public long LatestSequence { get; private set; }
+        public Vector2 Position { get; private set; }
+        public bool Snapped { get; private set; }
+
+        public bool Add(ulong tick, long sequence, Vector2 position, double delayTicks, float snapDistance, bool reset = false)
+        {
+            if (tick == 0 || sequence <= 0 || float.IsNaN(position.x) || float.IsInfinity(position.x) ||
+                float.IsNaN(position.y) || float.IsInfinity(position.y) || Count > 0 &&
+                (sequence <= LatestSequence || tick < LatestTick || tick < RenderTick)) return false;
+            Snapped = reset || Count == 0 || (position - samples[Count - 1].Position).sqrMagnitude > snapDistance * snapDistance;
+            LatestTick = tick; LatestSequence = sequence;
+            if (Snapped)
+            {
+                samples.Clear();
+                RenderTick = (double)tick - Math.Max(0, delayTicks);
+                Position = position;
+            }
+            var sample = new Sample { Tick = tick, Position = position };
+            if (Count > 0 && samples[Count - 1].Tick == tick) samples[Count - 1] = sample;
+            else samples.Add(sample);
+            // Recover from long gaps without accumulating an ever-growing playback delay.
+            RenderTick = Math.Max(RenderTick, (double)tick - Math.Max(0, delayTicks));
+            while (Count > 32) samples.RemoveAt(0);
+            return true;
+        }
+
+        public bool Advance(float unscaledDeltaTime, float tickSeconds)
+        {
+            if (Count == 0 || tickSeconds <= 0) return false;
+            RenderTick = Math.Min(LatestTick, RenderTick + Math.Max(0, unscaledDeltaTime) / tickSeconds);
+            // Keep the bracketing pair, discard consumed samples, and never extrapolate beyond A's latest state.
+            while (Count > 1 && samples[1].Tick <= RenderTick) samples.RemoveAt(0);
+            Sample first = samples[0];
+            if (Count == 1 || RenderTick <= first.Tick) Position = first.Position;
+            else
+            {
+                Sample next = samples[1];
+                float alpha = (float)((RenderTick - first.Tick) / ((double)next.Tick - first.Tick));
+                Position = Vector2.Lerp(first.Position, next.Position, alpha);
+            }
+            return true;
+        }
+
+        public void Clear()
+        {
+            samples.Clear();
+            RenderTick = 0; LatestTick = 0; LatestSequence = 0;
+            Position = Vector2.zero; Snapped = false;
+        }
+    }
+}

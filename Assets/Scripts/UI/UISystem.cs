@@ -8,7 +8,8 @@ public enum UIPanelId
     SkillTree,
     Craft,
     Options,
-    InGame
+    InGame,
+    Room
 }
 
 /// <summary>Scene-owned panel registry. Registration does not change visibility.</summary>
@@ -41,7 +42,7 @@ public sealed class UISystem : IDisposable
         if (panel == null)
             panel = scenePanel.AddComponent<BasePanel>();
         panels[id] = panel;
-        if (id != UIPanelId.InGame)
+        if (RequiresControlLock(id))
         {
             MenuControlLock menuLock = scenePanel.GetComponent<MenuControlLock>();
             if (menuLock == null) menuLock = scenePanel.AddComponent<MenuControlLock>();
@@ -77,7 +78,7 @@ public sealed class UISystem : IDisposable
         BasePanel panel = GetPanel(id);
         if (panel == null || !panel.enabled ||
             (panel.transform.parent != null && !panel.transform.parent.gameObject.activeInHierarchy)) return false;
-        MenuControlLock menuLock = id == UIPanelId.InGame ? null : panel.GetComponent<MenuControlLock>();
+        MenuControlLock menuLock = RequiresControlLock(id) ? panel.GetComponent<MenuControlLock>() : null;
         if (menuLock != null && !menuLock.PrepareOpen()) return false;
         panel.OnShow(args);
         if (!panel.gameObject.activeInHierarchy)
@@ -94,7 +95,7 @@ public sealed class UISystem : IDisposable
         if (panel == null) return false;
         panel.OnClose();
         // Also handles already-inactive panels and repeated close requests.
-        if (id != UIPanelId.InGame) panel.GetComponent<MenuControlLock>()?.Release();
+        if (RequiresControlLock(id)) panel.GetComponent<MenuControlLock>()?.Release();
         return true;
     }
 
@@ -104,7 +105,7 @@ public sealed class UISystem : IDisposable
         BasePanel target = GetPanel(id);
         if (target == null || !target.enabled ||
             (target.transform.parent != null && !target.transform.parent.gameObject.activeInHierarchy)) return false;
-        MenuControlLock targetLock = id == UIPanelId.InGame ? null : target.GetComponent<MenuControlLock>();
+        MenuControlLock targetLock = RequiresControlLock(id) ? target.GetComponent<MenuControlLock>() : null;
         if (targetLock != null && !targetLock.PrepareOpen()) return false;
         bool opened = false;
         try
@@ -125,6 +126,9 @@ public sealed class UISystem : IDisposable
         foreach (UIPanelId id in menuGroup)
             ClosePanel(id);
     }
+
+    // The main-menu room panel has no gameplay input or pause ownership.
+    private static bool RequiresControlLock(UIPanelId id) => id != UIPanelId.InGame && id != UIPanelId.Room;
 
     /// <summary>Release scene references; scene objects remain owned by Unity.</summary>
     public void Clear()

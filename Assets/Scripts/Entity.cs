@@ -1,8 +1,11 @@
 using System.Collections;
 using UnityEngine;
+using Rpg.Networking;
 
 public class Entity : MonoBehaviour
 {
+    public bool IsAuthoritative => EntityRuntimePermissions.CanSimulate(this);
+    public bool IsLocalInputOwner => EntityRuntimePermissions.CanCollectLocalInput(this);
     [Header("Collision Info")]
     [SerializeField] protected Transform groundCheck;
     [SerializeField] protected float groundCheckDistance;
@@ -59,23 +62,24 @@ public class Entity : MonoBehaviour
         anim.speed = 1;
     }
 
-    public virtual void DamageImpact() => StartCoroutine(HitKnockBack());
+    public virtual void DamageImpact() { if (IsAuthoritative) StartCoroutine(HitKnockBack()); }
 
     public virtual void SetupKonckbackDir(Transform _damageDirection)
     {
+        if (!IsAuthoritative) return;
         if (_damageDirection.position.x > transform.position.x)
             knockbackDir = 1;
         else if (_damageDirection.position.x < transform.position.x)
             knockbackDir = -1;
     }
 
-    public void SetupKnockbackPower(Vector2 _kp) => knockbackPower = _kp;
+    public void SetupKnockbackPower(Vector2 _kp) { if (IsAuthoritative) knockbackPower = _kp; }
 
     private IEnumerator HitKnockBack()
     {
         isKnocked = true;
         rb.velocity = new Vector2(-knockbackDir * knockbackPower.x, knockbackPower.y);
-        yield return new WaitForSeconds(knockbackDuration);
+        yield return GameSimulationClock.Wait(knockbackDuration);
         isKnocked = false;
         SetupZeroKnockbackPlayer();
     }
@@ -123,7 +127,7 @@ public class Entity : MonoBehaviour
     #region Velocity
     public void SetVelocity(float _xVelocity, float _yVelocity)
     {
-        if (isKnocked) return;
+        if (!IsAuthoritative || isKnocked) return;
         rb.velocity = new Vector2(_xVelocity, _yVelocity);
         FlipController(_xVelocity);
     }

@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class PlayerState 
 {
+    public bool CanSimulate => player.IsAuthoritative;
     protected PlayerStateMachine stateMachine;
     protected Player player;
     protected Rigidbody2D rb;
@@ -34,14 +35,12 @@ public class PlayerState
 
     public virtual void Update()
     {
-        if (GameplayControlLock.IsLocked) ClearMovementInput();
-        else
-        {
-            xInput = Input.GetAxisRaw("Horizontal");
-            yInput = Input.GetAxisRaw("Vertical");
-        }
+        // Simulation reads this actor's current data; local keyboard ownership only gates collection.
+        xInput = player.InputData.CurrentAxis;
+        if (!CanSimulate || (player.IsLocalInputOwner && GameplayControlLock.IsLocked)) xInput = 0;
+        yInput = player.CanReadSimulationInput && !GameplayControlLock.IsLocked ? Input.GetAxisRaw("Vertical") : 0;
         player.anim.SetFloat("yVelocity", rb.velocity.y);
-        stateTimer -= Time.deltaTime;
+        stateTimer -= GameSimulationClock.DeltaTime;
     }
 
     public void ClearMovementInput()

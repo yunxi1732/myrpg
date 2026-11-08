@@ -32,6 +32,7 @@ public sealed class NpcInteractable : MonoBehaviour
 
     public bool IsPlayerCollider(Collider2D other)
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyActions(interactionPlayer)) return false;
         if (!isActiveAndEnabled || interactionPlayer == null || !interactionPlayer.isActiveAndEnabled ||
             other == null || !other.enabled || !other.gameObject.activeInHierarchy || other.isTrigger ||
             (playerLayers.value & (1 << other.gameObject.layer)) == 0) return false;
@@ -73,6 +74,7 @@ public sealed class NpcInteractable : MonoBehaviour
 
     public bool TryStartTalk()
     {
+        if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyActions(interactionPlayer)) return false;
         if (this == null || !isActiveAndEnabled || !IsPlayerInRange || dialogueView == null ||
             dialogueView.IsDialogueRunning || (Application.isPlaying && Time.timeScale <= 0)) return false;
         return dialogueView.TryStartNpcDialogue(this);

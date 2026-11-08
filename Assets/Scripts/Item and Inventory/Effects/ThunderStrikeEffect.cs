@@ -11,6 +11,6 @@ public class ThunderStrikeEffect : ItemEffect
     {
         GameObject newThunderStrike = Instantiate(thunderStrikePrefab, _enemyPosition.position, Quaternion.identity);
 
-        Destroy(newThunderStrike, 1f);
+        GameSimulationClock.DestroyAfter(newThunderStrike, 1f);
     }
 }
