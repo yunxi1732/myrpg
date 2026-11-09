@@ -33,7 +33,7 @@ public class DodgeSkill : Skill
         if (unlockDodgeButton.unlocked == true && !dodgeUnlocked)
         {
             player.stats.evasion.AddModifier(evasionAmount);
-            Inventory.instance.UpdateStatsUI();
+            player.Combat.LegacyInventory?.UpdateStatsUI();
             dodgeUnlocked = true;
         }
     }
@@ -47,6 +47,6 @@ public class DodgeSkill : Skill
     public void CreateMirageOnDodge()
     {
         if (dodgeMirageUnlocked)
-            SkillManager.instance.clone.CreateClone(player.transform, new Vector3(2 * player.facingDir, 0));
+            player.skill.clone.CreateClone(player.transform, new Vector3(2 * player.facingDir, 0));
     }
 }

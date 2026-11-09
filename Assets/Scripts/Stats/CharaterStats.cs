@@ -66,6 +66,30 @@ public class CharaterStats : MonoBehaviour
     private int igniteDamage;
 
     public int currentHealth;
+    public long NetworkHealthVersion { get; private set; }
+    private int confirmedNetworkMaximum;
+    internal void EnsureNetworkHealthVersion()
+    {
+        if (IsAuthoritative && IsRuntimeInitialized && EntityRuntimePermissions.Identity(this)?.IsBound == true && NetworkHealthVersion == 0)
+            NetworkHealthVersion = 1;
+    }
+
+    internal long ApplyAuthorityNetworkHealth(int finalHealth)
+    {
+        if (!IsAuthoritative || EntityRuntimePermissions.Identity(this)?.IsBound != true || !IsRuntimeInitialized ||
+            finalHealth < 0 || finalHealth > GetMaxHealthValue()) throw new System.InvalidOperationException("Use initialized A health state.");
+        EnsureNetworkHealthVersion();
+        long version = checked(NetworkHealthVersion + 1);
+        currentHealth = finalHealth; NetworkHealthVersion = version;
+        return version; // No legacy TakeDamage/Die/elements/drops on the network path.
+    }
+
+    internal void ApplyConfirmedNetworkHealth(int health, int maximum, long version)
+    {
+        if (EntityRuntimePermissions.Identity(this)?.Role != NetworkEntityRole.Display)
+            throw new System.InvalidOperationException("Only a display applies A-confirmed final health.");
+        currentHealth = health; confirmedNetworkMaximum = maximum; NetworkHealthVersion = version;
+    }
 
     public System.Action OnHealthChanged;
     public bool isDead { get; private set; }
@@ -78,6 +102,7 @@ public class CharaterStats : MonoBehaviour
         IsRuntimeInitialized = true;
         if (!IsAuthoritative) return;
         currentHealth = GetMaxHealthValue();
+        EnsureNetworkHealthVersion();
     }
 
     protected virtual void Update()
@@ -411,7 +436,8 @@ public class CharaterStats : MonoBehaviour
         return Mathf.RoundToInt(critDamage);
     }
 
-    public int GetMaxHealthValue() => maxHealth.GetValue() + 5 * vitality.GetValue();
+    public int GetMaxHealthValue() => NetworkHealthVersion > 0 && EntityRuntimePermissions.Identity(this)?.Role == NetworkEntityRole.Display
+        ? confirmedNetworkMaximum : maxHealth.GetValue() + 5 * vitality.GetValue();
     #endregion
 
     public Stat GetStat(StatType buffType)

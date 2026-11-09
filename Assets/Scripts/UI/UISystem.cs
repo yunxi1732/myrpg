@@ -128,7 +128,7 @@ public sealed class UISystem : IDisposable
     }
 
     // The main-menu room panel has no gameplay input or pause ownership.
-    private static bool RequiresControlLock(UIPanelId id) => id != UIPanelId.InGame && id != UIPanelId.Room;
+    private static bool RequiresControlLock(UIPanelId id) => id != UIPanelId.InGame;
 
     /// <summary>Release scene references; scene objects remain owned by Unity.</summary>
     public void Clear()

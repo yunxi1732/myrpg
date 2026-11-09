@@ -37,6 +37,7 @@ public sealed class HitEffectFX : MonoBehaviour, ITemporaryEffectPlayback
         StopAllCoroutines();
         gameObject.SetActive(true);
         animator.enabled = true;
+        animator.updateMode = GameSimulationClock.IsNetwork ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
         animator.speed = initialAnimatorSpeed;
         animator.Rebind();
         animator.Play(0, 0, 0f);
@@ -53,8 +54,8 @@ public sealed class HitEffectFX : MonoBehaviour, ITemporaryEffectPlayback
     private void Update()
     {
         // Pausing must not advance or complete this game-time playback.
-        if (!IsPlaying || Time.deltaTime <= 0f) return;
-        remainingTime -= Time.deltaTime;
+        if (!IsPlaying || GameSimulationClock.DeltaTime <= 0f) return;
+        remainingTime -= GameSimulationClock.DeltaTime;
         if (remainingTime <= 0f)
         {
             IsPlaying = false;

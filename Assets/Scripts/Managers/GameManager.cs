@@ -26,6 +26,8 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     private void OnDestroy()
     {
+        foreach (object owner in networkPauseOwners) GameplayControlLock.Release(owner);
+        networkPauseOwners.Clear();
         pauseOwners.Clear();
         menuPaused = false;
         if (ReferenceEquals(instance, this))
@@ -81,7 +83,7 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     private IEnumerator LoadWithDelay(GameData _data)
     {
-        yield return new WaitForSeconds(0.1f);
+        yield return GameSimulationClock.Wait(0.1f);
         if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) yield break;
         LoadCheckpoints(_data);
         LoadClosestCheckpoint(_data);
@@ -137,12 +139,19 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     private bool menuPaused;
     private readonly HashSet<object> pauseOwners = new HashSet<object>();
+    private readonly HashSet<object> networkPauseOwners = new HashSet<object>();
+    private readonly object legacyNetworkPauseOwner = new object();
     // The legacy bool request only; owner-based menu/dialogue requests remain independent.
     public bool IsMenuPaused => menuPaused;
 
     // Compatibility entry point. Menus and dialogue now use owner-based pause requests.
     public void PauseGame(bool _pause)
     {
+        if (GameSimulationClock.IsNetwork)
+        {
+            SetPauseOwner(legacyNetworkPauseOwner, _pause);
+            return;
+        }
         menuPaused = _pause;
         ApplyPause();
     }
@@ -150,6 +159,15 @@ public class GameManager : MonoBehaviour, ISaveManager
     public void SetPauseOwner(object owner, bool paused)
     {
         if (ReferenceEquals(owner, null)) return;
+        if (GameSimulationClock.IsNetwork)
+        {
+            pauseOwners.Remove(owner);
+            if (paused) { networkPauseOwners.Add(owner); GameplayControlLock.Acquire(owner); }
+            else { networkPauseOwners.Remove(owner); GameplayControlLock.Release(owner); }
+            ApplyPause();
+            return;
+        }
+        if (networkPauseOwners.Remove(owner)) GameplayControlLock.Release(owner);
         if (paused) pauseOwners.Add(owner);
         else pauseOwners.Remove(owner);
         ApplyPause();

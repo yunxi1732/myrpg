@@ -170,9 +170,9 @@ public class UI : MonoBehaviour, ISaveManager
     {
         if (locked)
         {
-            if (GameplayControlLock.Acquire(this) && Application.isPlaying && PlayerManager.instance != null)
+            if (GameplayControlLock.Acquire(this) && !GameSimulationClock.IsNetwork && Application.isPlaying && PlayerManager.instance != null)
                 PlayerManager.instance.player?.CancelSwordAimForControlLock();
-            if (Application.isPlaying && blankMenuPauseManager == null && GameManager.instance != null)
+            if (!GameSimulationClock.IsNetwork && Application.isPlaying && blankMenuPauseManager == null && GameManager.instance != null)
             {
                 blankMenuPauseManager = GameManager.instance;
                 blankMenuPauseManager.SetPauseOwner(this, true);
@@ -220,9 +220,9 @@ public class UI : MonoBehaviour, ISaveManager
 
     IEnumerator EndScreenCorutione()
     {
-        yield return new WaitForSeconds(1);
+        yield return GameSimulationClock.Wait(1);
         endText.SetActive(true);
-        yield return new WaitForSeconds(1);
+        yield return GameSimulationClock.Wait(1);
         restartButton.SetActive(true);
     }
 

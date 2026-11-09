@@ -104,7 +104,7 @@ public class CrystalSkill : Skill
 
             if (cloneInsteadOfCrystal)
             {
-                SkillManager.instance.clone.CreateClone(currentCrystal.transform, Vector3.zero);
+                player.skill.clone.CreateClone(currentCrystal.transform, Vector3.zero);
                 Destroy(currentCrystal);
             }
             else currentCrystal.GetComponent<CrystalSkillController>()?.FinishCrystal();

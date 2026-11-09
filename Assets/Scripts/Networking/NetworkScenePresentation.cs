@@ -25,6 +25,8 @@ namespace Rpg.Networking
                 if (hud == null) hud = root.GetComponentInChildren<UI_InGame>(true);
                 if (cameraRig == null) cameraRig = root.GetComponentInChildren<CinemachineVirtualCamera>(true);
                 if (brain == null) brain = root.GetComponentInChildren<CinemachineBrain>(true);
+                // Allow the existing dialogue's explicit test/open entry without enabling NPC gameplay or the single-player UI controller.
+                foreach (DialogueView dialogue in root.GetComponentsInChildren<DialogueView>(true)) dialogue.enabled = true;
             }
             if (brain != null)
             {

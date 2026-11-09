@@ -5,6 +5,59 @@ using UnityEngine;
 
 public class Enemy : Entity
 {
+    // Adapted network AI/actions only; legacy damage, counter windows, stats and drops stay gated.
+    public bool NetworkMovementOnly { get; private set; }
+    private bool runtimeReady;
+    private System.Func<IEnumerable<Player>> networkPlayers;
+    public void ConfigureNetworkMovement(System.Func<IEnumerable<Player>> players)
+    { networkPlayers = players; NetworkMovementOnly = true; }
+
+    private IEnumerable<Player> TargetCandidates => networkPlayers != null ? networkPlayers() : Player.ActivePlayers;
+    private static bool IsLivingPlayer(Player candidate) => candidate != null && candidate.isActiveAndEnabled && candidate.IsAuthoritative &&
+        candidate.stats != null && !candidate.stats.isDead && candidate.stats.currentHealth > 0;
+
+    private static int TargetOrderId(Player candidate)
+    {
+        var identity = Rpg.Networking.EntityRuntimePermissions.Identity(candidate);
+        return identity != null && identity.PlayerId > 0 ? identity.PlayerId : candidate.GetInstanceID();
+    }
+
+    public bool IsValidLivingTarget(Transform target)
+    {
+        if (!IsAuthoritative || target == null) return false;
+        foreach (Player candidate in TargetCandidates)
+            if (IsLivingPlayer(candidate) && candidate.transform == target) return true;
+        return false;
+    }
+
+    public bool DetectsLivingTarget(Transform target)
+    {
+        if (!IsValidLivingTarget(target)) return false;
+        if (Vector2.Distance(transform.position, target.position) < 2) return true;
+        // Retain the original forward ray/range/mask, but consider all hits: a corpse or physics hit ordering cannot pick the target.
+        foreach (var hit in Physics2D.RaycastAll(wallCheck.position, Vector2.right * facingDir, 50, whatIsPlayer))
+        {
+            var player = hit.collider != null ? hit.collider.GetComponentInParent<Player>() : null;
+            if (IsLivingPlayer(player) && player.transform == target) return true;
+        }
+        return false;
+    }
+
+    public Transform SelectLivingTarget(bool detectedOnly)
+    {
+        Transform nearest = null; float distance = float.PositiveInfinity; int orderId = int.MaxValue;
+        if (!IsAuthoritative) return null;
+        foreach (Player candidate in TargetCandidates)
+        {
+            if (!IsLivingPlayer(candidate) || detectedOnly && !DetectsLivingTarget(candidate.transform)) continue;
+            float current = ((Vector2)candidate.transform.position - (Vector2)transform.position).sqrMagnitude;
+            if (float.IsNaN(current) || float.IsInfinity(current)) continue;
+            int id = TargetOrderId(candidate);
+            if (current < distance || current == distance && id < orderId)
+            { distance = current; orderId = id; nearest = candidate.transform; }
+        }
+        return nearest;
+    }
     [SerializeField] protected LayerMask whatIsPlayer;
 
     [Header("Move Info")]
@@ -39,13 +92,30 @@ public class Enemy : Entity
     {
         base.Start();
         fx = GetComponentInChildren<EntityFX>();
+        runtimeReady = true;
     }
 
     protected override void Update()
     {
-        if (!IsAuthoritative) return;
+        if (!IsAuthoritative || NetworkMovementOnly) return;
         base.Update();
         stateMachine.currentState?.Update();
+    }
+
+    private void FixedUpdate()
+    {
+        if (NetworkMovementOnly && IsAuthoritative && stats != null && stats.IsRuntimeInitialized && stats.currentHealth <= 0)
+        { HoldNetworkAtZeroHealth(); return; }
+        if (NetworkMovementOnly && IsAuthoritative && runtimeReady &&
+            Rpg.Networking.EntityRuntimePermissions.Identity(this)?.MovementHeld != true)
+            stateMachine.currentState?.Update();
+    }
+
+    public void HoldNetworkAtZeroHealth()
+    {
+        if (!NetworkMovementOnly || !IsAuthoritative) return;
+        if (rb != null) { rb.velocity = Vector2.zero; rb.angularVelocity = 0; }
+        if (anim != null) { anim.SetBool("Attack", false); anim.SetBool("Move", false); anim.SetBool("Idle", true); }
     }
 
     public virtual void AssignLastAnimName(string _animBoolName) => lastAnimBoolName = _animBoolName;

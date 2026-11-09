@@ -12,19 +12,20 @@ public class SkeletonMoveState : SkeletonGroundedState
     {
         base.Enter();
 
-        AudioManager.instance.PlaySFX(6, enemy.transform);
+        if (!enemy.NetworkMovementOnly) AudioManager.instance.PlaySFX(6, enemy.transform);
     }
 
     public override void Exit()
     {
         base.Exit();
 
-        AudioManager.instance.StopSFX(6);
+        if (!enemy.NetworkMovementOnly) AudioManager.instance.StopSFX(6);
     }
 
     public override void Update()
     {
         base.Update();
+        if (stateMachine.currentState != this) return;
         enemy.SetVelocity(enemy.moveSpeed * enemy.facingDir, rb.velocity.y);
         if (enemy.IsWallDetected() || !enemy.IsGroundDetected())
         {

@@ -29,6 +29,12 @@ namespace Rpg.Networking
         private readonly Dictionary<long, Entry> entries = new Dictionary<long, Entry>();
         private readonly Dictionary<int, long> objectKeys = new Dictionary<int, long>();
         private long nextKey;
+        private long nextPrimaryAttackInstanceId;
+        internal long AllocatePrimaryAttackInstanceId()
+        {
+            if (IsDisposed) throw new ObjectDisposedException(nameof(RoomNetworkObjects));
+            return checked(++nextPrimaryAttackInstanceId);
+        }
         private readonly HashSet<int> departedPlayers = new HashSet<int>();
         private readonly int sceneHandle;
         private Action beforeRoomCleanup;

@@ -8,7 +8,13 @@ public class Stat
 {
     [SerializeField] private int baseValue;
 
-    public List<int> modifiers;
+    public List<int> modifiers = new List<int>();
+
+    public Stat Copy() => new Stat
+    {
+        baseValue = baseValue,
+        modifiers = modifiers == null ? new List<int>() : new List<int>(modifiers)
+    };
 
     public int GetValue()
     {

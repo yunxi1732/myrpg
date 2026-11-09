@@ -20,12 +20,13 @@ namespace Rpg.Networking
         private bool[] originalColliders;
         private Animator[] animators;
         private bool[] originalRootMotion;
+        private bool[] originalFireEvents;
         private AnimatorUpdateMode[] originalAnimatorMode;
         private bool suppressed;
         private bool retired;
         private RemotePlayerView display;
         public bool MovementHeld { get; private set; }
-        public bool IsBound => context != null && presentation != null && presentation.IsValid && presentation.View == transform && HasLiveLifetime;
+        public bool IsBound => this != null && context != null && presentation != null && presentation.IsValid && presentation.View == transform && HasLiveLifetime;
         private bool HasLiveLifetime
         {
             get
@@ -74,6 +75,8 @@ namespace Rpg.Networking
         private void OnEnable() => ApplyRuntimeRole();
         private void ApplyRuntimeRole()
         {
+            // An event invocation may already hold this managed delegate when Unity destroys the native component.
+            if (this == null) return;
             if (bodies == null)
             {
                 bodies = GetComponentsInChildren<Rigidbody2D>(true);
@@ -94,14 +97,16 @@ namespace Rpg.Networking
                 for (int i = 0; i < colliders.Length; i++) originalColliders[i] = colliders[i].enabled;
                 animators = GetComponentsInChildren<Animator>(true);
                 originalRootMotion = new bool[animators.Length];
+                originalFireEvents = new bool[animators.Length];
                 originalAnimatorMode = new AnimatorUpdateMode[animators.Length];
                 for (int i = 0; i < animators.Length; i++)
-                { originalRootMotion[i] = animators[i].applyRootMotion; originalAnimatorMode[i] = animators[i].updateMode; }
+                { originalRootMotion[i] = animators[i].applyRootMotion; originalFireEvents[i] = animators[i].fireEvents; originalAnimatorMode[i] = animators[i].updateMode; }
             }
             if (IsAuthoritative)
             {
                 if (display == null) display = GetComponent<RemotePlayerView>();
                 if (display != null) display.enabled = false;
+                foreach (Animator animator in animators) if (animator != null) animator.updateMode = AnimatorUpdateMode.UnscaledTime;
                 if (!suppressed) return;
                 for (int i = 0; i < bodies.Length; i++) if (bodies[i] != null)
                 {
@@ -111,7 +116,7 @@ namespace Rpg.Networking
                 }
                 for (int i = 0; i < colliders.Length; i++) if (colliders[i] != null) colliders[i].enabled = originalColliders[i];
                 for (int i = 0; i < animators.Length; i++) if (animators[i] != null)
-                { animators[i].applyRootMotion = originalRootMotion[i]; animators[i].updateMode = originalAnimatorMode[i]; }
+                { animators[i].applyRootMotion = originalRootMotion[i]; animators[i].fireEvents = originalFireEvents[i]; animators[i].updateMode = AnimatorUpdateMode.UnscaledTime; }
                 suppressed = false;
                 return;
             }
@@ -128,6 +133,7 @@ namespace Rpg.Networking
             {
                 if (animator == null) continue;
                 animator.applyRootMotion = false;
+                animator.fireEvents = false;
                 animator.updateMode = AnimatorUpdateMode.UnscaledTime;
             }
             // These own gameplay work. Presentation components and their animations remain enabled.
@@ -151,12 +157,14 @@ namespace Rpg.Networking
         {
             retired = true;
             Detach(); context = null; presentation = null;
+            if (this == null) return; // Managed unsubscribe still runs; destroyed objects have no physics to suppress.
             ApplyRuntimeRole(); // An expired network entity must not fall back to single-player simulation.
         }
         private void OnDestroy()
         {
             var owner = context;
-            int id = EntityId;
+            int id = presentation?.EntityId ?? 0; // Do not query native transform/lifetime during destruction.
+            retired = true;
             Detach(); context = null; presentation = null;
             if (id > 0) owner?.RemoveEntity(id);
         }

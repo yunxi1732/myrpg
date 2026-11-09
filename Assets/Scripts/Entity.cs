@@ -22,6 +22,7 @@ public class Entity : MonoBehaviour
 
     public Transform attackCheck;
     public float attackCheckRadius;
+    public LayerMask AttackBlockingLayers => whatIsGround;
 
     public int facingDir { get; private set; } = 1;
     protected bool facingRight = true;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Rpg.Networking.Protocol;
 
 namespace Rpg.Networking
 {
@@ -23,21 +24,25 @@ namespace Rpg.Networking
         public float FlaskFill { get; private set; }
         private readonly float[] skillFills = new float[5];
         private ulong healthTick, hudTick;
+        public long HealthVersion { get; private set; }
+        public ulong HealthAuthorityTick { get; private set; }
         private long healthSeq, hudSeq;
         private ulong positionTick;
         private long positionSeq;
         public event Action Changed;
 
         // Position has its own per-entity stream. No arrival time or local wall clock participates.
-        public bool ApplyPosition(string room, ulong authorityTick, long stateSeq, Vector2 position, bool reset = false)
+        public bool ApplyPosition(string room, ulong authorityTick, long stateSeq, Vector2 position, bool reset = false, int facingDir = 1,
+            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null)
         {
-            if (!IsValid || View == null || room != RoomSessionId || authorityTick == 0 || stateSeq <= positionSeq ||
+            if (!IsValid || View == null || room != RoomSessionId || authorityTick == 0 || stateSeq <= positionSeq || (facingDir != -1 && facingDir != 1) ||
+                !ProtocolCodec.IsValidMovementAnimation(movementState, yVelocity) ||
                 HasPosition && authorityTick < positionTick ||
                 float.IsNaN(position.x) || float.IsInfinity(position.x) || float.IsNaN(position.y) || float.IsInfinity(position.y)) return false;
             var display = View.GetComponent<RemotePlayerView>();
             if (display != null)
             {
-                if (!display.ApplyState(authorityTick, stateSeq, position, reset || !HasPosition)) return false;
+                if (!display.ApplyState(authorityTick, stateSeq, position, reset || !HasPosition, facingDir, movementState, yVelocity, monsterAttack)) return false;
             }
             else View.position = new Vector3(position.x, position.y, View.position.z);
             positionTick = authorityTick; positionSeq = stateSeq; HasPosition = true;
@@ -49,10 +54,30 @@ namespace Rpg.Networking
 
         public bool ApplyHealth(string room, ulong authorityTick, long stateSeq, int health, int maximum)
         {
-            if (!IsValid || room != RoomSessionId || maximum <= 0 || health < 0 || health > maximum ||
+            if (HealthVersion > 0 || !IsValid || room != RoomSessionId || maximum <= 0 || health < 0 || health > maximum ||
                 stateSeq <= healthSeq || HasHealth && authorityTick < healthTick) return false;
             healthTick = authorityTick; healthSeq = stateSeq;
             Health = health; MaxHealth = maximum; HasHealth = true;
+            NotifyChanged(); return true;
+        }
+
+        // Health versions belong to the target, independent of position/stateSeq and room result IDs.
+        // Baselines, damage and future healing/death results all pass through this same health gate.
+        public bool ApplyVersionedHealth(string room, ulong authorityTick, long version, int health, int maximum)
+        {
+            if (!IsValid || View == null || room != RoomSessionId || authorityTick == 0 || !ProtocolCodec.ValidHealth(health, maximum, version) ||
+                version < HealthVersion || authorityTick < HealthAuthorityTick) return false;
+            if (version == HealthVersion)
+            {
+                if (health != Health || maximum != MaxHealth) return false;
+                HealthAuthorityTick = authorityTick;
+                return true;
+            }
+            HealthVersion = version; HealthAuthorityTick = authorityTick;
+            Health = health; MaxHealth = maximum; HasHealth = true;
+            var stats = View.GetComponent<CharaterStats>();
+            if (stats != null && View.GetComponent<NetworkEntityIdentity>()?.Role == NetworkEntityRole.Display)
+                stats.ApplyConfirmedNetworkHealth(health, maximum, version);
             NotifyChanged(); return true;
         }
 

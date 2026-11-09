@@ -9,10 +9,24 @@ public class Skill : MonoBehaviour
     public float cooldownTimer;
 
     protected Player player;
+    public PlayerCombatContext Combat { get; private set; }
+
+    public void BindOwner(PlayerCombatContext context)
+    {
+        if (context == null || Combat != null && !ReferenceEquals(Combat, context))
+            throw new System.InvalidOperationException("A Skill cannot change combat owner.");
+        if (!context.Owner.CanUseLegacyActions)
+            throw new System.InvalidOperationException("Legacy skills are not network adapted yet.");
+        context.Skills.Bind(this);
+        Combat = context;
+        player = context.Owner;
+    }
 
     protected virtual void Start()
     {
-        player = PlayerManager.instance.player;
+        var manager = GetComponent<SkillManager>();
+        manager?.BindStandaloneOwner();
+        if (Combat == null) throw new System.InvalidOperationException("Bind a combat owner before starting a skill.");
 
         CheckUnlock();
     }

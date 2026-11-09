@@ -15,6 +15,7 @@ public class SkeletonIdleState : EnemyState
     {
         base.Enter();
         stateTimer = enemy.idleTime;
+        if (enemy.NetworkMovementOnly) enemy.SetVelocity(0, rb.velocity.y);
     }
 
     public override void Exit()
@@ -25,6 +26,11 @@ public class SkeletonIdleState : EnemyState
     public override void Update()
     {
         base.Update();
+        if (enemy.NetworkMovementOnly && enemy.SelectLivingTarget(true) != null)
+        {
+            stateMachine.ChangeState(enemy.battleState);
+            return;
+        }
         if (stateTimer < 0) stateMachine.ChangeState(enemy.moveState);
     }
 }

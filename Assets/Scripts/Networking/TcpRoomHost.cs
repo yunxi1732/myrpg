@@ -25,8 +25,19 @@ namespace Rpg.Networking
         public event Action<RoomExitEvent> RoomExited;
         public event Action SceneInitializationAllowed;
         public event Action<RoomPlayerIdentity, MovementInputDto> MovementInputReceived;
+        public event Action<RoomPlayerIdentity, JumpRequestDto> JumpRequested;
+        public event Action<RoomPlayerIdentity, DashRequestDto> DashRequested;
+        public event Action<RoomPlayerIdentity, PrimaryAttackRequestDto> PrimaryAttackRequested;
+        public long LastPrimaryAttackRequestSeq { get; private set; }
+        public event Action<RoomPlayerIdentity, LocalInputLockDto> InputLockReceived;
+        public long LastInputLockSeq { get; private set; }
+        public event Action<RoomPlayerIdentity, WallSlideInputDto> WallSlideInputReceived;
+        public long LastWallSlideInputSeq { get; private set; }
+        public long LastActionSeq { get; private set; }
         public long LastMovementInputSeq { get; private set; }
         private bool playerInitializationSent;
+        private bool monsterInitializationSent;
+        public AuthorityResultSequence Results { get; private set; }
         public long SceneLoadId { get; private set; }
         public bool LocalSceneReady { get; private set; }
         public bool GuestSceneReady { get; private set; }
@@ -56,6 +67,7 @@ namespace Rpg.Networking
             Port = ((IPEndPoint)listener.LocalEndpoint).Port;
             RejectedConnections = 0;
             RoomSessionId = Guid.NewGuid().ToString("N");
+            Results = new AuthorityResultSequence(RoomSessionId);
             nextPlayerId = nextEntityId = 0;
             HostIdentity = AllocateIdentity();
             GameSimulationClock.Acquire(this, true);
@@ -93,6 +105,46 @@ namespace Rpg.Networking
                     guestPeer = new RoomHandshakePeer(Guest);
                     guestPeer.Subscribe<HandshakeHelloDto>(value => AcceptHello((HandshakeHelloDto)value));
                     NetConnection boundGuest = Guest;
+                    guestPeer.Subscribe<PrimaryAttackRequestDto>(value =>
+                    {
+                        var request = (PrimaryAttackRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities ||
+                            !TryResolvePlayer(boundGuest, out var actor) || request.requestSeq <= LastPrimaryAttackRequestSeq) return;
+                        LastPrimaryAttackRequestSeq = request.requestSeq;
+                        PrimaryAttackRequested?.Invoke(actor, request);
+                    });
+                    guestPeer.Subscribe<LocalInputLockDto>(value =>
+                    {
+                        var inputLock = (LocalInputLockDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities ||
+                            !TryResolvePlayer(boundGuest, out var actor) || inputLock.lockSeq <= LastInputLockSeq) return;
+                        LastInputLockSeq = inputLock.lockSeq;
+                        InputLockReceived?.Invoke(actor, inputLock);
+                    });
+                    guestPeer.Subscribe<DashRequestDto>(value =>
+                    {
+                        var dash = (DashRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities ||
+                            !TryResolvePlayer(boundGuest, out var actor) || dash.actionSeq <= LastActionSeq) return;
+                        LastActionSeq = dash.actionSeq;
+                        DashRequested?.Invoke(actor, dash);
+                    });
+                    guestPeer.Subscribe<WallSlideInputDto>(value =>
+                    {
+                        var input = (WallSlideInputDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities ||
+                            !TryResolvePlayer(boundGuest, out var actor) || input.inputSeq <= LastWallSlideInputSeq) return;
+                        LastWallSlideInputSeq = input.inputSeq;
+                        WallSlideInputReceived?.Invoke(actor, input);
+                    });
+                    guestPeer.Subscribe<JumpRequestDto>(value =>
+                    {
+                        var jump = (JumpRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities ||
+                            !TryResolvePlayer(boundGuest, out var actor) || jump.actionSeq <= LastActionSeq) return;
+                        LastActionSeq = jump.actionSeq; // Ground rejection in gameplay still consumes this request.
+                        JumpRequested?.Invoke(actor, jump);
+                    });
                     guestPeer.Subscribe<MovementInputDto>(value =>
                     {
                         var movement = (MovementInputDto)value;
@@ -206,6 +258,7 @@ namespace Rpg.Networking
             SceneLoadId++;
             LocalSceneReady = GuestSceneReady = CanInitializeEntities = false;
             playerInitializationSent = false;
+            monsterInitializationSent = false;
             sceneDeadline = MonotonicClock.Now + 60;
             Guest.Send(new SceneLoadDto { roomSessionId = RoomSessionId, loadId = SceneLoadId, sceneName = RoomScene.Name }, true);
         }
@@ -238,6 +291,44 @@ namespace Rpg.Networking
             playerInitializationSent = true;
         }
 
+        public int AllocateSceneEntityId()
+        {
+            if (!IsListening) throw new InvalidOperationException("A room is required to allocate an entity ID.");
+            return checked(++nextEntityId);
+        }
+
+        public void SendMonsterInitialization(MonsterInitializationDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!CanInitializeEntities || !playerInitializationSent || Guest == null || value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId)
+                throw new InvalidOperationException("Initialize the room players before the monster manifest.");
+            foreach (var monster in value.monsters)
+                if (monster.entityId == HostIdentity.EntityId || monster.entityId == GuestIdentity.EntityId)
+                    throw new InvalidDataException("Monster ID collides with a player ID.");
+            Guest.Send(value, true);
+            monsterInitializationSent = true;
+        }
+
+        public bool SendDamageResult(DamageResultDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!IsListening || !CanInitializeEntities || !playerInitializationSent || !monsterInitializationSent ||
+                value.roomSessionId != RoomSessionId || Results == null || value.resultId > Results.LastAllocated || Guest == null || !Guest.IsOpen) return false;
+            try { Guest.Send(value, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
+        public bool SendMonsterStates(MonsterStatesDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!CanInitializeEntities || !playerInitializationSent || Guest == null || !Guest.IsOpen ||
+                value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId) return false;
+            try { Guest.Send(value, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
         public bool SendPlayerPositions(PlayerPositionsDto value)
         {
             ProtocolCodec.ValidateMessage(value, true);
@@ -256,8 +347,13 @@ namespace Rpg.Networking
 
         private void DropGuest()
         {
+            monsterInitializationSent = false;
             var previous = guestPeer;
             LastMovementInputSeq = 0;
+            LastWallSlideInputSeq = 0;
+            LastActionSeq = 0;
+            LastPrimaryAttackRequestSeq = 0;
+            LastInputLockSeq = 0;
             playerInitializationSent = false;
             GuestSceneReady = CanInitializeEntities = false;
             guestPeer = null;
@@ -290,6 +386,7 @@ namespace Rpg.Networking
         // Resource cleanup without a notice: used by error paths and low-level verification.
         public void StopListening()
         {
+            Results?.Dispose(); Results = null;
             bool changed = listener != null || Guest != null;
             TcpListener previous = listener;
             listener = null;
@@ -311,7 +408,7 @@ namespace Rpg.Networking
         {
             if (disposed) return;
             try { CloseRoom(); }
-            finally { disposed = true; StateChanged = null; Disconnected = null; RoomExited = null; SceneInitializationAllowed = null; MovementInputReceived = null; }
+            finally { disposed = true; StateChanged = null; Disconnected = null; RoomExited = null; SceneInitializationAllowed = null; MovementInputReceived = null; JumpRequested = null; WallSlideInputReceived = null; DashRequested = null; InputLockReceived = null; PrimaryAttackRequested = null; }
         }
     }
 }

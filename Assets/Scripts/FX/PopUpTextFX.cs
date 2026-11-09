@@ -65,13 +65,13 @@ public class PopUpTextFX : MonoBehaviour, ITemporaryEffectPlayback
     private void Update()
     {
         // Pausing must not advance or complete this game-time playback.
-        if (!IsPlaying || Time.deltaTime <= 0f) return;
-        transform.position = Vector2.MoveTowards(transform.position, new Vector2(transform.position.x, transform.position.y + 1), currentSpeed * Time.deltaTime);
-        textTimer -= Time.deltaTime;
+        if (!IsPlaying || GameSimulationClock.DeltaTime <= 0f) return;
+        transform.position = Vector2.MoveTowards(transform.position, new Vector2(transform.position.x, transform.position.y + 1), currentSpeed * GameSimulationClock.DeltaTime);
+        textTimer -= GameSimulationClock.DeltaTime;
 
         if (textTimer < 0)
         {
-            float a = myText.color.a - colorDesSpeed * Time.deltaTime;
+            float a = myText.color.a - colorDesSpeed * GameSimulationClock.DeltaTime;
             myText.color = new Color(myText.color.r, myText.color.g, myText.color.b, a);
             // Preserve the recorded baseline; any threshold correction is a separate change.
             if (myText.color.a < 50)

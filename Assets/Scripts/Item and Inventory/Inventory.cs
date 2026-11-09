@@ -20,6 +20,20 @@ public class Inventory : MonoBehaviour, ISaveManager
     public InventoryModel Model { get; private set; }
     private Architecture inventoryArchitecture;
     private InventorySystem inventorySystem;
+    private Player combatOwner;
+    public void BindOwner(Player owner)
+    {
+        if (owner == null || combatOwner != null && combatOwner != owner)
+            throw new System.InvalidOperationException("Inventory cannot change combat owner.");
+        owner.Combat.BindLegacyInventory(this);
+        combatOwner = owner;
+        inventorySystem.BindOwner(owner.Combat);
+    }
+
+    private void BindStandaloneOwner()
+    {
+        if (combatOwner == null && PlayerManager.instance != null) BindOwner(PlayerManager.instance.player);
+    }
     public bool IsInitialized { get; private set; }
     private bool receivedLoadData;
 
@@ -138,6 +152,7 @@ public class Inventory : MonoBehaviour, ISaveManager
     public void EquipItem(ItemData _item)
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
+        BindStandaloneOwner();
         int capacity = inventoryView == null ? 0 : inventoryView.InventoryCapacity;
         if (!inventorySystem.EquipItem(_item, capacity) && inventoryView != null)
             Debug.Log("no more space");
@@ -146,6 +161,7 @@ public class Inventory : MonoBehaviour, ISaveManager
     public void UnequipItem(ItemData_Equipment itemToRemove)
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
+        BindStandaloneOwner();
         inventorySystem.UnequipItem(itemToRemove);
         NotifyInventoryChanged();
     }

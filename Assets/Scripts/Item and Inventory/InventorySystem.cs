@@ -4,6 +4,13 @@ using System.Collections.Generic;
 public sealed class InventorySystem : ISystem
 {
     private readonly InventoryModel model;
+    private PlayerCombatContext combat;
+    public void BindOwner(PlayerCombatContext owner)
+    {
+        if (owner == null || combat != null && !ReferenceEquals(combat, owner))
+            throw new System.InvalidOperationException("Inventory cannot change combat owner.");
+        combat = owner;
+    }
     private float flaskReadyAt = float.NegativeInfinity;
     private float lastTimeUsedArmor;
     private float armorCooldown;
@@ -92,6 +99,7 @@ public sealed class InventorySystem : ISystem
     // Returns whether returning the old equipment succeeded (same capacity rule as AddItem).
     public bool EquipItem(ItemData item, int capacity)
     {
+        if (combat == null) throw new System.InvalidOperationException("Bind inventory combat owner first.");
         var newEquipment = item as ItemData_Equipment;
         var newItem = new InventoryItem(newEquipment);
         ItemData_Equipment oldEquipment = null;
@@ -110,18 +118,19 @@ public sealed class InventorySystem : ISystem
 
         model.Equipment.Add(newItem);
         model.EquipmentDictionary.Add(newEquipment, newItem);
-        newEquipment.AddModifiers();
+        newEquipment.AddModifiers(combat.Stats);
         RemoveItem(item);
         return returnedOldEquipment;
     }
 
     public void UnequipItem(ItemData_Equipment itemToRemove)
     {
+        if (combat == null) throw new System.InvalidOperationException("Bind inventory combat owner first.");
         if (model.EquipmentDictionary.TryGetValue(itemToRemove, out InventoryItem item))
         {
             model.Equipment.Remove(item);
             model.EquipmentDictionary.Remove(itemToRemove);
-            itemToRemove.RemoveModifiers();
+            itemToRemove.RemoveModifiers(combat.Stats);
         }
     }
 

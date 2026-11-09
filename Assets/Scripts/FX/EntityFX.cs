@@ -3,9 +3,48 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
 using TMPro;
+using Action = System.Action;
 
 public class EntityFX : MonoBehaviour
 {
+    private readonly List<Coroutine> colorRoutines = new List<Coroutine>();
+
+    private void StartColorEffect(Action pulse, string legacyMethod, float interval, float duration = -1)
+    {
+        if (!GameSimulationClock.IsNetwork)
+        {
+            InvokeRepeating(legacyMethod, 0, interval);
+            if (duration >= 0) Invoke(nameof(CancelColorChange), duration);
+            return;
+        }
+        colorRoutines.Add(StartCoroutine(PulseColor(pulse, interval)));
+        if (duration >= 0) colorRoutines.Add(StartCoroutine(EndColorAfter(duration)));
+    }
+
+    private IEnumerator PulseColor(Action pulse, float interval)
+    {
+        while (true) { pulse(); yield return GameSimulationClock.Wait(interval); }
+    }
+
+    private IEnumerator EndColorAfter(float duration)
+    {
+        yield return GameSimulationClock.Wait(duration);
+        CancelColorChange();
+    }
+
+    public void BeginStunBlink() => StartColorEffect(RedColorBlink, nameof(RedColorBlink), 0.1f);
+    public void EndStunBlink()
+    {
+        if (GameSimulationClock.IsNetwork) CancelColorChange();
+        else Invoke(nameof(CancelColorChange), 0);
+    }
+
+    protected virtual void OnDisable()
+    {
+        foreach (Coroutine routine in colorRoutines) if (routine != null) StopCoroutine(routine);
+        colorRoutines.Clear();
+        CancelInvoke();
+    }
     protected SpriteRenderer sr;
     protected Player player;
 
@@ -58,7 +97,7 @@ public class EntityFX : MonoBehaviour
         sr.material = hitMat;
         Color currentColor = sr.color;
         sr.color = Color.white;
-        yield return new WaitForSeconds(.2f);
+        yield return GameSimulationClock.Wait(.2f);
 
         sr.color = currentColor;
         sr.material = originalMat;
@@ -73,6 +112,8 @@ public class EntityFX : MonoBehaviour
     }
     private void CancelColorChange()
     {
+        foreach (Coroutine routine in colorRoutines) if (routine != null) StopCoroutine(routine);
+        colorRoutines.Clear();
         CancelInvoke();
         sr.color = Color.white;
 
@@ -84,8 +125,7 @@ public class EntityFX : MonoBehaviour
     public void ChillFxFor(float _seconds)
     {
         chillFX.Play();
-        InvokeRepeating("ChillColorFx", 0, 0.3f);
-        Invoke("CancelColorChange", _seconds);
+        StartColorEffect(ChillColorFx, nameof(ChillColorFx), 0.3f, _seconds);
     }
 
     private void ChillColorFx()
@@ -98,8 +138,7 @@ public class EntityFX : MonoBehaviour
     public void IgniteFxFor(float _seconds)
     {
         igniteFX.Play();
-        InvokeRepeating("IgniteColorFx", 0, 0.3f);
-        Invoke("CancelColorChange", _seconds);
+        StartColorEffect(IgniteColorFx, nameof(IgniteColorFx), 0.3f, _seconds);
     }
 
     private void IgniteColorFx()
@@ -112,8 +151,7 @@ public class EntityFX : MonoBehaviour
     public void ShockFxFor(float _seconds)
     {
         shockFX.Play();
-        InvokeRepeating("ShockColorFx", 0, 0.3f);
-        Invoke("CancelColorChange", _seconds);
+        StartColorEffect(ShockColorFx, nameof(ShockColorFx), 0.3f, _seconds);
     }
 
     private void ShockColorFx()

@@ -121,9 +121,9 @@ public sealed class DialogueView : MonoBehaviour
             Close();
             return;
         }
-        if (GameplayControlLock.Acquire(this) && Application.isPlaying && PlayerManager.instance != null)
+        if (GameplayControlLock.Acquire(this) && !GameSimulationClock.IsNetwork && Application.isPlaying && PlayerManager.instance != null)
             PlayerManager.instance.player?.CancelSwordAimForControlLock();
-        if (Application.isPlaying && isActiveAndEnabled && pauseManager == null && GameManager.instance != null)
+        if (!GameSimulationClock.IsNetwork && Application.isPlaying && isActiveAndEnabled && pauseManager == null && GameManager.instance != null)
         {
             pauseManager = GameManager.instance;
             pauseManager.SetPauseOwner(this, true);

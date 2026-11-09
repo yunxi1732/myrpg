@@ -67,6 +67,6 @@ public class ParrySkill : Skill
     public void MakeMirageOnParry(Transform _respawnTransform)
     {
         if (parryWithMirageUnlocked)
-            SkillManager.instance.clone.CreateCloneWithDelay(_respawnTransform);
+            player.skill.clone.CreateCloneWithDelay(_respawnTransform);
     }
 }

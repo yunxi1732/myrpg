@@ -49,15 +49,27 @@ namespace Rpg.Networking
         public event Action SceneInitializationAllowed;
         public event Action<PlayerInitializationDto> PlayerInitializationReceived;
         public event Action<PlayerPositionsDto> PlayerPositionsReceived;
+        public event Action<MonsterInitializationDto> MonsterInitializationReceived;
+        public event Action<MonsterStatesDto> MonsterStatesReceived;
+        public event Action<DamageResultDto> DamageResultReceived;
+        private long lastMonsterSeq;
+        private ulong lastMonsterTick;
         private long lastPlayerInitializationSeq;
         private ulong lastPlayerInitializationTick;
         private readonly MovementInputSender movementSender = new MovementInputSender();
+        // Reuse the current-state timer for a binary (0/1) channel, encoded only as WallSlideInputDto on the wire.
+        private readonly MovementInputSender wallSlideSender = new MovementInputSender();
         public int MovementMinimumIntervalMilliseconds
         {
             get => movementSender.MinimumIntervalMilliseconds;
-            set => movementSender.MinimumIntervalMilliseconds = value;
+            set { movementSender.MinimumIntervalMilliseconds = value; wallSlideSender.MinimumIntervalMilliseconds = value; }
         }
         public long SentMovementInputSeq => movementSender.SentSequence;
+        public long LastSentActionSeq { get; private set; }
+        public long LastSentPrimaryAttackRequestSeq { get; private set; }
+        private long inputLockSeq;
+        private bool? sentInputLock;
+        public void RequestMovementStop() { movementSender.RequestStop(); wallSlideSender.RequestStop(); }
         public long SceneLoadId { get; private set; }
         public bool LocalSceneReady { get; private set; }
         public bool CanInitializeEntities { get; private set; }
@@ -147,6 +159,7 @@ namespace Rpg.Networking
                         SceneLoadId = load.loadId;
                         lastPlayerInitializationSeq = 0;
                         lastPlayerInitializationTick = 0;
+                        lastMonsterSeq = 0; lastMonsterTick = 0;
                         LocalSceneReady = CanInitializeEntities = false;
                         SceneLoadRequested?.Invoke(load);
                     });
@@ -185,6 +198,32 @@ namespace Rpg.Networking
                         lastPlayerInitializationSeq = initialization.stateSeq;
                         lastPlayerInitializationTick = initialization.authorityTick;
                         PlayerInitializationReceived?.Invoke(initialization);
+                    });
+                    handshakePeer.Subscribe<MonsterInitializationDto>(value =>
+                    {
+                        var monsters = (MonsterInitializationDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || monsters.roomSessionId != RoomSessionId || monsters.loadId != SceneLoadId ||
+                            monsters.stateSeq <= lastMonsterSeq || monsters.authorityTick < lastMonsterTick) return;
+                        foreach (var monster in monsters.monsters)
+                            if (monster.entityId == HostIdentity.EntityId || monster.entityId == LocalIdentity.EntityId)
+                                throw new InvalidDataException("Monster ID collides with admission identity.");
+                        lastMonsterSeq = monsters.stateSeq; lastMonsterTick = monsters.authorityTick;
+                        MonsterInitializationReceived?.Invoke(monsters);
+                    });
+                    handshakePeer.Subscribe<DamageResultDto>(value =>
+                    {
+                        var damage = (DamageResultDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || lastMonsterSeq == 0 || damage.roomSessionId != RoomSessionId) return;
+                        DamageResultReceived?.Invoke(damage); // No global maximum ID filter; room result receipts decide equality.
+                    });
+                    handshakePeer.Subscribe<MonsterStatesDto>(value =>
+                    {
+                        var states = (MonsterStatesDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastMonsterSeq == 0 || states.roomSessionId != RoomSessionId || states.loadId != SceneLoadId) return;
+                        MonsterStatesReceived?.Invoke(states); // Per-monster position streams handle tick/sequence freshness.
                     });
                     handshakePeer.Subscribe<PlayerPositionsDto>(value =>
                     {
@@ -292,8 +331,13 @@ namespace Rpg.Networking
             SceneLoadId = 0;
             lastPlayerInitializationSeq = 0;
             lastPlayerInitializationTick = 0;
+            lastMonsterSeq = 0; lastMonsterTick = 0;
             LocalSceneReady = CanInitializeEntities = false;
             movementSender.Reset();
+            wallSlideSender.Reset();
+            LastSentActionSeq = 0;
+            LastSentPrimaryAttackRequestSeq = 0;
+            inputLockSeq = 0; sentInputLock = null;
             FailureMessage = null;
             State = RoomConnectionState.Idle;
             GameSimulationClock.Release(this);
@@ -320,6 +364,80 @@ namespace Rpg.Networking
                 // Transport failure closes NetConnection; the existing peer update performs normal disconnect cleanup.
                 return false;
             }
+        }
+
+        public bool SendWallSlideInput(bool slideDown)
+        {
+            if (State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try
+            {
+                return wallSlideSender.TrySend(slideDown ? 1 : 0, MonotonicClock.Now, state =>
+                    Connection.Send(new WallSlideInputDto { inputSeq = state.inputSeq, slideDown = state.currentAxis > 0 }, true));
+            }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
+        public bool SendPrimaryAttackRequest(long requestSeq)
+        {
+            if (requestSeq <= 0 || requestSeq <= LastSentPrimaryAttackRequestSeq || State != RoomConnectionState.Connected ||
+                !CanInitializeEntities || lastPlayerInitializationSeq == 0 || LocalIdentity == null ||
+                Connection == null || !Connection.IsOpen) return false;
+            try
+            {
+                Connection.Send(new PrimaryAttackRequestDto { requestSeq = requestSeq }, true);
+                LastSentPrimaryAttackRequestSeq = requestSeq;
+                return true;
+            }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
+        public bool SendJumpRequest(long actionSeq)
+        {
+            if (actionSeq <= 0 || actionSeq <= LastSentActionSeq || State != RoomConnectionState.Connected ||
+                !CanInitializeEntities || lastPlayerInitializationSeq == 0 || LocalIdentity == null ||
+                Connection == null || !Connection.IsOpen) return false;
+            try
+            {
+                Connection.Send(new JumpRequestDto { actionSeq = actionSeq }, true);
+                LastSentActionSeq = actionSeq;
+                return true;
+            }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
+        public bool SendLocalInputLock(bool locked)
+        {
+            if (locked && sentInputLock != true) RequestMovementStop();
+            if (State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                Connection == null || !Connection.IsOpen) return false;
+            if (sentInputLock == locked) return true;
+            try
+            {
+                Connection.Send(new LocalInputLockDto { lockSeq = checked(inputLockSeq + 1), locked = locked }, true);
+                inputLockSeq++; sentInputLock = locked;
+                return true;
+            }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
+        public bool SendDashRequest(long actionSeq, float axis)
+        {
+            if (actionSeq <= 0 || actionSeq <= LastSentActionSeq || !ProtocolCodec.IsValidMovementAxis(axis) ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try
+            {
+                Connection.Send(new DashRequestDto { actionSeq = actionSeq, currentAxis = axis }, true);
+                LastSentActionSeq = actionSeq;
+                return true;
+            }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
         public void ReportSceneFailure()
@@ -359,6 +477,9 @@ namespace Rpg.Networking
             SceneInitializationAllowed = null;
             PlayerInitializationReceived = null;
             PlayerPositionsReceived = null;
+            MonsterInitializationReceived = null;
+            MonsterStatesReceived = null;
+            DamageResultReceived = null;
         }
     }
 }

@@ -28,7 +28,7 @@ public class PlayerFX : EntityFX
 
     private void Update()
     {
-        afterImageTimer -= Time.deltaTime;
+        afterImageTimer -= GameSimulationClock.DeltaTime;
     }
 
     public void ScreenShake(Vector3 _p)

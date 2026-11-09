@@ -88,8 +88,8 @@ public class CloneSkill : Skill
     {
         if (crystalInsteadOfClone)
         {
-            SkillManager.instance.crystal.CreateCrystal();
-            SkillManager.instance.crystal.CurrentCrystalChooseRandomEnemy();
+            player.skill.crystal.CreateCrystal();
+            player.skill.crystal.CurrentCrystalChooseRandomEnemy();
             return;
         }
 

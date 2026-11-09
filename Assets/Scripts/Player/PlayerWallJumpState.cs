@@ -12,6 +12,7 @@ public class PlayerWallJumpState : PlayerState
     {
         base.Enter();
         stateTimer = 0.2f;
+        // A's validated wall-facing direction determines the impulse; SetVelocity also performs the original root flip.
         player.SetVelocity(-2 * player.facingDir, player.jumpForce);
     }
 
@@ -23,7 +24,16 @@ public class PlayerWallJumpState : PlayerState
     public override void Update()
     {
         base.Update();
-        if (stateTimer < 0) stateMachine.ChangeState(player.airState);
-        if (player.IsGroundDetected()) stateMachine.ChangeState(player.idleState);
+        // This state deliberately does not apply xInput/yInput: its original 0.2s movement restriction remains in force.
+        if (player.IsGroundDetected())
+        {
+            stateMachine.ChangeState(player.idleState);
+            return;
+        }
+        if (stateTimer < 0)
+        {
+            stateMachine.ChangeState(player.airState);
+            return;
+        }
     }
 }

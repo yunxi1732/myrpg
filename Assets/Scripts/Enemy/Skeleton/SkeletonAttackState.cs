@@ -14,7 +14,12 @@ public class SkeletonAttackState : EnemyState
     public override void Enter()
     {
         base.Enter();
-
+        if (enemy.NetworkMovementOnly)
+        {
+            enemy.anim.SetBool("Idle", false);
+            enemy.BeginNetworkAttack();
+            return;
+        }
         AudioManager.instance.PlaySFX(17, enemy.transform);
     }
 
@@ -28,6 +33,14 @@ public class SkeletonAttackState : EnemyState
     {
         base.Update();
         enemy.SetVelocity(0, 0);
+        if (enemy.NetworkMovementOnly)
+        {
+            var attack = enemy.NetworkAttack;
+            if (attack != null) enemy.FlipController(attack.facingDir);
+            if (attack != null && GameSimulationClock.AuthorityTick - attack.startTick >= (ulong)attack.durationTicks)
+                stateMachine.ChangeState(enemy.battleState);
+            return;
+        }
         if (triggerCalled) stateMachine.ChangeState(enemy.battleState);
     }
 }

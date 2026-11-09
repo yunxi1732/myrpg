@@ -6,10 +6,26 @@ using Rpg.Networking;
 public class PlayerStats : CharaterStats
 {
     public Player player;
+    private bool independentStats;
+    public PlayerCombatContext Combat => GetComponent<Player>().Combat;
+
+    internal void EnsureIndependentStats()
+    {
+        if (independentStats) return;
+        strength = (strength ?? new Stat()).Copy(); agility = (agility ?? new Stat()).Copy();
+        intelligence = (intelligence ?? new Stat()).Copy(); vitality = (vitality ?? new Stat()).Copy();
+        damage = (damage ?? new Stat()).Copy(); critChance = (critChance ?? new Stat()).Copy();
+        critPower = (critPower ?? new Stat()).Copy(); maxHealth = (maxHealth ?? new Stat()).Copy();
+        armor = (armor ?? new Stat()).Copy(); evasion = (evasion ?? new Stat()).Copy();
+        magicResistance = (magicResistance ?? new Stat()).Copy(); fireDamage = (fireDamage ?? new Stat()).Copy();
+        iceDamage = (iceDamage ?? new Stat()).Copy(); lightningDamage = (lightningDamage ?? new Stat()).Copy();
+        independentStats = true;
+    }
 
     protected override void Start()
     {
         player = GetComponent<Player>();
+        EnsureIndependentStats();
         base.Start();
     }
 
@@ -42,7 +58,7 @@ public class PlayerStats : CharaterStats
             player.fx.ScreenShake(player.fx.shakeHighDamage);
             Debug.Log("high damage taken");
         }
-        ItemData_Equipment currentArmor = Inventory.instance.GetEquipment(EquipmentType.Armor);
+        ItemData_Equipment currentArmor = Combat.GetEquipment(EquipmentType.Armor);
         if (currentArmor != null)
             currentArmor.Effect(player.transform);
     }

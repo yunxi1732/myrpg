@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using Cinemachine;
 using Rpg.Networking;
+using Rpg.Networking.Protocol;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -102,6 +103,7 @@ public static class NetworkPresentationVerification
             string room = host.RoomSessionId;
             a = new RoomPresentationContext(room, host.HostIdentity.PlayerId, false, host.HostIdentity, host.GuestIdentity);
             b = new RoomPresentationContext(room, client.LocalIdentity.PlayerId, true, client.HostIdentity, client.LocalIdentity);
+            VerifySceneMonsterBindings(preview, a, b);
             Transform first = MakeView(preview, "A display fixture", template, new Vector3(-8, 2));
             Transform second = MakeView(preview, "B display fixture", template, new Vector3(8, 2));
             AddRuntimeFixture(first); AddRuntimeFixture(second);
@@ -134,18 +136,29 @@ public static class NetworkPresentationVerification
                 "Existing lens and damping retained");
             Require(!local.ApplyHealth("old-room", 11, 2, 1, 150) && !local.ApplyHealth(room, 9, 2, 1, 150) && !local.ApplyHealth(room, 11, 1, 1, 150),
                 "Wrong session, older tick and duplicate sequence cannot overwrite");
-            Require(local.ApplyPosition(room, 10, 100, new Vector2(1, 2)) &&
+            var mount = new GameObject("Facing attachment fixture").transform;
+            mount.SetParent(second, false); mount.localPosition = Vector3.right;
+            var displayPlayer = second.GetComponent<Player>();
+            int flips = 0;
+            displayPlayer.OnFlipped += () => flips++;
+            Require(local.ApplyPosition(room, 10, 100, new Vector2(1, 2), true, -1) &&
                 remote.ApplyPosition(room, 10, 1, new Vector2(-1, 2)), "Position sequence is tracked separately per entity");
+            Require(displayPlayer.facingDir == -1 && mount.position.x < second.position.x && flips == 1,
+                "Birth uses the RPG root flip so child attachments face left together");
             Require(!local.ApplyPosition("old-room", 11, 101, Vector2.zero) &&
                 !local.ApplyPosition(room, 9, 101, Vector2.zero) &&
                 !local.ApplyPosition(room, 11, 100, Vector2.zero) && second.position.x == 1 && second.position.y == 2,
                 "Wrong session, older tick and repeated position sequence never rewind a display");
-            Require(local.ApplyPosition(room, 10, 101, new Vector2(3, 4)), "A newer sequence may correct the same authority tick");
+            Require(local.ApplyPosition(room, 10, 101, new Vector2(3, 4), false, -1), "A newer sequence may correct the same authority tick");
             second.GetComponent<RemotePlayerView>().AdvanceDisplay(GameSimulationClock.FixedDeltaTime * 5);
             Require(second.position.x == 3 && second.position.y == 4, "Same-tick correction is displayed on its authority timeline");
+            Require(flips == 1 && displayPlayer.facingDir == -1 &&
+                !local.ApplyPosition(room, 10, 101, Vector2.zero, false, 1), "Repeated facing never toggles the root or overrides with stale state");
             Require(local.ApplyPosition(room, 15, 102, new Vector2(4, 4), true) &&
                 second.position.x == 4 && second.GetComponent<RemotePlayerView>().BufferedStateCount == 1,
                 "Reinitialization clears the old path and places the display immediately");
+            Require(displayPlayer.facingDir == 1 && mount.position.x > second.position.x && flips == 2,
+                "Reinitialization restores facing and attachments using the same flip entry");
             second.GetComponent<RemotePlayerView>().TeleportDistance = 2;
             Require(local.ApplyPosition(room, 20, 103, new Vector2(10, 4)) && second.position.x == 10 &&
                 second.GetComponent<RemotePlayerView>().BufferedStateCount == 1, "Configured large-jump threshold clears the buffer and snaps");
@@ -158,6 +171,7 @@ public static class NetworkPresentationVerification
             AddRuntimeFixture(authorityGuest);
             a.RegisterEntity(host.GuestIdentity.EntityId, host.GuestIdentity.PlayerId, authorityGuest);
             VerifyRoleMatrix(ownView, authorityGuest, first, second);
+            VerifyLivingPlayerTargets(preview, a, ownView, authorityGuest, second);
             VerifyReusablePhysicsRole(preview, a, b);
             a.RemoveRemotePlayers();
             Require(ReferenceEquals(a.LocalEntity, ownA), "Guest departure preserves A local binding");
@@ -249,7 +263,8 @@ public static class NetworkPresentationVerification
         var body = view.GetComponent<Rigidbody2D>();
         Require(identity.Role == NetworkEntityRole.Display && !player.IsAuthoritative && !body.simulated && body.velocity == Vector2.zero &&
             body.gravityScale == 0 && body.interpolation == RigidbodyInterpolation2D.None && !view.GetComponent<Collider2D>().enabled &&
-            !view.GetComponentInChildren<Animator>().applyRootMotion, "Display has animation but no local physics, gravity, colliders or root motion");
+            !view.GetComponentInChildren<Animator>().applyRootMotion && !view.GetComponentInChildren<Animator>().fireEvents,
+            "Display has animation but no local physics, gravity, colliders, root motion or animation events");
         foreach (Collider2D collider in view.GetComponentsInChildren<Collider2D>(true))
             Require(!collider.enabled, "Display child/static trigger colliders are also excluded from gameplay physics");
         stats.currentHealth = 87;
@@ -257,6 +272,8 @@ public static class NetworkPresentationVerification
         InvokeManagedMethod(player, "Start"); InvokeManagedMethod(stats, "Start");
         InvokeManagedMethod(player, "Update"); InvokeManagedMethod(stats, "Update");
         player.SetVelocity(100, 100); player.CheckForDashInput(); player.SlowEntityBy(.5f, 1);
+        Require(!player.TryQueueNetworkJump(1), "B display cannot execute a jump request or run local jump physics");
+        Require(!player.TryQueueNetworkDash(2, 1), "B display cannot execute a dash or start an authority cooldown");
         player.Die(); player.DamageImpact(); player.AnimationTrigger();
         Require(!player.BusyFor(1).MoveNext() && player.stateMachine?.currentState == null && body.velocity == Vector2.zero,
             "Display never enters or advances the legacy player state machine");
@@ -265,6 +282,7 @@ public static class NetworkPresentationVerification
         machine.Initialize(forbiddenState); machine.ChangeState(forbiddenState);
         Require(machine.currentState == null, "Direct state transitions cannot start display gameplay");
         var callbacks = view.GetComponentInChildren<PlayerAnimationTriggers>();
+        InvokeManagedMethod(callbacks, "AnimationTrigger");
         InvokeManagedMethod(callbacks, "AttackTrigger"); InvokeManagedMethod(callbacks, "ThrowSword");
         stats.TakeDamage(100); stats.DecreaseHealthBy(100); stats.IncreaseHealthBy(100);
         stats.ApplyAilments(true, true, true); stats.KillEntity(); stats.DoDamage(stats); stats.CloneDoDamage(stats, 2);
@@ -301,6 +319,8 @@ public static class NetworkPresentationVerification
         Require(a.GetComponent<Rigidbody2D>().gravityScale == 3 && aGuest.GetComponent<Rigidbody2D>().gravityScale == 3 &&
             a.GetComponent<Rigidbody2D>().interpolation == RigidbodyInterpolation2D.Interpolate,
             "Authority preserves the existing gravity and Rigidbody2D configuration");
+        Require(a.GetComponentInChildren<Animator>().fireEvents && aGuest.GetComponentInChildren<Animator>().fireEvents,
+            "A keeps authoritative animation events; only B suppresses playback callbacks");
         var localPlayer = a.GetComponent<Player>();
         var guestPlayer = aGuest.GetComponent<Player>();
         // Invoking virtual Entity.Start on Player would dispatch to Player.Start without Awake.
@@ -317,6 +337,127 @@ public static class NetworkPresentationVerification
         target.currentHealth = 83;
         source.DoDamage(target); source.CloneDoDamage(target, 2); source.DoMagicalDamage(target);
         Require(target.currentHealth == 83 && !EntityRuntimePermissions.CanDamage(source, target), "Network players cannot damage each other");
+    }
+
+    private static void VerifyLivingPlayerTargets(Scene scene, RoomPresentationContext authority, Transform hostView, Transform guestView, Transform displayView)
+    {
+        var hostPlayer = hostView.GetComponent<Player>();
+        var guestPlayer = guestView.GetComponent<Player>();
+        var displayPlayer = displayView.GetComponent<Player>();
+        var statsSetter = typeof(Entity).GetProperty(nameof(Entity.stats)).GetSetMethod(true);
+        var deadSetter = typeof(CharaterStats).GetProperty(nameof(CharaterStats.isDead)).GetSetMethod(true);
+        foreach (var player in new[] { hostPlayer, guestPlayer, displayPlayer })
+        {
+            var stats = player.GetComponent<PlayerStats>();
+            statsSetter.Invoke(player, new object[] { stats });
+            stats.currentHealth = 100;
+            deadSetter.Invoke(stats, new object[] { false });
+        }
+        var enemy = MakeMonsterFixture(scene);
+        authority.RegisterEntity(2001, 0, enemy.transform);
+        var candidates = new[] { guestPlayer, displayPlayer, hostPlayer };
+        enemy.ConfigureNetworkMovement(() => candidates);
+        hostView.position = Vector3.left; guestView.position = Vector3.right;
+        displayView.position = Vector3.zero;
+        Require(enemy.SelectLivingTarget(true) == hostView,
+            "Equal 2D distances choose the smaller room playerId even with reversed candidates and a closer display");
+        candidates = new[] { hostPlayer, guestPlayer, displayPlayer };
+        Require(enemy.SelectLivingTarget(true) == hostView, "Candidate enumeration order cannot change a tied target");
+        guestView.position = Vector3.right * .5f;
+        Require(enemy.SelectLivingTarget(true) == guestView, "A closer living guest replaces a still-living host target");
+        deadSetter.Invoke(guestPlayer.stats, new object[] { true });
+        Require(!enemy.IsValidLivingTarget(guestView) && enemy.SelectLivingTarget(true) == hostView,
+            "Dead players cannot remain targets even with positive health");
+        deadSetter.Invoke(guestPlayer.stats, new object[] { false }); guestPlayer.stats.currentHealth = 0;
+        Require(enemy.SelectLivingTarget(true) == hostView, "Zero-health players are excluded before a death flag arrives");
+        guestPlayer.stats.currentHealth = 100; guestView.gameObject.SetActive(false);
+        Require(enemy.SelectLivingTarget(true) == hostView, "Disabled players are excluded");
+        guestView.gameObject.SetActive(true);
+        candidates = new[] { hostPlayer, displayPlayer };
+        Require(!enemy.IsValidLivingTarget(guestView) && enemy.SelectLivingTarget(true) == hostView,
+            "A removed room player is invalid even while its GameObject still exists");
+        candidates = new[] { displayPlayer };
+        Require(enemy.SelectLivingTarget(true) == null, "No living authority candidates means no target");
+    }
+
+    private static void VerifySceneMonsterBindings(Scene scene, RoomPresentationContext authority, RoomPresentationContext display)
+    {
+        MakeMonsterFixture(scene); MakeMonsterFixture(scene);
+        var aEntries = RoomSceneMonsters.Discover(scene);
+        var again = RoomSceneMonsters.Discover(scene);
+        Require(aEntries.Length == 2 && aEntries[0].Key != aEntries[1].Key && aEntries[0].Key == again[0].Key,
+            "Duplicate scene monster names have unique deterministic hierarchy keys");
+        foreach (var entry in aEntries) entry.Active = true; // Simulate the authored active flag captured before scene preparation.
+        var bEntries = new RoomSceneMonsters.SceneEntry[2];
+        for (int i = 0; i < 2; i++)
+            bEntries[i] = new RoomSceneMonsters.SceneEntry { Key = aEntries[i].Key, Type = aEntries[i].Type,
+                Enemy = MakeMonsterFixture(scene), Active = true };
+        using (var aObjects = new RoomNetworkObjects(authority.RoomSessionId, scene))
+        using (var bObjects = new RoomNetworkObjects(display.RoomSessionId, scene))
+        using (var aMonsters = new RoomSceneMonsters(aEntries, aObjects))
+        using (var bMonsters = new RoomSceneMonsters(bEntries, bObjects))
+        {
+            aMonsters.BindAuthority(authority, host.AllocateSceneEntityId);
+            var manifest = aMonsters.Capture(1, 100);
+            Require(bMonsters.Apply(display, manifest) && aMonsters.Count == 2 && bMonsters.Count == 2,
+                "B binds its existing scene monster objects to A's manifest");
+            int firstId = manifest.monsters[0].entityId;
+            Require(aEntries[0].Enemy.GetComponent<NetworkEntityIdentity>().IsAuthoritative &&
+                !aEntries[0].Enemy.enabled && aEntries[0].Enemy.GetComponent<Rigidbody2D>().simulated,
+                "A owns monster authority while AI remains held for its adaptation step");
+            Require(firstId != host.HostIdentity.EntityId && firstId != host.GuestIdentity.EntityId,
+                "Players and monsters share one collision-free room allocator");
+            for (int i = 0; i < 2; i++)
+            {
+                var enemy = bEntries[i].Enemy;
+                var identity = enemy.GetComponent<NetworkEntityIdentity>();
+                Require(identity.Role == NetworkEntityRole.Display && !identity.IsLocalInputOwner &&
+                    !enemy.enabled && !enemy.GetComponent<Rigidbody2D>().simulated && !enemy.GetComponent<Collider2D>().enabled,
+                    "Scene monster display has no AI, local physics or gameplay collider");
+            }
+            var states = aMonsters.CaptureStates(1, 105);
+            states.monsters[0].position = new[] { 1f, 2f };
+            states.monsters[0].facingDir = -1;
+            states.monsters[0].aiState = MonsterAiState.Patrol; states.monsters[0].moving = true;
+            bMonsters.ApplyStates(states);
+            var firstDisplay = bEntries[0].Enemy;
+            firstDisplay.GetComponent<RemotePlayerView>().AdvanceDisplay(.1f);
+            Require(Mathf.Abs(firstDisplay.transform.position.x - 1) < .001f && firstDisplay.facingDir == -1 && !firstDisplay.enabled,
+                "B interpolates monster position/facing without starting its AI");
+            states.authorityTick = 104; states.stateSeq += 10;
+            states.monsters[0].position = new[] { 99f, 99f }; states.monsters[0].facingDir = 1;
+            bMonsters.ApplyStates(states);
+            firstDisplay.GetComponent<RemotePlayerView>().AdvanceDisplay(.1f);
+            Require(Mathf.Abs(firstDisplay.transform.position.x - 1) < .001f && firstDisplay.facingDir == -1,
+                "A newer sequence with an old authority tick cannot rewind or teleport a monster display");
+            aMonsters.BindAuthority(authority, host.AllocateSceneEntityId);
+            var repeat = aMonsters.Capture(1, 106);
+            Require(repeat.monsters[0].entityId == firstId && bMonsters.Apply(display, repeat) && bObjects.Count == 2,
+                "Repeated initialization retains IDs and registers no additional objects");
+            aObjects.CleanupPlayer(authority.RoomSessionId, host.GuestIdentity.PlayerId);
+            Require(aObjects.Count == 2, "Guest departure retains room-owned monsters");
+            repeat.stateSeq++; repeat.monsters[0].sceneKey = "missing-scene-monster";
+            bool rejected = false;
+            try { bMonsters.Apply(display, repeat); } catch (System.IO.InvalidDataException) { rejected = true; }
+            Require(rejected && bObjects.Count == 2, "A mismatched scene fails without spawning a replacement");
+        }
+    }
+
+    private static Enemy MakeMonsterFixture(Scene scene)
+    {
+        var value = new GameObject("Scene skeleton fixture");
+        value.SetActive(false); SceneManager.MoveGameObjectToScene(value, scene);
+        value.AddComponent<Rigidbody2D>(); value.AddComponent<CapsuleCollider2D>();
+        var enemy = value.AddComponent<EnemySkeleton>(); enemy.attackCheck = value.transform;
+        var stats = value.AddComponent<EnemyStats>();
+        foreach (var field in typeof(CharaterStats).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            if (field.FieldType == typeof(Stat)) field.SetValue(stats, new Stat());
+        stats.soulsDropAmount = new Stat(); stats.maxHealth.SetDefaultValue(100);
+        var serialized = new SerializedObject(enemy);
+        serialized.FindProperty("groundCheck").objectReferenceValue = value.transform;
+        serialized.FindProperty("wallCheck").objectReferenceValue = value.transform;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        return enemy;
     }
 
     private static void VerifyReusablePhysicsRole(Scene scene, RoomPresentationContext authority, RoomPresentationContext display)
@@ -337,8 +478,68 @@ public static class NetworkPresentationVerification
         }
     }
 
+    private static void VerifyMonsterAttackTimeline()
+    {
+        var buffer = new AuthorityPositionBuffer();
+        var attack = new MonsterAttackDto { actionId = 7, actionNumber = 1, startTick = 103, durationTicks = 57, facingDir = -1 };
+        Require(buffer.Add(100, 1, Vector2.zero, 5, 5) &&
+            buffer.Add(105, 2, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "Attack shares position ordering and the display timeline");
+        buffer.Advance(.05f, .02f);
+        Require(buffer.MonsterAttack == null && buffer.FacingDirection == 1, "Buffered future attack and facing do not play early");
+        buffer.Advance(.05f, .02f);
+        Require(buffer.MonsterAttack?.actionId == 7 && buffer.FacingDirection == -1, "Attack and its fixed facing begin at the same display sample");
+        Require(buffer.Add(110, 3, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "A periodic snapshot can repeat the same action ID");
+        attack.actionId = 99;
+        buffer.Advance(.1f, .02f);
+        Require(buffer.MonsterAttack.actionId == 7 && buffer.RenderTick - buffer.MonsterAttack.startTick > 6.9,
+            "Repeated snapshots preserve elapsed attack phase and do not retain a mutable receive object");
+        attack.actionId = 6;
+        Require(!buffer.Add(111, 4, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "An older action cannot replace a newer one");
+        attack.actionId = 7; attack.startTick = 104;
+        Require(!buffer.Add(111, 4, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "The same action cannot change its start tick to restart playback");
+        attack.startTick = 103;
+        Require(!buffer.Add(109, 4, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "An old authority tick cannot rewind an attack");
+        Require(buffer.Add(115, 4, Vector2.zero, 5, 5), "Attack end is a normal ordered state");
+        buffer.Advance(.1f, .02f);
+        Require(buffer.MonsterAttack == null, "Attack ends when its exit sample reaches the display timeline");
+        attack.actionId = 8; attack.startTick = 116;
+        Require(buffer.Add(125, 5, Vector2.right * 20, 5, 5, true, -1, monsterAttack: attack) &&
+            buffer.MonsterAttack.actionId == 8 && buffer.MonsterAttack.startTick == 116,
+            "Reinitialization or teleport keeps current attack phase while clearing the old movement path");
+    }
+
     private static void VerifyPositionTimeline()
     {
+        VerifyMonsterAttackTimeline();
+        var animationBuffer = new AuthorityPositionBuffer();
+        Require(animationBuffer.Add(100, 1, Vector2.zero, 5, 5, true, 1, MovementAnimationState.Idle) &&
+            animationBuffer.Add(105, 2, Vector2.right, 5, 5, false, 1, MovementAnimationState.Move), "Movement states share the position timeline");
+        animationBuffer.Advance(.05f, .02f);
+        Require(animationBuffer.MovementState == MovementAnimationState.Idle, "Future animation never plays ahead of its display tick");
+        animationBuffer.Advance(.05f, .02f);
+        Require(animationBuffer.MovementState == MovementAnimationState.Move, "Move plays when its authority sample is reached");
+        Require(animationBuffer.Add(110, 3, Vector2.right, 5, 5, true, 1, MovementAnimationState.Fall, -4) &&
+            animationBuffer.MovementState == MovementAnimationState.Fall && animationBuffer.YVelocity == -4,
+            "Reset applies confirmed falling animation and blend velocity immediately");
+        Require(!animationBuffer.Add(109, 4, Vector2.zero, 5, 5, false, 1, MovementAnimationState.Idle) &&
+            animationBuffer.MovementState == MovementAnimationState.Fall, "Old state cannot rewind animation");
+        Require(animationBuffer.Add(115, 4, Vector2.right, 5, 5, true, 1, MovementAnimationState.WallSlide, -1) &&
+            animationBuffer.MovementState == MovementAnimationState.WallSlide && animationBuffer.YVelocity == -1,
+            "A-confirmed wall slide and its falling velocity enter the display timeline");
+        Require(animationBuffer.Add(120, 5, Vector2.left, 5, 5, true, -1, MovementAnimationState.WallJump, 12) &&
+            animationBuffer.MovementState == MovementAnimationState.WallJump && animationBuffer.FacingDirection == -1 &&
+            animationBuffer.YVelocity == 12, "A-confirmed wall jump carries its away-facing direction and upward animation velocity");
+        Require(animationBuffer.Add(125, 6, Vector2.right, 5, 5, true, 1, MovementAnimationState.Dash, 0) &&
+            animationBuffer.MovementState == MovementAnimationState.Dash && animationBuffer.FacingDirection == 1,
+            "Dash animation uses A's confirmed movement timeline without executing a local skill");
+        var facingBuffer = new AuthorityPositionBuffer();
+        Require(facingBuffer.Add(100, 1, Vector2.zero, 5, 5, true, 1) &&
+            facingBuffer.Add(105, 2, Vector2.right, 5, 5, false, -1), "Facing shares position snapshot ticks");
+        facingBuffer.Advance(.05f, .02f);
+        Require(facingBuffer.FacingDirection == 1, "Facing is discrete while interpolating between tick samples");
+        facingBuffer.Advance(.05f, .02f);
+        Require(facingBuffer.FacingDirection == -1 &&
+            !facingBuffer.Add(104, 3, Vector2.zero, 5, 5, false, 1), "Facing switches at the sample tick and rejects stale reversal");
         var buffer = new AuthorityPositionBuffer();
         Require(buffer.Add(100, 1, Vector2.zero, 5, 5) && buffer.Snapped && buffer.Count == 1,
             "Birth places immediately and seeds the authority timeline");

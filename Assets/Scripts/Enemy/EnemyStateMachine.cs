@@ -7,13 +7,15 @@ public class EnemyStateMachine
     public EnemyState currentState {  get; private set;  }
     public void Initialize (EnemyState _startState)
     {
+        if (_startState == null || !_startState.CanSimulate) return;
         currentState = _startState;
         currentState.Enter();
     }
 
     public void ChangeState(EnemyState _newState)
     {
-        currentState.Exit();
+        if (_newState == null || !_newState.CanSimulate) return;
+        currentState?.Exit();
         currentState = _newState;
         currentState.Enter();
     }

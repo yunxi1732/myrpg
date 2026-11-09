@@ -6,7 +6,9 @@ namespace Rpg.Networking
     public static class EntityRuntimePermissions
     {
         public static bool NetworkActive => RoomSceneCoordinator.ProtectSaves || GameSimulationClock.IsNetwork;
-        public static NetworkEntityIdentity Identity(Component target) => target != null ? target.GetComponentInParent<NetworkEntityIdentity>() : null;
+        // Room actors are deliberately bound/configured while inactive, before Awake/Start.
+        // Their children must also retain the assigned role during staging and cleanup.
+        public static NetworkEntityIdentity Identity(Component target) => target != null ? target.GetComponentInParent<NetworkEntityIdentity>(true) : null;
         public static bool CanSimulate(Component target)
         {
             if (target == null) return false;

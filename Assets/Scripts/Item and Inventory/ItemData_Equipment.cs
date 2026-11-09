@@ -51,9 +51,9 @@ public class ItemData_Equipment : ItemData
             item.ExecuteEffect(_enemyPosition);
     }
 
-    public void AddModifiers()
+    public void AddModifiers(PlayerStats playerStats)
     {
-        PlayerStats playerStats = PlayerManager.instance.player.GetComponent<PlayerStats>();
+        if (playerStats == null) throw new System.ArgumentNullException(nameof(playerStats));
 
         playerStats.strength.AddModifier(strength);
         playerStats.agility.AddModifier(agility);
@@ -77,9 +77,9 @@ public class ItemData_Equipment : ItemData
         playerStats.lightningDamage.AddModifier(lightningDamage);
     }
 
-    public void RemoveModifiers()
+    public void RemoveModifiers(PlayerStats playerStats)
     {
-        PlayerStats playerStats = PlayerManager.instance.player.GetComponent<PlayerStats>();
+        if (playerStats == null) throw new System.ArgumentNullException(nameof(playerStats));
 
         // Major stats
         playerStats.strength.RemoveModifier(strength);

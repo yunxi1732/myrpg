@@ -21,6 +21,8 @@ namespace Rpg.Networking
         private RoomPresentationContext context;
         private RoomPlayerIdentity hostIdentity, guestIdentity;
         private long nextStateSeq, appliedStateSeq;
+        private ulong appliedStateTick;
+        private long initializationLoadId;
         private bool disposed;
         public Transform HostSpawn { get; }
         public Transform GuestSpawn { get; }
@@ -87,6 +89,7 @@ namespace Rpg.Networking
                 if (baseline.roomSessionId != owner.RoomSessionId || a == null || b == null)
                     throw new InvalidDataException("Initial entities do not match admitted identities.");
                 HostSpawn.position = Position(a); GuestSpawn.position = Position(b);
+                initializationLoadId = baseline.loadId;
             }
             context = owner; hostIdentity = host; guestIdentity = guest;
             EnsurePlayer(host, HostSpawn.position, "A");
@@ -102,13 +105,14 @@ namespace Rpg.Networking
                 return;
             }
             GameObject clone = UnityEngine.Object.Instantiate(template.gameObject, staging);
+            Player player = null;
             try
             {
                 clone.SetActive(false);
                 clone.name = $"Player_{slot} (player={identity.PlayerId}, entity={identity.EntityId})";
                 clone.transform.SetParent(playersRoot, false);
                 clone.transform.position = position;
-                Player player = clone.GetComponent<Player>();
+                player = clone.GetComponent<Player>();
                 player.enabled = true;
                 clone.GetComponent<PlayerStats>().enabled = true;
                 context.RegisterEntity(identity.EntityId, identity.PlayerId, clone.transform);
@@ -117,17 +121,29 @@ namespace Rpg.Networking
                 entities.Add(identity.EntityId, player);
                 registrations.Add(identity.EntityId, networkObjects.Register(context.RoomSessionId, identity.PlayerId, clone, () =>
                 {
-                    try { context?.RemoveEntity(identity.EntityId); }
+                    try
+                    {
+                        player.Combat.ReleaseRoomEquipment();
+                        player.Combat.PrimaryAttack?.InterruptCurrent();
+                        context?.RemoveEntity(identity.EntityId);
+                    }
                     finally
                     {
                         entities.Remove(identity.EntityId);
                         registrations.Remove(identity.EntityId);
                     }
                 }));
+                // Both identity and cleanup ownership must be live before authority-only configuration.
+                if (!context.IsGuest)
+                {
+                    RoomCombatConfiguration.InitializeAuthority(player, slot == "A");
+                    player.Combat.BindPrimaryAttack(networkObjects);
+                }
                 clone.SetActive(true); // Identity, role, spawn and input hold are set before Awake/Start.
             }
             catch
             {
+                if (player != null) player.Combat.ReleaseRoomEquipment();
                 if (registrations.TryGetValue(identity.EntityId, out var registration)) registration.Dispose();
                 else
                 {
@@ -142,6 +158,7 @@ namespace Rpg.Networking
         public PlayerInitializationDto CaptureInitialState(long loadId, ulong authorityTick)
         {
             if (context == null || context.IsGuest || !AllStarted) throw new InvalidOperationException("A must finish both actor initializations first.");
+            initializationLoadId = loadId;
             var value = new PlayerInitializationDto
             {
                 roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = authorityTick, stateSeq = ++nextStateSeq,
@@ -159,34 +176,37 @@ namespace Rpg.Networking
             {
                 playerId = identity.PlayerId, entityId = identity.EntityId,
                 position = new[] { player.transform.position.x, player.transform.position.y },
-                health = player.stats.currentHealth, maxHealth = maximum, currency = 0
+                facingDir = player.facingDir,
+                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y,
+                health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = 0,
+                combat = player.Combat.CaptureRoomConfiguration()
             };
         }
 
         public void ApplyInitialState(PlayerInitializationDto value)
         {
             ProtocolCodec.ValidateMessage(value, true);
-            if (!AllStarted || value.roomSessionId != context.RoomSessionId ||
+            if (!AllStarted || value.roomSessionId != context.RoomSessionId || value.loadId != initializationLoadId ||
                 ProtocolCodec.FindPlayer(value, hostIdentity.PlayerId, hostIdentity.EntityId) == null ||
                 ProtocolCodec.FindPlayer(value, guestIdentity.PlayerId, guestIdentity.EntityId) == null)
                 throw new InvalidOperationException("Both assigned scene entities must finish initialization before presentation binding.");
-            if (value.stateSeq <= appliedStateSeq) return;
+            if (value.stateSeq <= appliedStateSeq || value.authorityTick < appliedStateTick) return;
             foreach (var state in value.players)
             {
                 Player player = entities[state.entityId];
                 if (!context.TryGetEntity(state.entityId, out var presentation)) throw new InvalidOperationException("Player registration was lost.");
                 if (context.IsGuest)
                 {
-                    presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq, Position(state), true);
-                    player.stats.currentHealth = state.health; // A-confirmed initial value; no local damage or healing calculation.
-                    player.anim.SetBool("Idle", true);
-                    player.anim.SetFloat("yVelocity", 0);
+                    player.Combat.ApplyConfirmedRoomConfiguration(state.combat, value.roomSessionId, value.authorityTick, value.stateSeq);
+                    presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq, Position(state), true, state.facingDir,
+                        state.movementState, state.yVelocity);
                 }
-                if (!presentation.ApplyHealth(value.roomSessionId, value.authorityTick, value.stateSeq, state.health, state.maxHealth) ||
-                    !presentation.ApplyHud(value.roomSessionId, value.authorityTick, value.stateSeq, state.currency, null, 0, new float[5]))
+                if (!presentation.ApplyVersionedHealth(value.roomSessionId, value.authorityTick, state.healthVersion, state.health, state.maxHealth) ||
+                    !presentation.ApplyHud(value.roomSessionId, value.authorityTick, value.stateSeq, state.currency, null, 0, RoomCombatConfiguration.HudFills(state.combat)))
                     throw new InvalidDataException("Initial state is older than the player's current presentation state.");
             }
             appliedStateSeq = value.stateSeq;
+            appliedStateTick = value.authorityTick;
             foreach (var state in value.players)
                 if (context.TryGetEntity(state.entityId, out var presentation)) presentation.MarkReady();
         }
@@ -222,8 +242,13 @@ namespace Rpg.Networking
 
         private PlayerPositionDto CapturePosition(RoomPlayerIdentity identity)
         {
-            Vector2 position = entities[identity.EntityId].rb.position;
-            return new PlayerPositionDto { entityId = identity.EntityId, position = new[] { position.x, position.y } };
+            Player player = entities[identity.EntityId];
+            Vector2 position = player.rb.position;
+            return new PlayerPositionDto
+            {
+                entityId = identity.EntityId, position = new[] { position.x, position.y }, facingDir = player.facingDir,
+                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y
+            };
         }
 
         public void ApplyPositions(PlayerPositionsDto value)
@@ -239,7 +264,7 @@ namespace Rpg.Networking
                     !context.TryGetEntity(state.entityId, out var presentation)) continue;
                 // Each entity's position stream decides freshness independently of health/HUD and other entities.
                 presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
-                    new Vector2(state.position[0], state.position[1]));
+                    new Vector2(state.position[0], state.position[1]), false, state.facingDir, state.movementState, state.yVelocity);
             }
         }
 
@@ -250,7 +275,79 @@ namespace Rpg.Networking
                 source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
                 player == null || !player.IsAuthoritative || player.IsLocalInputOwner ||
                 player.GetComponent<NetworkEntityIdentity>().MovementHeld) return false;
-            return player.InputData.TryApplyNetworkInput(input);
+            bool applied = player.InputData.TryApplyNetworkInput(input);
+            if (player.NetworkInputLocked) player.InputData.Clear();
+            return applied;
+        }
+
+        public bool ApplyGuestWallSlideInput(RoomPlayerIdentity source, WallSlideInputDto input)
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
+                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
+                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
+                player == null || !player.IsAuthoritative || player.IsLocalInputOwner ||
+                player.GetComponent<NetworkEntityIdentity>().MovementHeld) return false;
+            bool applied = player.InputData.TryApplyWallSlideInput(input);
+            if (player.NetworkInputLocked) player.InputData.Clear();
+            return applied;
+        }
+
+        public void ApplyGuestInputLock(RoomPlayerIdentity source, bool locked)
+        {
+            if (disposed || context == null || context.IsGuest || source == null || source.RoomSessionId != context.RoomSessionId ||
+                source.PlayerId != guestIdentity.PlayerId || source.EntityId != guestIdentity.EntityId ||
+                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative || player.IsLocalInputOwner) return;
+            player.SetNetworkInputLocked(locked);
+        }
+
+        // A local input and B's connection-bound input share this entry. DTO never chooses an actor.
+        public void BindPrimaryAttackTargets(RoomSceneMonsters monsters)
+        {
+            if (disposed || context == null || context.IsGuest) return;
+            foreach (var player in entities.Values) player.Combat.BindPrimaryAttackTargets(monsters);
+        }
+
+        public void BindDamageService(RoomCombatDamage damage)
+        {
+            if (disposed || context == null || context.IsGuest || damage == null) return;
+            foreach (var player in entities.Values)
+                if (player.Combat.PrimaryAttackHits != null)
+                {
+                    player.Combat.PrimaryAttackHits.HitConfirmed -= damage.OnPrimaryHit;
+                    player.Combat.PrimaryAttackHits.HitConfirmed += damage.OnPrimaryHit;
+                }
+        }
+
+        public bool RequestPrimaryAttack(RoomPlayerIdentity source, PrimaryAttackRequestDto request)
+        {
+            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 ||
+                source == null || request == null || source.RoomSessionId != context.RoomSessionId ||
+                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) ||
+                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
+                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId ||
+                player.IsLocalInputOwner != ReferenceEquals(source, hostIdentity) || player.Combat.PrimaryAttack == null) return false;
+            var runtime = player.Combat.PrimaryAttack;
+            bool accepted = runtime.TryQueue(request.requestSeq, GameSimulationClock.AuthorityTick, player.CheckNetworkPrimaryAttack());
+            if (!accepted) Debug.Log($"[PrimaryAttack] REJECT player={source.PlayerId} requestSeq={request.requestSeq} phase=request reason={runtime.LastRejection}");
+            return accepted;
+        }
+
+        public bool RequestGuestDash(RoomPlayerIdentity source, DashRequestDto request)
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null || request == null ||
+                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
+                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
+                player == null || !player.IsAuthoritative || player.IsLocalInputOwner) return false;
+            return player.TryQueueNetworkDash(request.actionSeq, request.currentAxis);
+        }
+
+        public bool RequestGuestJump(RoomPlayerIdentity source, JumpRequestDto request)
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null || request == null ||
+                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
+                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
+                player == null || !player.IsAuthoritative || player.IsLocalInputOwner) return false;
+            return player.TryQueueNetworkJump(request.actionSeq);
         }
 
         private static Transform Child(string name, Transform parent)

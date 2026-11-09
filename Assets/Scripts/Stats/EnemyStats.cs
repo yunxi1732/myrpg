@@ -18,7 +18,14 @@ public class EnemyStats : CharaterStats
 
     protected override void Start()
     {
+        InitializeAuthorityCombatStats();
+    }
+
+    // Query prerequisite only: A initializes health once while the network stats updater remains disabled.
+    internal void InitializeAuthorityCombatStats()
+    {
         if (!IsAuthoritative) return;
+        if (IsRuntimeInitialized) { EnsureNetworkHealthVersion(); return; }
         soulsDropAmount.SetDefaultValue(100);
         ApplyLevelModifiers();
 

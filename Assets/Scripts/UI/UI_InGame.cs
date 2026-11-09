@@ -163,7 +163,7 @@ public class UI_InGame : MonoBehaviour
     private void UpdateSoulsUI()
     {
         if (soulsAmount < PlayerManager.instance.GetCurrency())
-            soulsAmount += Time.deltaTime * increaseRate;
+            soulsAmount += GameSimulationClock.DeltaTime * increaseRate;
         else
             soulsAmount = PlayerManager.instance.GetCurrency();
 
@@ -185,6 +185,6 @@ public class UI_InGame : MonoBehaviour
     private void CheckCooldownOf(Image _image, float _cooldown)
     {
         if (_image.fillAmount > 0)
-            _image.fillAmount -= 1 / _cooldown * Time.deltaTime;
+            _image.fillAmount -= 1 / _cooldown * GameSimulationClock.DeltaTime;
     }
 }

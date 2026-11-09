@@ -2,6 +2,7 @@ using Rpg.Networking;
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(9500)] // Correct network bar orientation after RemotePlayerView flips its parent (9000).
 public class UI_HealthBar : MonoBehaviour
 {
     private Entity entity;

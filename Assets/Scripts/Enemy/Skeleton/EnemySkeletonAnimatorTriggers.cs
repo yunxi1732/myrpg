@@ -13,7 +13,7 @@ public class EnemySkeletonAnimatorTriggers : MonoBehaviour
 
     private void AttackTrigger()
     {
-        if (enemy == null || !enemy.IsAuthoritative) return;
+        if (enemy == null || !enemy.IsAuthoritative || enemy.NetworkMovementOnly) return;
         Collider2D[] collider = Physics2D.OverlapCircleAll(enemy.attackCheck.position, enemy.attackCheckRadius);
         foreach (var hit in collider)
         {
@@ -25,6 +25,6 @@ public class EnemySkeletonAnimatorTriggers : MonoBehaviour
         }
     }
 
-    private void OpenCounterWindow() =>enemy.OpenCounterAttackWindow();
-    private void CloseCounterWindow() =>enemy.CloseCounterAttackWindow();
+    private void OpenCounterWindow() { if (enemy != null && !enemy.NetworkMovementOnly) enemy.OpenCounterAttackWindow(); }
+    private void CloseCounterWindow() { if (enemy != null && !enemy.NetworkMovementOnly) enemy.CloseCounterAttackWindow(); }
 }

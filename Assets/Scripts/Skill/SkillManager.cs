@@ -5,6 +5,26 @@ using UnityEngine;
 public class SkillManager : MonoBehaviour
 {
     public static SkillManager instance;
+    public Player Owner { get; private set; }
+
+    public void BindOwner(Player owner)
+    {
+        if (owner == null || Owner != null && Owner != owner)
+            throw new System.InvalidOperationException("A SkillManager cannot change combat owner.");
+        owner.Combat.BindLegacySkills(this);
+        Owner = owner;
+        dash = GetComponent<DashSkill>(); clone = GetComponent<CloneSkill>();
+        sword = GetComponent<SwordSkill>(); blackhole = GetComponent<BlackholeSkill>();
+        crystal = GetComponent<CrystalSkill>(); parry = GetComponent<ParrySkill>(); dodge = GetComponent<DodgeSkill>();
+        foreach (Skill component in GetComponents<Skill>()) component.BindOwner(owner.Combat);
+    }
+
+    // Single-player composition only. Skills themselves never select a global player.
+    public void BindStandaloneOwner()
+    {
+        if (Owner == null && Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this) && PlayerManager.instance != null)
+            BindOwner(PlayerManager.instance.player);
+    }
 
     public DashSkill dash {  get; private set; }
     public CloneSkill clone { get; private set; }
@@ -27,6 +47,7 @@ public class SkillManager : MonoBehaviour
 
     private void Start()
     {
+        BindStandaloneOwner();
         dash = GetComponent<DashSkill>();
         clone = GetComponent<CloneSkill>();
         sword = GetComponent<SwordSkill>();

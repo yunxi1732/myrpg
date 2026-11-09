@@ -56,8 +56,8 @@ public class AfterImageFx : MonoBehaviour, ITemporaryEffectPlayback
     private void Update()
     {
         // Pausing must not advance or complete this game-time playback.
-        if (!IsPlaying || Time.deltaTime <= 0f) return;
-        float alpha = sr.color.a - colorLoseRate * Time.deltaTime;
+        if (!IsPlaying || GameSimulationClock.DeltaTime <= 0f) return;
+        float alpha = sr.color.a - colorLoseRate * GameSimulationClock.DeltaTime;
         sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, alpha);
         if (sr.color.a <= 0 && pooledEffect != null)
             pooledEffect.ReturnToPool();

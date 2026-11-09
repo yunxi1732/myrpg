@@ -298,7 +298,7 @@ public class UI_MainMenu : MonoBehaviour
     {
         fadeScreen.FadeOut();
 
-        yield return new WaitForSeconds(_delay);
+        yield return GameSimulationClock.Wait(_delay);
 
         SceneManager.LoadScene(sceneName);
     }

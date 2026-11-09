@@ -6,6 +6,7 @@ using UnityEngine;
 public static class NetworkSimulationTimeVerification
 {
     private static readonly object owner = new object();
+    private static readonly object otherOwner = new object();
     private static Stopwatch timer;
     private static GameObject bodyObject, lifetimeObject;
     private static float originalScale, pausedGameTime, simulationStart;
@@ -44,6 +45,12 @@ public static class NetworkSimulationTimeVerification
                 GameplayControlLock.Acquire(owner);
                 GameManager.instance.SetPauseOwner(owner, true);
                 Require(Time.timeScale == 1 && GameplayControlLock.IsLocked, "Network menu locks input, not world time");
+                GameManager.instance.SetPauseOwner(otherOwner, true);
+                GameManager.instance.SetPauseOwner(owner, false);
+                Require(GameplayControlLock.IsLocked && Time.timeScale == 1, "Closing one UI cannot release another UI's lock");
+                GameManager.instance.SetPauseOwner(owner, true);
+                GameManager.instance.SetPauseOwner(otherOwner, false);
+                Require(GameplayControlLock.IsLocked, "Owners release only their own lock");
                 bodyObject = new GameObject("SimulationTimePhysicsProbe");
                 var body = bodyObject.AddComponent<Rigidbody2D>();
                 body.gravityScale = 0;
@@ -88,6 +95,8 @@ public static class NetworkSimulationTimeVerification
         EditorApplication.playModeStateChanged -= OnPlayModeChanged;
         AssemblyReloadEvents.beforeAssemblyReload -= Cleanup;
         if (GameManager.instance != null) GameManager.instance.SetPauseOwner(owner, false);
+        if (GameManager.instance != null) GameManager.instance.SetPauseOwner(otherOwner, false);
+        GameplayControlLock.Release(otherOwner);
         GameplayControlLock.Release(owner);
         GameSimulationClock.Release(owner);
         if (!GameSimulationClock.IsNetwork) Time.timeScale = originalScale;

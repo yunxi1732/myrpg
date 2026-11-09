@@ -21,8 +21,17 @@ public class PlayerAirState : PlayerState
     public override void Update()
     {
         base.Update();
-        if (player.IsWallDetected()) stateMachine.ChangeState(player.wallSlideState);
+        if (player.IsGroundDetected())
+        {
+            stateMachine.ChangeState(player.idleState);
+            return;
+        }
+        // Apply input/facing first so moving away from a wall cannot immediately re-enter wall slide.
         if (xInput != 0) player.SetVelocity(0.8f * xInput * player.moveSpeed, rb.velocity.y);
-        if (player.IsGroundDetected()) stateMachine.ChangeState(player.idleState);
+        if (player.IsWallDetected())
+        {
+            stateMachine.ChangeState(player.wallSlideState);
+            return;
+        }
     }
 }

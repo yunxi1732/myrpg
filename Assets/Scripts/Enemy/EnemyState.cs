@@ -5,6 +5,9 @@ using UnityEngine;
 
 public class EnemyState
 {
+    public bool CanSimulate => enemyBase.IsAuthoritative && Rpg.Networking.EntityRuntimePermissions.Identity(enemyBase)?.MovementHeld != true &&
+        (!enemyBase.NetworkMovementOnly || enemyBase is EnemySkeleton skeleton &&
+            (this == skeleton.idleState || this == skeleton.moveState || this == skeleton.battleState || this == skeleton.attackState));
     protected Enemy enemyBase;
     protected EnemyStateMachine stateMachine;
     protected Rigidbody2D rb;
