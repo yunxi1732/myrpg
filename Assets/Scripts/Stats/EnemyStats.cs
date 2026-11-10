@@ -21,7 +21,7 @@ public class EnemyStats : CharaterStats
         InitializeAuthorityCombatStats();
     }
 
-    // Query prerequisite only: A initializes health once while the network stats updater remains disabled.
+    // A initializes room combat data once while the legacy stats updater remains disabled.
     internal void InitializeAuthorityCombatStats()
     {
         if (!IsAuthoritative) return;

@@ -64,6 +64,10 @@ public class CharaterStats : MonoBehaviour
     [SerializeField] private GameObject shockStrikePrefab;
     private int shockDamage;
     private int igniteDamage;
+    public float IgniteDuration => alimentDuration;
+    public float IgniteInterval => igniteDamageCooldown;
+    public GameObject ShockStrikePrefab => shockStrikePrefab;
+    internal void SetConfirmedBurn(bool active) { isIgnited = active; }
 
     public int currentHealth;
     public long NetworkHealthVersion { get; private set; }
@@ -108,6 +112,7 @@ public class CharaterStats : MonoBehaviour
     protected virtual void Update()
     {
         if (!IsAuthoritative) return;
+        if (EntityRuntimePermissions.Identity(this) != null) return; // Room effects advance only in A's fixed-tick service.
         ignitedTimer -= GameSimulationClock.DeltaTime;
         chillTimer -= GameSimulationClock.DeltaTime;
         shockedTimer -= GameSimulationClock.DeltaTime;
@@ -184,7 +189,7 @@ public class CharaterStats : MonoBehaviour
         int _iceDamage = iceDamage.GetValue();
         int _lightningDamage = lightningDamage.GetValue();
 
-        int totalMagicDamage = _fireDamage + _iceDamage + _lightningDamage + intelligence.GetValue();
+        int totalMagicDamage = DamageCalculations.SumDirectMagic(_fireDamage, _iceDamage, _lightningDamage, intelligence.GetValue());
 
         totalMagicDamage = CheckTargetResistance(_targetStats, totalMagicDamage);
         _targetStats.TakeDamage(totalMagicDamage);
@@ -225,10 +230,10 @@ public class CharaterStats : MonoBehaviour
         }
 
         if (canApplyIgnite)
-            _targetStats.SetupIgniteDamage(Mathf.RoundToInt(_fireDamage * 0.2f));
+            _targetStats.SetupIgniteDamage(DamageCalculations.IgniteTickDamage(_fireDamage));
 
         if (canApplyShock)
-            _targetStats.SetUpShockDamage(Mathf.RoundToInt(_lightningDamage * 0.1f));
+            _targetStats.SetUpShockDamage(DamageCalculations.ShockChainDamage(_lightningDamage));
 
         _targetStats.ApplyAilments(canApplyIgnite, canApplyChill, canApplyShock);
     }
@@ -252,7 +257,7 @@ public class CharaterStats : MonoBehaviour
             isChilled = _chill;
             chillTimer = alimentDuration;
 
-            float slowPercentage = 0.2f;
+            float slowPercentage = 1 - DamageCalculations.ChillMultiplier;
             GetComponent<Entity>().SlowEntityBy(slowPercentage, alimentDuration);
             fx.ChillFxFor(alimentDuration);
         }
@@ -354,8 +359,7 @@ public class CharaterStats : MonoBehaviour
     public virtual void DecreaseHealthBy(int _damage)
     {
         if (!IsAuthoritative) return;
-        if (isVulnerable)
-            _damage = Mathf.RoundToInt(_damage * 1.1f);
+        _damage = DamageCalculations.ApplyVulnerability(_damage, isVulnerable);
 
         currentHealth -= _damage;
 
@@ -385,10 +389,7 @@ public class CharaterStats : MonoBehaviour
     #region Start calculations
     protected int CheckTargetArmor(CharaterStats _targetStats, int totalDamage)
     {
-        if (_targetStats.isChilled)
-            totalDamage -= Mathf.RoundToInt(_targetStats.armor.GetValue() * 0.8f);
-        else
-            totalDamage -= _targetStats.armor.GetValue();
+        totalDamage -= DamageCalculations.ApplyChilledArmor(_targetStats.armor.GetValue(), _targetStats.isChilled);
 
         totalDamage = Mathf.Clamp(totalDamage, 0, int.MaxValue);
         return totalDamage;
@@ -396,9 +397,7 @@ public class CharaterStats : MonoBehaviour
 
     private int CheckTargetResistance(CharaterStats _targetStats, int totalMagicDamage)
     {
-        totalMagicDamage -= _targetStats.magicResistance.GetValue() + (3 * _targetStats.intelligence.GetValue());
-        totalMagicDamage = Mathf.Clamp(totalMagicDamage, 0, int.MaxValue);
-        return totalMagicDamage;
+        return DamageCalculations.ApplyResistance(totalMagicDamage, _targetStats.magicResistance.GetValue(), _targetStats.intelligence.GetValue());
     }
 
     public virtual void OnEvasion()

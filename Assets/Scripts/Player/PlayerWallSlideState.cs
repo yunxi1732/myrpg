@@ -45,7 +45,8 @@ public class PlayerWallSlideState : PlayerState
             player.SetVelocity(0.8f * xInput * player.moveSpeed, rb.velocity.y);
             return;
         }
-        if (yInput < 0) rb.velocity = new Vector2(0, rb.velocity.y);
-        else rb.velocity = new Vector2(0, rb.velocity.y * 0.8f);
+        float velocity = yInput < 0 ? rb.velocity.y : rb.velocity.y * 0.8f;
+        if (GameSimulationClock.IsNetwork) player.SetVelocity(0, velocity);
+        else rb.velocity = new Vector2(0, velocity);
     }
 }

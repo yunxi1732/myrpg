@@ -6,6 +6,25 @@ public class EnemySkeleton : Enemy
 {
     private long nextNetworkAttackId;
     public Rpg.Networking.Protocol.MonsterAttackDto NetworkAttack { get; private set; }
+    public Rpg.Networking.MonsterAttackHitDetection NetworkHits { get; internal set; }
+    public static bool TryNetworkAttackTiming(Animator animator, out Rpg.Networking.PrimaryAttackTiming timing)
+    {
+        timing = null;
+        if (animator == null || animator.runtimeAnimatorController == null) return false;
+        foreach (var clip in animator.runtimeAnimatorController.animationClips)
+        {
+            if (clip.name != "SkeletonAttack") continue;
+            float finish = clip.length;
+            var hits = new List<float>();
+            foreach (var marker in clip.events)
+            {
+                if (marker.functionName == "AnimationTrigger") finish = Mathf.Min(finish, marker.time);
+                if (marker.functionName == "AttackTrigger") hits.Add(marker.time);
+            }
+            return Rpg.Networking.PrimaryAttackTiming.TryCreate(0, finish, clip.frameRate, GameSimulationClock.FixedDeltaTime, hits.ToArray(), out timing);
+        }
+        return false;
+    }
     public static float AttackClipDuration(Animator animator, out float finishTime)
     {
         float length = 1.2f;
@@ -26,10 +45,16 @@ public class EnemySkeleton : Enemy
     {
         if (!IsAuthoritative || !NetworkMovementOnly) return;
         AttackClipDuration(anim, out float finishTime);
+        if (NetworkHits != null)
+        {
+            if (TryNetworkAttackTiming(anim, out var timing)) NetworkHits.Begin(GameSimulationClock.AuthorityTick, facingDir, timing);
+            else { NetworkHits.Reset(); Debug.LogError("[MonsterHit] Invalid SkeletonAttack hit markers; damage window is closed."); }
+        }
         NetworkAttack = new Rpg.Networking.Protocol.MonsterAttackDto { actionId = ++nextNetworkAttackId, actionNumber = 1,
             startTick = GameSimulationClock.AuthorityTick, facingDir = facingDir,
             durationTicks = Mathf.Max(1, Mathf.CeilToInt(finishTime / GameSimulationClock.FixedDeltaTime)) };
         anim.fireEvents = false;
+        anim.speed = 1;
         anim.Play("Base Layer.SkeletonAttack", 0, 0);
     }
 
@@ -69,6 +94,7 @@ public class EnemySkeleton : Enemy
     {
         base.Update();
     }
+    private void OnDisable() => NetworkHits?.Reset();
 
     public override bool CanBeStunned()
     {

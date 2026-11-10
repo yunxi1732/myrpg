@@ -25,6 +25,11 @@ public class SkeletonAttackState : EnemyState
 
     public override void Exit()
     {
+        if (enemy.NetworkMovementOnly)
+        {
+            enemy.NetworkHits?.Reset();
+            enemy.anim.speed = enemy.GetComponent<Rpg.Networking.NetworkElementState>()?.NormalAnimationSpeed ?? 1;
+        }
         base.Exit();
         enemy.lastTimeAttacked = GameSimulationClock.Time;
     }

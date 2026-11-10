@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Rpg.Networking
 {
@@ -22,6 +23,28 @@ namespace Rpg.Networking
         {
             ComboIndex = combo; DurationTicks = duration;
             Segments = Array.AsReadOnly(segments == null ? Array.Empty<PrimaryHitSegmentTiming>() : (PrimaryHitSegmentTiming[])segments.Clone());
+        }
+        // Shared conversion of authored animation markers into non-scaled authority windows.
+        public static bool TryCreate(int comboIndex, float finish, float frameRate, float step, float[] hitTimes, out PrimaryAttackTiming timing)
+        {
+            timing = null;
+            if (comboIndex < 0 || comboIndex > 2 || !(finish > 0) || float.IsInfinity(finish) ||
+                !(frameRate > 0) || float.IsInfinity(frameRate) || !(step > 0) || float.IsInfinity(step) || hitTimes == null || hitTimes.Length == 0) return false;
+            var times = (float[])hitTimes.Clone(); Array.Sort(times);
+            int duration = Mathf.CeilToInt(finish / step);
+            var segments = new PrimaryHitSegmentTiming[times.Length];
+            for (int i = 0; i < times.Length; i++)
+            {
+                if (!(times[i] >= 0) || !(times[i] < finish) || i > 0 && times[i] <= times[i - 1]) return false;
+                int start = Mathf.CeilToInt(times[i] / step);
+                int end = Mathf.Min(duration, Mathf.Max(start + 1, Mathf.CeilToInt((times[i] + 1 / frameRate) / step)));
+                if (i + 1 < times.Length) end = Mathf.Min(end, Mathf.CeilToInt(times[i + 1] / step));
+                if (end <= start) return false;
+                segments[i] = new PrimaryHitSegmentTiming(start, end);
+            }
+            var result = new PrimaryAttackTiming(comboIndex, duration, segments);
+            if (!result.IsValid) return false;
+            timing = result; return true;
         }
         public bool IsValid
         {
@@ -47,7 +70,7 @@ namespace Rpg.Networking
         internal PrimaryAttackHitSegment(int id, ulong start, ulong end) { SegmentId = id; StartTick = start; EndTick = end; }
     }
 
-    /// <summary>Authority-created execution metadata. Request sequence, attack instance ID and future resultId are separate domains.</summary>
+    /// <summary>Authority-created melee metadata. Monster attacks have PlayerId/RequestSeq zero; instance IDs and result IDs stay separate.</summary>
     public sealed class PrimaryAttackInstance
     {
         public string RoomSessionId { get; }
@@ -59,6 +82,12 @@ namespace Rpg.Networking
         public ulong EndTick { get; }
         public int ComboIndex { get; }
         public bool IsClosed { get; private set; }
+        public int FacingDir { get; private set; }
+        internal void SetFacingAtStart(int facing)
+        {
+            if ((facing != -1 && facing != 1) || FacingDir != 0 && FacingDir != facing) throw new ArgumentException("Attack facing is fixed at execution.");
+            FacingDir = facing;
+        }
         public int AcceptedHitCount { get; private set; }
         public IReadOnlyList<PrimaryAttackHitSegment> Segments { get; }
         private readonly HashSet<(int segment, int target)> hits = new HashSet<(int, int)>();

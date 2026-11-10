@@ -5,8 +5,8 @@ namespace Rpg.Networking.Protocol
     public static class ProtocolSchema
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
-        // Versioned health baselines and A-confirmed physical damage results.
-        public const int SchemaVersion = 19;
+        // Shared elemental lifecycle and A-selected shock strike states/results, with common room result IDs.
+        public const int SchemaVersion = 26;
     }
 
     public enum ProtocolId : short
@@ -31,11 +31,23 @@ namespace Rpg.Networking.Protocol
         MonsterInitialization = 18,
         MonsterStates = 19,
         PrimaryAttackRequest = 20,
-        DamageResult = 21
+        DamageResult = 21,
+        ElementStates = 22
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash }
     public enum MonsterAiState { Idle, Patrol, Chase, Attack }
+
+    [Serializable]
+    public sealed class PlayerAttackDto
+    {
+        public long attackInstanceId;
+        public int sourceEntityId;
+        public int comboIndex;
+        public int facingDir;
+        public ulong startTick;
+        public int durationTicks;
+    }
 
     [Serializable]
     public abstract class AuthorityResultDto
@@ -47,6 +59,10 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class DamageResultDto : AuthorityResultDto
     {
+        public DamageResultKind kind;
+        public long effectInstanceId;
+        public int effectTick;
+        public long chainInstanceId;
         public int sourcePlayerId;
         public int sourceEntityId;
         public int targetEntityId;
@@ -58,6 +74,54 @@ namespace Rpg.Networking.Protocol
         public long targetStateVersion;
         public bool critical;
         public bool evaded;
+        public DirectDamageDto components;
+        public DamageImpactDto impact; // Null for evasion/invincibility. Never runs a second damage calculation.
+    }
+    [Serializable]
+    public sealed class DirectDamageDto
+    {
+        public int physicalDamage, magicDamage, burnDamage, shockDamage; // Actual HP removed; sum equals actualDamage.
+        // Raw A-owned inputs identify fire/ice/lightning/intelligence without inventing per-element resistances.
+        public int rawFire, rawIce, rawLightning, rawIntelligence;
+    }
+    public enum DamageResultKind { Direct, Burn, ShockChain }
+    [Serializable]
+    public sealed class ElementStatesDto : AuthorityResultDto
+    {
+        public long stateSeq; // Complete elemental-state stream, including ended-state tombstones.
+        public ElementStateDto[] effects;
+        public ChainStrikeDto[] chains = Array.Empty<ChainStrikeDto>();
+    }
+    public enum ElementEffectKind { Burn, Chill, Shock }
+    public enum ChainStrikePhase { Flying, Impact }
+    [Serializable]
+    public sealed class ChainStrikeDto
+    {
+        public long chainId, effectId;
+        public int sourcePlayerId, sourceEntityId, originEntityId, targetEntityId;
+        public ulong startTick;
+        public ChainStrikePhase phase;
+        public float[] position, direction;
+    }
+    [Serializable]
+    public sealed class ElementStateDto
+    {
+        public long effectId;
+        public ElementEffectKind kind;
+        public float movementMultiplier = 1f, armorMultiplier = 1f;
+        public int sourcePlayerId, sourceEntityId, targetEntityId;
+        public bool active;
+        public ulong startTick, endTick;
+        public int intervalTicks, tickDamage;
+    }
+    [Serializable]
+    public sealed class DamageImpactDto
+    {
+        public float[] position; // A's contact position, for the pooled hit effect and damage number.
+        public int facingDir;
+        public float[] knockbackVelocity; // A applies this once; B must never integrate this velocity.
+        public int knockbackTicks;
+        public int reactionTicks;
     }
     // Array order for combat stats is fixed by this schema, independent of runtime StatType.
     public enum CombatStatId { Strength, Agility, Intelligence, Vitality, Damage, CritChance, CritPower, Health, Armor, Evasion, MagicResistance, FireDamage, IceDamage, LightningDamage }
@@ -209,6 +273,7 @@ namespace Rpg.Networking.Protocol
         public long healthVersion;
         public int currency;
         public PlayerCombatDto combat;
+        public PlayerAttackDto attack;
     }
 
     // Connection identifies the player. No position/delta, player ID or one-shot action fields.
@@ -272,6 +337,7 @@ namespace Rpg.Networking.Protocol
         public int facingDir;
         public MovementAnimationState movementState;
         public float yVelocity;
+        public PlayerAttackDto attack;
     }
 
     public static class RoomScene

@@ -30,6 +30,7 @@ namespace Rpg.Networking
         private readonly Dictionary<int, long> objectKeys = new Dictionary<int, long>();
         private long nextKey;
         private long nextPrimaryAttackInstanceId;
+        // Shared by player and monster melee; retain the original method name for existing verification entries.
         internal long AllocatePrimaryAttackInstanceId()
         {
             if (IsDisposed) throw new ObjectDisposedException(nameof(RoomNetworkObjects));

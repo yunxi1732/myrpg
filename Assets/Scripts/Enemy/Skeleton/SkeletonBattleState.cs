@@ -45,7 +45,7 @@ public class SkeletonBattleState : SkeletonGroundedState
             enemy.SetVelocity(enemy.moveSpeed * direction, rb.velocity.y);
             enemy.anim.SetBool("Move", direction != 0);
             enemy.anim.SetBool("Idle", direction == 0);
-            return; // Damage and hit windows remain disabled until their adaptation step.
+            return; // Animation events stay disabled; A's fixed-tick attack window resolves hits separately.
         }
         base.Update();
         if (sensed != null)

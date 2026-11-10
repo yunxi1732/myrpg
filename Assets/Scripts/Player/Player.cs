@@ -51,7 +51,7 @@ public class Player : Entity
         get
         {
             var state = stateMachine?.currentState;
-            if (state == null) return MovementAnimationState.Idle;
+            if (state == null || stats != null && stats.NetworkHealthVersion > 0 && stats.currentHealth <= 0) return MovementAnimationState.Idle;
             if (state == moveState) return MovementAnimationState.Move;
             if (state == jumpState) return MovementAnimationState.Jump;
             if (state == airState) return MovementAnimationState.Fall;
@@ -202,6 +202,8 @@ public class Player : Entity
         if (!GameSimulationClock.IsNetwork || !IsRuntimeInitialized || !IsAuthoritative) return;
         Combat.Skills.Advance(GameSimulationClock.FixedDeltaTime);
         if (EntityRuntimePermissions.Identity(this)?.MovementHeld == true) return;
+        GetComponent<NetworkHitFeedback>()?.AdvanceAuthorityKnockback(GameSimulationClock.AuthorityTick);
+        if (stats != null && stats.currentHealth <= 0) { HoldNetworkAtZeroHealth(); return; }
         SimulateMovement();
         Combat.PrimaryAttackHits?.Step(GameSimulationClock.AuthorityTick);
     }
@@ -225,6 +227,7 @@ public class Player : Entity
             int interval = condition == PrimaryAttackRejection.None ? Mathf.CeilToInt(networkPrimaryAttackInterval / GameSimulationClock.FixedDeltaTime) : 0;
             if (runtime.TryBegin(GameSimulationClock.AuthorityTick, condition, timing, interval, PlayerPrimaryAttack.NetworkComboWindowTicks))
             {
+                runtime.Current.SetFacingAtStart(facingDir);
                 stateMachine.ChangeState(primaryAttackState);
                 var attack = runtime.Current;
                 Debug.Log($"[PrimaryAttack] START player={attack.PlayerId} entity={attack.EntityId} requestSeq={attack.RequestSeq} attackInstanceId={attack.AttackInstanceId} combo={attack.ComboIndex + 1} segments={attack.Segments.Count} tick={attack.StartTick} endTick={attack.EndTick}");
@@ -282,7 +285,7 @@ public class Player : Entity
             Combat.RoomConfigurationId == null || Combat.PrimaryAttack == null) return PrimaryAttackRejection.NotReady;
         if (NetworkInputLocked || IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked) return PrimaryAttackRejection.Locked;
         if (stats.isDead || stats.currentHealth <= 0) return PrimaryAttackRejection.Dead;
-        if (isBusy || isKnocked || dashPending || pendingJump != NetworkJumpKind.None) return PrimaryAttackRejection.Busy;
+        if (isBusy || isKnocked || GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true || dashPending || pendingJump != NetworkJumpKind.None) return PrimaryAttackRejection.Busy;
         if ((stateMachine?.currentState != idleState && stateMachine?.currentState != moveState) || !IsGroundDetected())
             return PrimaryAttackRejection.ActionState;
         int combo = Combat.PrimaryAttack.PeekComboIndex(GameSimulationClock.AuthorityTick, PlayerPrimaryAttack.NetworkComboWindowTicks);
@@ -306,7 +309,8 @@ public class Player : Entity
 
     private NetworkJumpKind GetNetworkJumpKind()
     {
-        if (NetworkInputLocked || !IsRuntimeInitialized || !isActiveAndEnabled || rb == null || stats == null || stats.isDead || isBusy || isKnocked ||
+        if (NetworkInputLocked || !IsRuntimeInitialized || !isActiveAndEnabled || rb == null || stats == null || stats.isDead || stats.currentHealth <= 0 || isBusy || isKnocked ||
+            GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true ||
             EntityRuntimePermissions.Identity(this)?.MovementHeld == true ||
             IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked) return NetworkJumpKind.None;
         var current = stateMachine?.currentState;
@@ -340,7 +344,7 @@ public class Player : Entity
     private bool CanPerformNetworkDash()
     {
         if (NetworkInputLocked || !networkDashConfigured || !Combat.Skills.Get<DashSkill>().Unlocked || !IsRuntimeInitialized || !isActiveAndEnabled || rb == null || stats == null ||
-            stats.isDead || isBusy || isKnocked || NetworkDashCooldownRemaining > 0.000001f ||
+            stats.isDead || stats.currentHealth <= 0 || isBusy || isKnocked || GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true || NetworkDashCooldownRemaining > 0.000001f ||
             !(dashSpeed > 0) || float.IsInfinity(dashSpeed) || !(dashDuraiton > 0) || float.IsInfinity(dashDuraiton) ||
             EntityRuntimePermissions.Identity(this)?.MovementHeld == true ||
             IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked) return false;
@@ -459,6 +463,21 @@ public class Player : Entity
         combat?.PrimaryAttackHits?.Reset();
         base.Die();
         stateMachine.ChangeState(deadState);
+    }
+
+    public void HoldNetworkAtZeroHealth()
+    {
+        if (!GameSimulationClock.IsNetwork || !IsAuthoritative) return;
+        InputData.Clear(); localJumpPress = 0; localDashPress = 0; localPrimaryAttackPress = 0;
+        pendingJump = NetworkJumpKind.None; dashPending = false;
+        combat?.PrimaryAttack?.InterruptCurrent(); combat?.PrimaryAttackHits?.Reset();
+        if (rb != null && GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive != true)
+        { rb.velocity = Vector2.zero; rb.angularVelocity = 0; }
+        if (anim != null)
+        {
+            anim.SetBool("Attack", false); anim.SetBool("Move", false); anim.SetBool("Jump", false);
+            anim.SetBool("Dash", false); anim.SetBool("WallSlide", false); anim.SetBool("Idle", true);
+        }
     }
 
     protected override void SetupZeroKnockbackPlayer()

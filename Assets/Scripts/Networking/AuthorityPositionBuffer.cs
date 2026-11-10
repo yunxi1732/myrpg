@@ -8,7 +8,7 @@ namespace Rpg.Networking
     /// <summary>A bounded position timeline in A's fixed simulation ticks, not packet arrival timestamps.</summary>
     public sealed class AuthorityPositionBuffer
     {
-        private struct Sample { public ulong Tick; public Vector2 Position; public int Facing; public MovementAnimationState Movement; public float YVelocity; public MonsterAttackDto Attack; }
+        private struct Sample { public ulong Tick; public Vector2 Position; public int Facing; public MovementAnimationState Movement; public float YVelocity; public MonsterAttackDto Attack; public PlayerAttackDto PlayerAttack; }
         private readonly List<Sample> samples = new List<Sample>(32);
         public int Count => samples.Count;
         public double RenderTick { get; private set; }
@@ -21,14 +21,27 @@ namespace Rpg.Networking
         public bool Snapped { get; private set; }
         public MonsterAttackDto MonsterAttack { get; private set; }
         private MonsterAttackDto latestAttack;
+        public PlayerAttackDto PlayerAttack { get; private set; }
+        private PlayerAttackDto latestPlayerAttack;
+        private long retiredPlayerAttack;
 
         public bool Add(ulong tick, long sequence, Vector2 position, double delayTicks, float snapDistance, bool reset = false, int facingDir = 1,
-            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null)
+            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null)
         {
             if (tick == 0 || sequence <= 0 || !ProtocolCodec.IsValidMovementAnimation(movementState, yVelocity) ||
                 (facingDir != -1 && facingDir != 1) || float.IsNaN(position.x) || float.IsInfinity(position.x) ||
                 float.IsNaN(position.y) || float.IsInfinity(position.y) || Count > 0 &&
                 (sequence <= LatestSequence || tick < LatestTick || tick < RenderTick)) return false;
+            if (playerAttack != null)
+            {
+                if (!ProtocolCodec.ValidPlayerAttack(playerAttack, playerAttack.sourceEntityId, facingDir, tick) ||
+                    playerAttack.attackInstanceId <= retiredPlayerAttack || latestPlayerAttack != null && playerAttack.sourceEntityId != latestPlayerAttack.sourceEntityId || latestPlayerAttack != null &&
+                    (playerAttack.attackInstanceId < latestPlayerAttack.attackInstanceId || playerAttack.attackInstanceId == latestPlayerAttack.attackInstanceId &&
+                    (playerAttack.sourceEntityId != latestPlayerAttack.sourceEntityId || playerAttack.comboIndex != latestPlayerAttack.comboIndex ||
+                    playerAttack.startTick != latestPlayerAttack.startTick || playerAttack.durationTicks != latestPlayerAttack.durationTicks || playerAttack.facingDir != latestPlayerAttack.facingDir))) return false;
+                playerAttack = new PlayerAttackDto { attackInstanceId = playerAttack.attackInstanceId, sourceEntityId = playerAttack.sourceEntityId,
+                    comboIndex = playerAttack.comboIndex, startTick = playerAttack.startTick, durationTicks = playerAttack.durationTicks, facingDir = playerAttack.facingDir };
+            }
             if (monsterAttack != null)
             {
                 if (!ProtocolCodec.IsValidMonsterAttack(monsterAttack, tick) || monsterAttack.facingDir != facingDir ||
@@ -40,18 +53,23 @@ namespace Rpg.Networking
                     startTick = monsterAttack.startTick, durationTicks = monsterAttack.durationTicks, facingDir = monsterAttack.facingDir };
                 latestAttack = monsterAttack;
             }
+            if (playerAttack != null) latestPlayerAttack = playerAttack;
+            else if (latestPlayerAttack != null) retiredPlayerAttack = latestPlayerAttack.attackInstanceId;
+            bool hadSamples = Count > 0;
+            double previousRenderTick = RenderTick;
             Snapped = reset || Count == 0 || (position - samples[Count - 1].Position).sqrMagnitude > snapDistance * snapDistance;
             LatestTick = tick; LatestSequence = sequence;
             if (Snapped)
             {
                 samples.Clear();
-                RenderTick = (double)tick - Math.Max(0, delayTicks);
+                RenderTick = hadSamples ? Math.Max(previousRenderTick, (double)tick - Math.Max(0, delayTicks)) : (double)tick - Math.Max(0, delayTicks);
                 Position = position;
                 FacingDirection = facingDir;
                 MovementState = movementState; YVelocity = yVelocity;
                 MonsterAttack = monsterAttack;
+                PlayerAttack = playerAttack;
             }
-            var sample = new Sample { Tick = tick, Position = position, Facing = facingDir, Movement = movementState, YVelocity = yVelocity, Attack = monsterAttack };
+            var sample = new Sample { Tick = tick, Position = position, Facing = facingDir, Movement = movementState, YVelocity = yVelocity, Attack = monsterAttack, PlayerAttack = playerAttack };
             if (Count > 0 && samples[Count - 1].Tick == tick) samples[Count - 1] = sample;
             else samples.Add(sample);
             // Recover from long gaps without accumulating an ever-growing playback delay.
@@ -70,6 +88,13 @@ namespace Rpg.Networking
             FacingDirection = first.Facing; // Discrete state: switch at the sample tick, never interpolate a direction through zero.
             MovementState = first.Movement; YVelocity = first.YVelocity;
             MonsterAttack = first.Attack;
+            PlayerAttack = first.PlayerAttack;
+            // A's next snapshot can reveal an action that began between position samples.
+            // Start at its authority start tick, rather than delaying until that packet's sample tick.
+            if (Count > 1 && samples[1].PlayerAttack != null && RenderTick >= samples[1].PlayerAttack.startTick)
+                PlayerAttack = samples[1].PlayerAttack;
+            if (PlayerAttack != null && RenderTick >= PlayerAttack.startTick && RenderTick - PlayerAttack.startTick < PlayerAttack.durationTicks)
+                FacingDirection = PlayerAttack.facingDir;
             if (Count == 1 || RenderTick <= first.Tick) Position = first.Position;
             else
             {
@@ -88,6 +113,7 @@ namespace Rpg.Networking
             FacingDirection = 1;
             MovementState = MovementAnimationState.Idle; YVelocity = 0;
             MonsterAttack = null; latestAttack = null;
+            PlayerAttack = null; latestPlayerAttack = null; retiredPlayerAttack = 0;
         }
     }
 }

@@ -179,7 +179,7 @@ namespace Rpg.Networking
                 facingDir = player.facingDir,
                 movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y,
                 health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = 0,
-                combat = player.Combat.CaptureRoomConfiguration()
+                combat = player.Combat.CaptureRoomConfiguration(), attack = CaptureAttack(player)
             };
         }
 
@@ -199,7 +199,7 @@ namespace Rpg.Networking
                 {
                     player.Combat.ApplyConfirmedRoomConfiguration(state.combat, value.roomSessionId, value.authorityTick, value.stateSeq);
                     presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq, Position(state), true, state.facingDir,
-                        state.movementState, state.yVelocity);
+                        state.movementState, state.yVelocity, playerAttack: state.attack);
                 }
                 if (!presentation.ApplyVersionedHealth(value.roomSessionId, value.authorityTick, state.healthVersion, state.health, state.maxHealth) ||
                     !presentation.ApplyHud(value.roomSessionId, value.authorityTick, value.stateSeq, state.currency, null, 0, RoomCombatConfiguration.HudFills(state.combat)))
@@ -247,8 +247,18 @@ namespace Rpg.Networking
             return new PlayerPositionDto
             {
                 entityId = identity.EntityId, position = new[] { position.x, position.y }, facingDir = player.facingDir,
-                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y
+                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y, attack = CaptureAttack(player)
             };
+        }
+
+        private static PlayerAttackDto CaptureAttack(Player player)
+        {
+            var attack = player.Combat.PrimaryAttack?.Current;
+            if (attack == null || attack.IsClosed || player.stateMachine?.currentState != player.primaryAttackState ||
+                GameSimulationClock.AuthorityTick >= attack.EndTick) return null;
+            return new PlayerAttackDto { attackInstanceId = attack.AttackInstanceId, sourceEntityId = attack.EntityId,
+                comboIndex = attack.ComboIndex, facingDir = attack.FacingDir, startTick = attack.StartTick,
+                durationTicks = checked((int)(attack.EndTick - attack.StartTick)) };
         }
 
         public void ApplyPositions(PlayerPositionsDto value)
@@ -264,7 +274,7 @@ namespace Rpg.Networking
                     !context.TryGetEntity(state.entityId, out var presentation)) continue;
                 // Each entity's position stream decides freshness independently of health/HUD and other entities.
                 presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
-                    new Vector2(state.position[0], state.position[1]), false, state.facingDir, state.movementState, state.yVelocity);
+                    new Vector2(state.position[0], state.position[1]), false, state.facingDir, state.movementState, state.yVelocity, playerAttack: state.attack);
             }
         }
 

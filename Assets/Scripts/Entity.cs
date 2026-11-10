@@ -17,6 +17,8 @@ public class Entity : MonoBehaviour
     [SerializeField] protected Vector2 knockbackPower;
     [SerializeField] protected float knockbackDuration;
     protected bool isKnocked;
+    public Vector2 HitKnockbackPower => knockbackPower;
+    public float HitKnockbackDuration => knockbackDuration;
 
     public int knockbackDir { get; private set; }
 
@@ -128,7 +130,7 @@ public class Entity : MonoBehaviour
     #region Velocity
     public void SetVelocity(float _xVelocity, float _yVelocity)
     {
-        if (!IsAuthoritative || isKnocked) return;
+        if (!IsAuthoritative || isKnocked || GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true) return;
         rb.velocity = new Vector2(_xVelocity, _yVelocity);
         FlipController(_xVelocity);
     }

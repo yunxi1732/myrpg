@@ -81,7 +81,7 @@ namespace Rpg.Networking
         {
             Enemy enemy = entry.Enemy;
             enemy.gameObject.SetActive(false);
-            // Keep legacy update/event/drop paths dormant. A initializes only the data needed for living-target queries below.
+            // Keep legacy update/event/drop paths dormant. A initializes combat data for the room hit/result pipeline.
             enemy.enabled = false;
             foreach (CharaterStats stats in enemy.GetComponentsInChildren<CharaterStats>(true)) stats.enabled = false;
             foreach (ItemDrop drop in enemy.GetComponentsInChildren<ItemDrop>(true)) drop.enabled = false;
@@ -102,6 +102,26 @@ namespace Rpg.Networking
             return identity != null && identity.IsAuthoritative && identity.RoomSessionId == context.RoomSessionId && identity.PlayerId == 0 &&
                 byId.TryGetValue(identity.EntityId, out var entry) && entry.Enemy == enemy && entry.Active &&
                 stats != null && stats.IsRuntimeInitialized && !stats.isDead && stats.currentHealth > 0;
+        }
+
+        public Enemy FindShockTarget(Enemy origin)
+        {
+            Enemy selected = null; float nearest = float.PositiveInfinity; int selectedId = int.MaxValue;
+            if (origin == null || !IsValidPrimaryAttackTarget(origin)) return null;
+            foreach (var entry in byId.Values)
+            {
+                var enemy = entry.Enemy;
+                if (enemy == origin || !IsValidPrimaryAttackTarget(enemy)) continue;
+                bool inRange = false;
+                foreach (var collider in enemy.GetComponentsInChildren<Collider2D>())
+                    if (collider.enabled && ((Vector2)collider.ClosestPoint(origin.transform.position) - (Vector2)origin.transform.position).sqrMagnitude <= 25 * 25)
+                    { inRange = true; break; }
+                if (!inRange) continue;
+                float distance = ((Vector2)enemy.transform.position - (Vector2)origin.transform.position).sqrMagnitude;
+                int id = enemy.GetComponent<NetworkEntityIdentity>().EntityId;
+                if (distance < nearest || distance == nearest && id < selectedId) { selected = enemy; nearest = distance; selectedId = id; }
+            }
+            return selected;
         }
 
         private void Reveal()
@@ -205,6 +225,19 @@ namespace Rpg.Networking
             }
         }
 
+        public void BindDamageService(RoomCombatDamage damage)
+        {
+            if (disposed || context == null || context.IsGuest || damage == null) return;
+            foreach (var entry in byId.Values)
+                if (entry.Enemy is EnemySkeleton skeleton)
+                {
+                    if (skeleton.NetworkHits == null)
+                        skeleton.NetworkHits = new MonsterAttackHitDetection(skeleton, objects.AllocatePrimaryAttackInstanceId, damage.IsValidPlayerTarget);
+                    skeleton.NetworkHits.HitConfirmed -= damage.OnMonsterHit;
+                    skeleton.NetworkHits.HitConfirmed += damage.OnMonsterHit;
+                }
+        }
+
         private static MonsterAiState AiState(Enemy enemy) => enemy is EnemySkeleton skeleton ? skeleton.NetworkAiState : MonsterAiState.Idle;
         private static bool Moving(Enemy enemy) => enemy != null && enemy.anim != null && enemy.anim.GetBool("Move");
         private static MonsterAttackDto Attack(Enemy enemy) => AiState(enemy) == MonsterAiState.Attack && enemy is EnemySkeleton skeleton ? skeleton.NetworkAttack : new MonsterAttackDto();
@@ -246,6 +279,8 @@ namespace Rpg.Networking
         {
             if (disposed) return;
             disposed = true;
+            foreach (var entry in byId.Values)
+                if (entry.Enemy is EnemySkeleton skeleton) { skeleton.NetworkHits?.Reset(); skeleton.NetworkHits = null; }
             foreach (var registration in registrations) registration.Dispose();
             registrations.Clear(); ids.Clear(); byId.Clear(); context = null;
         }

@@ -23,6 +23,7 @@ namespace Rpg.Networking
         public int ProcessedCount { get; private set; }
         public int RejectedCount { get; private set; }
         public Exception LastMessageError { get; private set; }
+        public short LastRejectedProtocolId { get; private set; }
 
         public NetworkSystem(IArchitecture architecture, int maxPacketsPerUpdate = 32)
         {
@@ -51,6 +52,7 @@ namespace Rpg.Networking
             SessionId = value.SessionId;
             ProcessedCount = RejectedCount = StalePacketCount = 0;
             LastMessageError = null;
+            LastRejectedProtocolId = 0;
         }
 
         // Called only by the local handshake handler after A's confirmation, never copied from gameplay input.
@@ -122,6 +124,7 @@ namespace Rpg.Networking
                     {
                         RejectedCount++;
                         LastMessageError = error;
+                        LastRejectedProtocolId = packet.ProtocolId;
                     }
                 }
             }

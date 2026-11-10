@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Rpg.Networking
 {
@@ -84,40 +83,9 @@ namespace Rpg.Networking
         public static void CollectCandidates(Player source, Func<Enemy, bool> validTarget, List<PrimaryAttackHitCandidate> output)
         {
             output.Clear();
-            var sourceIdentity = source != null ? EntityRuntimePermissions.Identity(source) : null;
-            if (source == null || !source.isActiveAndEnabled || sourceIdentity == null || !sourceIdentity.IsAuthoritative ||
-                sourceIdentity.PlayerId <= 0 || source.attackCheck == null || !source.attackCheck.IsChildOf(source.transform) ||
-                !(source.attackCheckRadius > 0) || float.IsInfinity(source.attackCheckRadius) || validTarget == null) return;
-            var physics = source.gameObject.scene.GetPhysicsScene2D();
-            var overlaps = new List<Collider2D>();
-            var filter = new ContactFilter2D { useTriggers = false };
-            Vector2 origin = source.transform.position, center = source.attackCheck.position;
-            physics.OverlapCircle(center, source.attackCheckRadius, filter, overlaps);
-            var blockers = new List<RaycastHit2D>();
-            var wallFilter = new ContactFilter2D { useTriggers = false, useLayerMask = true, layerMask = source.AttackBlockingLayers };
-            foreach (var collider in overlaps)
-            {
-                if (collider == null || !collider.enabled || collider.isTrigger || !collider.gameObject.activeInHierarchy ||
-                    collider.gameObject.scene != source.gameObject.scene) continue;
-                Enemy target = collider.GetComponentInParent<Enemy>();
-                var identity = target != null ? EntityRuntimePermissions.Identity(target) : null;
-                if (target == null || !target.isActiveAndEnabled || identity == null || !identity.IsAuthoritative || identity.PlayerId != 0 ||
-                    identity.RoomSessionId != sourceIdentity.RoomSessionId || !validTarget(target)) continue;
-                // A's current target root must be in the facing half-plane; collision distance uses actual collider geometry.
-                if ((target.transform.position.x - origin.x) * source.facingDir < 0) continue;
-                Vector2 point = collider.ClosestPoint(center);
-                if ((point - center).sqrMagnitude > source.attackCheckRadius * source.attackCheckRadius + 0.000001f) continue;
-                Vector2 contact = collider.ClosestPoint(origin);
-                blockers.Clear(); physics.Linecast(origin, contact, wallFilter, blockers);
-                bool blocked = false;
-                foreach (var wall in blockers)
-                {
-                    if (wall.collider == null || wall.collider.GetComponentInParent<Player>() == source ||
-                        wall.collider.GetComponentInParent<Enemy>() == target) continue;
-                    blocked = true; break;
-                }
-                if (!blocked) output.Add(new PrimaryAttackHitCandidate(target, collider, identity.EntityId));
-            }
+            if (source == null || EntityRuntimePermissions.Identity(source)?.PlayerId <= 0 || validTarget == null) return;
+            AuthorityMeleeQuery.Collect<Enemy>(source, target => EntityRuntimePermissions.Identity(target)?.PlayerId == 0 && validTarget(target),
+                (target, collider, id) => output.Add(new PrimaryAttackHitCandidate(target, collider, id)));
         }
     }
 }

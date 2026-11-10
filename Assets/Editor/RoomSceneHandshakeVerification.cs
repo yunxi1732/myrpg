@@ -222,7 +222,7 @@ public static class RoomSceneHandshakeVerification
                 {
                     roomSessionId = host.RoomSessionId, resultId = host.Results.Allocate(), authorityTick = 105,
                     sourcePlayerId = host.HostIdentity.PlayerId, sourceEntityId = host.HostIdentity.EntityId,
-                    targetEntityId = 333, attackInstanceId = 1, hitSegmentId = 1, actualDamage = 10,
+                    targetEntityId = 333, attackInstanceId = 1, hitSegmentId = 1, actualDamage = 10, components = new DirectDamageDto { physicalDamage = 10 },
                     finalHealth = 80, maxHealth = 100, targetStateVersion = 3
                 };
                 Require(!host.SendDamageResult(damage), "A waits for the monster baseline before publishing damage");

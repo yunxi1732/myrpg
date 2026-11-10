@@ -52,6 +52,7 @@ namespace Rpg.Networking
         public event Action<MonsterInitializationDto> MonsterInitializationReceived;
         public event Action<MonsterStatesDto> MonsterStatesReceived;
         public event Action<DamageResultDto> DamageResultReceived;
+        public event Action<ElementStatesDto> ElementStatesReceived;
         private long lastMonsterSeq;
         private ulong lastMonsterTick;
         private long lastPlayerInitializationSeq;
@@ -76,6 +77,8 @@ namespace Rpg.Networking
         public RoomConnectionState State { get; private set; }
         public NetConnection Connection { get; private set; }
         public string FailureMessage { get; private set; }
+        public string SceneInitializationDiagnostics => $"load={SceneLoadId} ready={CanInitializeEntities} playerSeq={lastPlayerInitializationSeq} monsterSeq={lastMonsterSeq} " +
+            $"rejected={handshakePeer?.Network.RejectedCount ?? 0} lastProtocol={handshakePeer?.Network.LastRejectedProtocolId ?? 0} error={handshakePeer?.Network.LastMessageError?.Message ?? "none"}";
 
         public TcpRoomClient(int timeoutMilliseconds = 5000)
         {
@@ -210,6 +213,13 @@ namespace Rpg.Networking
                                 throw new InvalidDataException("Monster ID collides with admission identity.");
                         lastMonsterSeq = monsters.stateSeq; lastMonsterTick = monsters.authorityTick;
                         MonsterInitializationReceived?.Invoke(monsters);
+                    });
+                    handshakePeer.Subscribe<ElementStatesDto>(value =>
+                    {
+                        var burns = (ElementStatesDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || lastMonsterSeq == 0 || burns.roomSessionId != RoomSessionId) return;
+                        ElementStatesReceived?.Invoke(burns);
                     });
                     handshakePeer.Subscribe<DamageResultDto>(value =>
                     {

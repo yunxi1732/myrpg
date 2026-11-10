@@ -48,7 +48,8 @@ namespace Rpg.Networking.Protocol
             Register<MonsterInitializationDto>(ProtocolId.MonsterInitialization),
             Register<MonsterStatesDto>(ProtocolId.MonsterStates),
             Register<PrimaryAttackRequestDto>(ProtocolId.PrimaryAttackRequest),
-            Register<DamageResultDto>(ProtocolId.DamageResult)
+            Register<DamageResultDto>(ProtocolId.DamageResult),
+            Register<ElementStatesDto>(ProtocolId.ElementStates)
         };
 
         private static Entry Register<T>(ProtocolId id, bool allowedBeforeHandshake = false)
@@ -89,9 +90,31 @@ namespace Rpg.Networking.Protocol
             object dto;
             try { dto = JsonUtility.FromJson(json, entry.Type); }
             catch (ArgumentException exception) { throw new InvalidDataException("Invalid protocol JSON.", exception); }
+            NormalizeOptionalMetadata(dto);
             Validate(dto);
             return dto;
         }
+
+        // Unity's inline class serialization can represent a null optional class as a default-valued object.
+        // Canonicalize only completely empty metadata; partially populated/invalid actions must still be rejected.
+        private static void NormalizeOptionalMetadata(object dto)
+        {
+            if (dto is PlayerInitializationDto initial && initial.players != null)
+                foreach (var player in initial.players)
+                    if (player != null && EmptyPlayerAttack(player.attack)) player.attack = null;
+            if (dto is PlayerPositionsDto positions && positions.players != null)
+                foreach (var player in positions.players)
+                    if (player != null && EmptyPlayerAttack(player.attack)) player.attack = null;
+            if (dto is DamageResultDto damage && damage.impact != null)
+            {
+                var impact = damage.impact;
+                if (EmptyVector(impact.position) && EmptyVector(impact.knockbackVelocity) && impact.facingDir == 0 &&
+                    impact.knockbackTicks == 0 && impact.reactionTicks == 0) damage.impact = null;
+            }
+        }
+        private static bool EmptyVector(float[] value) => value == null || value.Length == 0;
+        private static bool EmptyPlayerAttack(PlayerAttackDto value) => value != null && value.attackInstanceId == 0 && value.sourceEntityId == 0 &&
+            value.comboIndex == 0 && value.facingDir == 0 && value.startTick == 0 && value.durationTicks == 0;
 
         private static Entry Find(ProtocolId id)
         {
@@ -128,12 +151,14 @@ namespace Rpg.Networking.Protocol
 
         private static void Validate(object dto)
         {
+            if (dto is ElementStatesDto burns && ValidElementStates(burns)) return;
             if (dto is DamageResultDto damage && ValidAuthorityResult(damage) && damage.sourcePlayerId >= 0 &&
                 damage.sourceEntityId > 0 && damage.targetEntityId > 0 && damage.sourceEntityId != damage.targetEntityId &&
-                damage.attackInstanceId > 0 && damage.hitSegmentId > 0 && damage.actualDamage >= 0 &&
+                damage.attackInstanceId > 0 && damage.hitSegmentId > 0 && damage.actualDamage >= 0 && ValidDirectDamage(damage) &&
                 ValidHealth(damage.finalHealth, damage.maxHealth, damage.targetStateVersion) &&
                 (long)damage.actualDamage + damage.finalHealth <= damage.maxHealth &&
-                (!damage.evaded || damage.actualDamage == 0 && !damage.critical)) return;
+                (!damage.evaded || damage.actualDamage == 0 && !damage.critical && damage.impact == null) &&
+                ValidDamageImpact(damage.impact)) return;
             if (dto is PrimaryAttackRequestDto attack && attack.requestSeq > 0) return;
             if (dto is MonsterStatesDto states && ValidMonsterStates(states)) return;
             if (dto is MonsterInitializationDto monsters && ValidMonsterInitialization(monsters)) return;
@@ -145,6 +170,8 @@ namespace Rpg.Networking.Protocol
                 positions.loadId > 0 && positions.authorityTick > 0 && positions.stateSeq > 0 &&
                 positions.players != null && positions.players.Length == 2 &&
                 ValidPlayerPosition(positions.players[0]) && ValidPlayerPosition(positions.players[1]) &&
+                ValidPlayerAttack(positions.players[0].attack, positions.players[0].entityId, positions.players[0].facingDir, positions.authorityTick) &&
+                ValidPlayerAttack(positions.players[1].attack, positions.players[1].entityId, positions.players[1].facingDir, positions.authorityTick) &&
                 positions.players[0].entityId != positions.players[1].entityId) return;
             if (dto is MovementInputDto movement && movement.inputSeq > 0 && IsValidMovementAxis(movement.currentAxis)) return;
             if (dto is HandshakeHelloDto hello && hello.schemaVersion > 0) return;
@@ -157,6 +184,8 @@ namespace Rpg.Networking.Protocol
                 initialization.loadId > 0 && initialization.authorityTick > 0 && initialization.stateSeq > 0 &&
                 initialization.players != null && initialization.players.Length == 2 &&
                 ValidInitialPlayer(initialization.players[0]) && ValidInitialPlayer(initialization.players[1]) &&
+                ValidPlayerAttack(initialization.players[0].attack, initialization.players[0].entityId, initialization.players[0].facingDir, initialization.authorityTick) &&
+                ValidPlayerAttack(initialization.players[1].attack, initialization.players[1].entityId, initialization.players[1].facingDir, initialization.authorityTick) &&
                 initialization.players[0].playerId != initialization.players[1].playerId &&
                 initialization.players[0].entityId != initialization.players[1].entityId) return;
             if (dto is GuestLeaveDto leave && Guid.TryParseExact(leave.roomSessionId, "N", out _)) return;
@@ -230,6 +259,11 @@ namespace Rpg.Networking.Protocol
         public static bool IsValidMovementAnimation(MovementAnimationState state, float yVelocity) =>
             state >= MovementAnimationState.Idle && state <= MovementAnimationState.Dash && ValidCoordinate(yVelocity);
 
+        public static bool ValidPlayerAttack(PlayerAttackDto attack, int entityId, int facing, ulong tick) => attack == null ||
+            attack.attackInstanceId > 0 && entityId > 0 && attack.sourceEntityId == entityId && (facing == -1 || facing == 1) && attack.facingDir == facing &&
+            attack.comboIndex >= 0 && attack.comboIndex <= 2 && attack.startTick > 0 && attack.startTick <= tick &&
+            attack.durationTicks > 0 && attack.durationTicks <= 3000 && tick - attack.startTick < (ulong)attack.durationTicks;
+
         public static bool IsValidMovementAxis(float axis) =>
             !float.IsNaN(axis) && !float.IsInfinity(axis) && axis >= -1 && axis <= 1;
 
@@ -277,6 +311,42 @@ namespace Rpg.Networking.Protocol
         public static bool ValidAuthorityResult(AuthorityResultDto value) => value != null &&
             Guid.TryParseExact(value.roomSessionId, "N", out _) && value.authorityTick > 0 && value.resultId > 0;
         public static bool ValidHealth(int health, int maximum, long version) => maximum > 0 && health >= 0 && health <= maximum && version > 0;
+        private static bool ValidDirectDamage(DamageResultDto result)
+        {
+            var value = result.components;
+            return value != null && value.physicalDamage >= 0 && value.magicDamage >= 0 &&
+                value.burnDamage >= 0 && value.shockDamage >= 0 && (long)value.physicalDamage + value.magicDamage + value.burnDamage + value.shockDamage == result.actualDamage &&
+                (result.kind == DamageResultKind.Direct && value.burnDamage == 0 && value.shockDamage == 0 && result.chainInstanceId == 0 && result.effectInstanceId == 0 && result.effectTick == 0 ||
+                 (result.kind == DamageResultKind.Burn && result.chainInstanceId == 0 && value.shockDamage == 0 ||
+                  result.kind == DamageResultKind.ShockChain && result.chainInstanceId > 0 && value.burnDamage == 0) &&
+                 result.effectInstanceId > 0 && result.effectTick > 0 && value.physicalDamage == 0 && value.magicDamage == 0 &&
+                 !result.critical && !result.evaded && (result.kind == DamageResultKind.ShockChain || result.impact == null)) &&
+                value.rawFire >= 0 && value.rawIce >= 0 && value.rawLightning >= 0 && value.rawIntelligence >= 0;
+        }
+        public static bool ValidDamageImpact(DamageImpactDto impact) => impact == null ||
+            impact.position != null && impact.position.Length == 2 && ValidCoordinate(impact.position[0]) && ValidCoordinate(impact.position[1]) &&
+            (impact.facingDir == -1 || impact.facingDir == 1) && impact.knockbackVelocity != null && impact.knockbackVelocity.Length == 2 &&
+            ValidCoordinate(impact.knockbackVelocity[0]) && ValidCoordinate(impact.knockbackVelocity[1]) &&
+            impact.knockbackTicks > 0 && impact.knockbackTicks <= 3000 && impact.reactionTicks > 0 && impact.reactionTicks <= 3000;
         private static bool ValidCoordinate(float value) => !float.IsNaN(value) && !float.IsInfinity(value) && Mathf.Abs(value) <= 1000000;
+        private static bool ValidElementStates(ElementStatesDto value)
+        {
+            if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.effects == null || value.effects.Length > 4096 || value.chains == null || value.chains.Length > 4096) return false;
+            var targets = new System.Collections.Generic.HashSet<int>();
+            foreach (var burn in value.effects)
+                if (burn == null || burn.effectId <= 0 || burn.sourcePlayerId < 0 || burn.sourceEntityId <= 0 || burn.targetEntityId <= 0 ||
+                    burn.sourceEntityId == burn.targetEntityId || !targets.Add(burn.targetEntityId) || burn.startTick == 0 || burn.startTick > value.authorityTick ||
+                    burn.endTick <= burn.startTick || burn.intervalTicks <= 0 || burn.tickDamage < 0 || burn.active && value.authorityTick >= burn.endTick ||
+                    !((burn.kind == ElementEffectKind.Burn || burn.kind == ElementEffectKind.Shock) && burn.movementMultiplier == 1 && burn.armorMultiplier == 1 ||
+                      burn.kind == ElementEffectKind.Chill && burn.tickDamage == 0 && burn.movementMultiplier == DamageCalculations.ChillMultiplier && burn.armorMultiplier == DamageCalculations.ChillMultiplier)) return false;
+            var chainIds = new System.Collections.Generic.HashSet<long>();
+            foreach (var chain in value.chains)
+                if (chain == null || chain.chainId <= 0 || !chainIds.Add(chain.chainId) || chain.effectId <= 0 || chain.sourcePlayerId <= 0 ||
+                    chain.sourceEntityId <= 0 || chain.originEntityId <= 0 || chain.targetEntityId <= 0 || chain.originEntityId == chain.targetEntityId ||
+                    chain.sourceEntityId == chain.targetEntityId || chain.sourceEntityId == chain.originEntityId || chain.startTick == 0 || chain.startTick > value.authorityTick ||
+                    chain.phase < ChainStrikePhase.Flying || chain.phase > ChainStrikePhase.Impact || !ValidChainVector(chain.position) || !ValidChainVector(chain.direction)) return false;
+            return true;
+        }
+        private static bool ValidChainVector(float[] value) => value != null && value.Length == 2 && ValidCoordinate(value[0]) && ValidCoordinate(value[1]);
     }
 }

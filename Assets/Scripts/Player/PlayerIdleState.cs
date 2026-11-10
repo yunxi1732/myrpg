@@ -12,7 +12,8 @@ public class PlayerIdleState : PlayerGroundedState
     public override void Enter()
     {
         base.Enter();
-        rb.velocity = new Vector2(0, 0);
+        if (GameSimulationClock.IsNetwork) player.SetVelocity(0, 0); // Respect an active A-confirmed knockback on landing/action exit.
+        else rb.velocity = new Vector2(0, 0);
     }
 
     public override void Exit()

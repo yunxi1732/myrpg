@@ -12,6 +12,7 @@ public sealed class HitEffectFX : MonoBehaviour, ITemporaryEffectPlayback
     private Vector3 initialScale;
     private Color initialColor;
     private float initialAnimatorSpeed;
+    private bool initialFireEvents, initialRootMotion;
     private bool initialized;
     private float remainingTime;
     public bool IsPlaying { get; private set; }
@@ -26,6 +27,7 @@ public sealed class HitEffectFX : MonoBehaviour, ITemporaryEffectPlayback
         initialScale = transform.localScale;
         initialColor = spriteRenderer.color;
         initialAnimatorSpeed = animator.speed;
+        initialFireEvents = animator.fireEvents; initialRootMotion = animator.applyRootMotion;
         initialized = true;
     }
 
@@ -37,6 +39,8 @@ public sealed class HitEffectFX : MonoBehaviour, ITemporaryEffectPlayback
         StopAllCoroutines();
         gameObject.SetActive(true);
         animator.enabled = true;
+        animator.fireEvents = !GameSimulationClock.IsNetwork && initialFireEvents;
+        animator.applyRootMotion = !GameSimulationClock.IsNetwork && initialRootMotion;
         animator.updateMode = GameSimulationClock.IsNetwork ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
         animator.speed = initialAnimatorSpeed;
         animator.Rebind();

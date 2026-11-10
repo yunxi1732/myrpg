@@ -309,6 +309,15 @@ namespace Rpg.Networking
             monsterInitializationSent = true;
         }
 
+        public bool SendElementStates(ElementStatesDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!IsListening || !CanInitializeEntities || !playerInitializationSent || !monsterInitializationSent ||
+                value.roomSessionId != RoomSessionId || Results == null || value.resultId > Results.LastAllocated || Guest == null || !Guest.IsOpen) return false;
+            try { Guest.Send(value, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
         public bool SendDamageResult(DamageResultDto value)
         {
             ProtocolCodec.ValidateMessage(value, true);

@@ -104,11 +104,17 @@ public class Enemy : Entity
 
     private void FixedUpdate()
     {
+        if (NetworkMovementOnly && IsAuthoritative &&
+            GetComponent<Rpg.Networking.NetworkHitFeedback>()?.AdvanceAuthorityKnockback(GameSimulationClock.AuthorityTick) == true)
+        { if (this is EnemySkeleton knocked) knocked.NetworkHits?.Step(GameSimulationClock.AuthorityTick); return; }
         if (NetworkMovementOnly && IsAuthoritative && stats != null && stats.IsRuntimeInitialized && stats.currentHealth <= 0)
-        { HoldNetworkAtZeroHealth(); return; }
+        { if (this is EnemySkeleton dead) dead.NetworkHits?.Reset(); HoldNetworkAtZeroHealth(); return; }
         if (NetworkMovementOnly && IsAuthoritative && runtimeReady &&
             Rpg.Networking.EntityRuntimePermissions.Identity(this)?.MovementHeld != true)
+        {
             stateMachine.currentState?.Update();
+            if (this is EnemySkeleton skeleton) skeleton.NetworkHits?.Step(GameSimulationClock.AuthorityTick);
+        }
     }
 
     public void HoldNetworkAtZeroHealth()

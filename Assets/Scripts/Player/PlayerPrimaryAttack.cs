@@ -52,38 +52,21 @@ public class PlayerPrimaryAttack : PlayerState
     }
 
     public static bool TryCreateNetworkTiming(int comboIndex, float finish, float frameRate, float step, float[] hitTimes, out PrimaryAttackTiming timing)
-    {
-        timing = null;
-        if (comboIndex < 0 || comboIndex > 2 || !(finish > 0) || float.IsInfinity(finish) ||
-            !(frameRate > 0) || float.IsInfinity(frameRate) || !(step > 0) || float.IsInfinity(step) || hitTimes == null || hitTimes.Length == 0) return false;
-        var times = (float[])hitTimes.Clone(); System.Array.Sort(times);
-        int duration = Mathf.CeilToInt(finish / step);
-        var segments = new PrimaryHitSegmentTiming[times.Length];
-        for (int i = 0; i < times.Length; i++)
-        {
-            if (!(times[i] >= 0) || !(times[i] < finish) || i > 0 && times[i] <= times[i - 1]) return false;
-            int start = Mathf.CeilToInt(times[i] / step);
-            int end = Mathf.Min(duration, Mathf.Max(start + 1, Mathf.CeilToInt((times[i] + 1 / frameRate) / step)));
-            if (i + 1 < times.Length) end = Mathf.Min(end, Mathf.CeilToInt(times[i + 1] / step));
-            if (end <= start) return false; // Ambiguous same-tick markers are invalid, never two accidental hit segments.
-            segments[i] = new PrimaryHitSegmentTiming(start, end);
-        }
-        var result = new PrimaryAttackTiming(comboIndex, duration, segments);
-        if (!result.IsValid) return false;
-        timing = result; return true;
-    }
+        => PrimaryAttackTiming.TryCreate(comboIndex, finish, frameRate, step, hitTimes, out timing);
 
     public override void Enter()
     {
         base.Enter();
         if (GameSimulationClock.IsNetwork)
         {
+            player.anim.speed = 1; // Attack windows/playback use authority ticks, independently of chilled movement animation.
             networkInstance = player.Combat.PrimaryAttack.Current;
             networkCompleted = false;
             comboCounter = networkInstance.ComboIndex;
             player.anim.SetInteger("comboCounter", comboCounter);
             stateTimer = 0.1f;
             player.SetVelocity(player.attackMovement[comboCounter] * player.facingDir, 2);
+            player.FlipController(networkInstance.FacingDir);
             return;
         }
 
@@ -100,6 +83,7 @@ public class PlayerPrimaryAttack : PlayerState
         if (GameSimulationClock.IsNetwork)
         {
             player.Combat.PrimaryAttack?.FinishCurrent(networkInstance, GameSimulationClock.AuthorityTick, networkCompleted);
+            player.anim.speed = player.GetComponent<NetworkElementState>()?.NormalAnimationSpeed ?? 1;
             networkInstance = null;
             return;
         }
@@ -114,6 +98,7 @@ public class PlayerPrimaryAttack : PlayerState
         if (GameSimulationClock.IsNetwork)
         {
             var attack = networkInstance;
+            if (attack != null && !attack.IsClosed) player.FlipController(attack.FacingDir);
             if (attack == null || attack.IsClosed || GameSimulationClock.AuthorityTick >= attack.EndTick)
             {
                 networkCompleted = attack != null && !attack.IsClosed && GameSimulationClock.AuthorityTick >= attack.EndTick;

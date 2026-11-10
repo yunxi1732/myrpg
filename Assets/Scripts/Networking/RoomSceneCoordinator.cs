@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 namespace Rpg.Networking
 {
     /// <summary>Owns network scene entry, room identities and the initial two-player setup; legacy scene gameplay stays suspended.</summary>
+    [DefaultExecutionOrder(-10000)] // After the -32000 clock driver, before actor movement/hits: expire elements at their exact tick boundary.
     public sealed class RoomSceneCoordinator : MonoBehaviour
     {
         public static RoomSceneCoordinator Active { get; private set; }
@@ -33,6 +34,7 @@ namespace Rpg.Networking
         public RoomSceneMonsters Monsters { get; private set; }
         public RoomCombatDamage CombatDamage { get; private set; }
         private readonly System.Collections.Generic.Queue<DamageResultDto> pendingDamageResults = new System.Collections.Generic.Queue<DamageResultDto>();
+        private ElementStatesDto pendingElementStates;
         private RoomSceneMonsters.SceneEntry[] monsterCatalog;
         private long monsterInitializationLoadId;
         private long entityOperation, initializationLoadId, initializedLoadId;
@@ -65,6 +67,7 @@ namespace Rpg.Networking
             client.MonsterInitializationReceived += OnMonsterInitialization;
             client.MonsterStatesReceived += OnMonsterStates;
             client.DamageResultReceived += OnDamageResult;
+            client.ElementStatesReceived += OnElementStates;
             host.RoomExited += OnExit;
             client.RoomExited += OnExit;
             host.Disconnected += OnDisconnect;
@@ -220,8 +223,9 @@ namespace Rpg.Networking
                 Players.EnsurePlayers(Presentation, authority, guest);
                 Monsters.BindAuthority(Presentation, host.AllocateSceneEntityId);
                 Players.BindPrimaryAttackTargets(Monsters);
-                if (CombatDamage == null) CombatDamage = new RoomCombatDamage(Presentation, Monsters, host.Results, value => host.SendDamageResult(value));
+                if (CombatDamage == null) CombatDamage = new RoomCombatDamage(Presentation, Monsters, host.Results, value => host.SendDamageResult(value), value => host.SendElementStates(value));
                 Players.BindDamageService(CombatDamage);
+                Monsters.BindDamageService(CombatDamage);
                 StartCoroutine(FinishPlayerInitialization(null, token, loadId));
             }
             else StartCoroutine(WaitForInitialPlayers(token));
@@ -232,7 +236,7 @@ namespace Rpg.Networking
             double deadline = MonotonicClock.Now + 10;
             while (!returning && token == entityOperation)
             {
-                if (MonotonicClock.Now >= deadline) { Fail(false, "Initial player state from A timed out"); yield break; }
+                if (MonotonicClock.Now >= deadline) { Fail(false, "Initial player state from A timed out; " + client.SceneInitializationDiagnostics); yield break; }
                 yield return null;
             }
         }
@@ -245,6 +249,7 @@ namespace Rpg.Networking
             try
             {
                 applyingGuestInitialization = true;
+                Debug.Log($"[RoomPlayers] B received baseline room={value.roomSessionId} load={value.loadId} seq={value.stateSeq} tick={value.authorityTick}");
                 Players.EnsurePlayers(Presentation, client.HostIdentity, client.LocalIdentity, value);
                 StartCoroutine(FinishPlayerInitialization(value, ++entityOperation, value.loadId));
             }
@@ -260,7 +265,12 @@ namespace Rpg.Networking
                 (!Players.AllStarted || initialState == null && GameSimulationClock.AuthorityTick == 0 ||
                     initialState != null && monsterInitializationLoadId != loadId))
             {
-                if (MonotonicClock.Now >= deadline) { Fail(host.IsListening, "Player components or monster manifest did not initialize"); yield break; }
+                if (MonotonicClock.Now >= deadline)
+                {
+                    Fail(host.IsListening, $"Player components or monster manifest did not initialize; playersStarted={Players.AllStarted} manifest={monsterInitializationLoadId}/{loadId}" +
+                        (activeRoomIsHost ? "" : "; " + client.SceneInitializationDiagnostics));
+                    yield break;
+                }
                 yield return null;
             }
             if (returning || token != entityOperation) yield break;
@@ -272,14 +282,16 @@ namespace Rpg.Networking
                 if (host.IsListening)
                 {
                     host.SendMonsterInitialization(Monsters.Capture(loadId, GameSimulationClock.AuthorityTick));
+                    CombatDamage.PublishElementBaseline(GameSimulationClock.AuthorityTick);
                     monsterInitializationLoadId = loadId;
                     Monsters.EnableAuthorityMovement(Players);
-                    Debug.Log($"[RoomMonsters] bound={Monsters.Count} role=Authoritative; AI/actions and player physical damage enabled; monster attack damage held.");
+                    Debug.Log($"[RoomMonsters] bound={Monsters.Count} role=Authoritative; AI/actions and bidirectional physical/direct-magic damage enabled; A resolves monster hit windows against registered player entities.");
                 }
                 Players.EnableAuthoritativeMovement();
                 initializedLoadId = loadId;
                 if (!activeRoomIsHost)
                     while (pendingDamageResults.Count > 0) CombatDamage.ApplyConfirmedResult(pendingDamageResults.Dequeue());
+                if (!activeRoomIsHost && pendingElementStates != null) { CombatDamage.ApplyElementStates(pendingElementStates); pendingElementStates = null; }
                 if (!activeRoomIsHost) client.SendLocalInputLock(GameplayControlLock.IsLocked);
                 if (!activeRoomIsHost && pendingPositions != null)
                 {
@@ -365,6 +377,22 @@ namespace Rpg.Networking
             playerStateSendTimer = 0;
             host.SendPlayerPositions(Players.CapturePositions(initializedLoadId));
             host.SendMonsterStates(Monsters.CaptureStates(initializedLoadId, GameSimulationClock.AuthorityTick));
+        }
+
+        private void FixedUpdate()
+        {
+            if (IsSceneSession && !returning && activeRoomIsHost) CombatDamage?.AdvanceElements(GameSimulationClock.AuthorityTick);
+        }
+
+        private void OnElementStates(ElementStatesDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingElementStates == null || value.stateSeq > pendingElementStates.stateSeq && value.authorityTick >= pendingElementStates.authorityTick) pendingElementStates = value;
+                return;
+            }
+            CombatDamage.ApplyElementStates(value);
         }
 
         private void OnDamageResult(DamageResultDto value)
@@ -520,12 +548,14 @@ namespace Rpg.Networking
             InvalidateEntityInitialization();
             if (departingPlayerId > 0)
             {
+                CombatDamage?.RemovePlayerElements(departingPlayerId, GameSimulationClock.AuthorityTick);
                 NetworkObjects?.CleanupPlayer(activeRoomSessionId, departingPlayerId);
                 Presentation?.RemovePlayer(departingPlayerId);
                 return;
             }
             CombatDamage?.Dispose(); CombatDamage = null;
             pendingDamageResults.Clear();
+            pendingElementStates = null;
             if (NetworkObjects != null) NetworkObjects.Dispose();
             else if (presentationBinding != null) presentationBinding.Unbind();
             NetworkObjects = null;
@@ -553,6 +583,13 @@ namespace Rpg.Networking
             if (activeRoomIsHost) host.CloseRoom();
             else client.LeaveRoom();
             ReturnToEntry("Room scene unloaded");
+        }
+
+        [ContextMenu("Repeat Last Damage Result (Play Mode)")]
+        private void RepeatLastDamageResult()
+        {
+            if (!Application.isPlaying || !IsSceneSession || returning || !activeRoomIsHost) return;
+            if (CombatDamage?.RepeatLastResultForVerification() != true) Debug.Log("[HitFeedback] No authority damage result to repeat yet.");
         }
 
         [ContextMenu("Log Room Combat Configuration (Play Mode)")]
@@ -622,6 +659,7 @@ namespace Rpg.Networking
                 client.MonsterInitializationReceived -= OnMonsterInitialization;
                 client.MonsterStatesReceived -= OnMonsterStates;
                 client.DamageResultReceived -= OnDamageResult;
+                client.ElementStatesReceived -= OnElementStates;
                 client.RoomExited -= OnExit; client.Disconnected -= OnDisconnect;
             }
             if (ReferenceEquals(Active, this)) Active = null;

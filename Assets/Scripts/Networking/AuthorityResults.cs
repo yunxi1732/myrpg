@@ -65,7 +65,7 @@ namespace Rpg.Networking
             bool critical = rollPercent() < Chance((long)input.critChance + input.agility);
             int damage = Clamp((long)input.damage + input.strength);
             if (critical) damage = Round(damage * Math.Max(0, (long)input.critPower + input.strength) * .01d);
-            int armor = input.chilled ? Round(Math.Max(0, input.armor) * .8d) : Math.Max(0, input.armor);
+            int armor = DamageCalculations.ApplyChilledArmor(Math.Max(0, input.armor), input.chilled);
             damage = Clamp((long)damage - armor);
             if (input.vulnerable) damage = Round(damage * 1.1d);
             damage = Math.Min(input.health, damage);
