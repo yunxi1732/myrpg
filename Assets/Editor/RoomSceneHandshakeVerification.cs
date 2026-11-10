@@ -14,7 +14,6 @@ public static class RoomSceneHandshakeVerification
     private static Stopwatch timer;
     private static int stage, requests, hostStarts, clientStarts, initializations;
     private static int movements;
-    private static int wallSlideInputs;
     private static bool slideDown;
     private static int jumpRequests;
     private static int dashRequests;
@@ -34,7 +33,7 @@ public static class RoomSceneHandshakeVerification
         {
             stage = requests = hostStarts = clientStarts = initializations = 0;
             movements = 0; movementAxis = 0;
-            wallSlideInputs = 0; slideDown = false;
+            slideDown = false;
             jumpRequests = 0;
             dashRequests = 0;
             primaryAttackRequests = 0;
@@ -48,12 +47,6 @@ public static class RoomSceneHandshakeVerification
             {
                 Require(actor == host.GuestIdentity, "Input lock belongs to the admitted guest connection");
                 inputLocks++; inputLocked = message.locked;
-            };
-            host.WallSlideInputReceived += (actor, input) =>
-            {
-                Require(actor == host.GuestIdentity && actor.PlayerId != host.HostIdentity.PlayerId,
-                    "Wall-slide input uses actual connection ownership");
-                wallSlideInputs++; slideDown = input.slideDown;
             };
             host.JumpRequested += (actor, request) =>
             {
@@ -79,6 +72,7 @@ public static class RoomSceneHandshakeVerification
                     "Actual guest connection determines movement ownership");
                 movements++;
                 movementAxis = input.currentAxis;
+                slideDown = input.slideDown;
             };
             client.SceneInitializationAllowed += () => clientStarts++;
             client.DamageResultReceived += result =>
@@ -156,11 +150,10 @@ public static class RoomSceneHandshakeVerification
                 {
                     roomSessionId = Guid.NewGuid().ToString("N"), loadId = host.SceneLoadId, sceneName = RoomScene.Name
                 }, true);
-                client.Connection.Send(new MovementInputDto { inputSeq = 100, currentAxis = 1 }, true);
+                client.Connection.Send(new MovementInputDto { inputSeq = 100, currentAxis = 1, slideDown = true }, true);
                 client.Connection.Send(new JumpRequestDto { actionSeq = 100 }, true);
                 client.Connection.Send(new DashRequestDto { actionSeq = 101, currentAxis = 1 }, true);
                 client.Connection.Send(new LocalInputLockDto { lockSeq = 100, locked = true }, true);
-                client.Connection.Send(new WallSlideInputDto { inputSeq = 100, slideDown = true }, true);
                 waitingSince = MonotonicClock.Now;
                 stage = 2;
             }
@@ -172,7 +165,6 @@ public static class RoomSceneHandshakeVerification
                 Require(jumpRequests == 0 && host.LastActionSeq == 0, "Jump cannot enter gameplay before initialization");
                 Require(dashRequests == 0, "Dash cannot enter before initialization");
                 Require(inputLocks == 0 && host.LastInputLockSeq == 0, "Input lock cannot enter before initialization");
-                Require(wallSlideInputs == 0 && host.LastWallSlideInputSeq == 0, "Wall-slide input cannot enter before initialization");
                 Require(positionSnapshots == 0, "Positions before initialization cannot reach display handlers");
                 if (MonotonicClock.Now - waitingSince < 0.4) return;
                 client.MarkSceneReady(RoomScene.Name);
@@ -238,11 +230,11 @@ public static class RoomSceneHandshakeVerification
                 host.Guest.Send(damage, true); // Smaller, previously unsent ID is not filtered by the client connection.
                 foreach (var input in new[]
                 {
-                    new MovementInputDto { inputSeq = 10, currentAxis = .5f },
+                    new MovementInputDto { inputSeq = 10, currentAxis = .5f, slideDown = true },
                     new MovementInputDto { inputSeq = 10, currentAxis = -1 },
                     new MovementInputDto { inputSeq = 9, currentAxis = -1 },
                     new MovementInputDto { inputSeq = 12, currentAxis = 0 },
-                    new MovementInputDto { inputSeq = 11, currentAxis = 1 },
+                    new MovementInputDto { inputSeq = 11, currentAxis = 1, slideDown = true },
                     new MovementInputDto { inputSeq = 15, currentAxis = .5f }
                 }) client.Connection.Send(input, true);
                 foreach (long actionSeq in new long[] { 1, 1, 3, 2, 4 })
@@ -260,13 +252,6 @@ public static class RoomSceneHandshakeVerification
                     new LocalInputLockDto { lockSeq = 3, locked = false },
                     new LocalInputLockDto { lockSeq = 2, locked = true }
                 }) client.Connection.Send(inputLock, true);
-                foreach (var input in new[]
-                {
-                    new WallSlideInputDto { inputSeq = 1, slideDown = true },
-                    new WallSlideInputDto { inputSeq = 1, slideDown = false },
-                    new WallSlideInputDto { inputSeq = 3, slideDown = false },
-                    new WallSlideInputDto { inputSeq = 2, slideDown = true }
-                }) client.Connection.Send(input, true);
                 waitingSince = MonotonicClock.Now;
                 stage = 5;
             }
@@ -277,8 +262,7 @@ public static class RoomSceneHandshakeVerification
                     "Only newer guest states dispatch; sequence gaps are allowed, stale/duplicate inputs cannot overwrite");
                 Require(jumpRequests == 3 && dashRequests == 2 && host.LastActionSeq == 7,
                     "Jump actions deduplicate independently of movement input sequences");
-                Require(wallSlideInputs == 2 && host.LastWallSlideInputSeq == 3 && !slideDown,
-                    "Wall-slide release replaces hold; old/duplicate inputs and other input streams cannot override it");
+                Require(!slideDown, "Wall-slide release shares the latest movement state; stale inputs cannot restore it");
                 Require(inputLocks == 2 && host.LastInputLockSeq == 3 && !inputLocked, "Old lock notifications cannot undo a newer unlock");
                 Require(damageResults == 3, "Client routing preserves duplicate and out-of-order result IDs for exact receipt/state handling");
                 Require(primaryAttackRequests == 3 && host.LastPrimaryAttackRequestSeq == 5 && host.LastActionSeq == 7,

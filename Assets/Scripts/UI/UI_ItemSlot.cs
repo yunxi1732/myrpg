@@ -11,6 +11,8 @@ public class UI_ItemSlot : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
 
     protected UI ui;
     public InventoryItem item;
+    protected Rpg.Networking.RoomEntityPresentation networkEntity;
+    public void BindNetwork(Rpg.Networking.RoomEntityPresentation entity) { networkEntity = entity; CleanUpSlot(); }
 
     protected virtual void Start()
     {
@@ -46,6 +48,14 @@ public class UI_ItemSlot : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
 
     public virtual void OnPointerDown(PointerEventData eventData)
     {
+        if (Rpg.Networking.RoomSceneCoordinator.ProtectSaves)
+        {
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) return; // Discard is not adapted.
+            if (item?.data is ItemData_Equipment equipment && networkEntity != null)
+                Rpg.Networking.RoomSceneCoordinator.Active.RequestLocalEquipmentChange(networkEntity, equipment, false);
+            if (ui != null && ui.itemTooltip != null) ui.itemTooltip.HideTooltip();
+            return;
+        }
         if (item == null)
             return;
 
@@ -68,7 +78,7 @@ public class UI_ItemSlot : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
         if (item == null)
             return;
 
-        ui.itemTooltip.ShowTooltip(item.data as ItemData_Equipment);
+        if (ui != null && ui.itemTooltip != null) ui.itemTooltip.ShowTooltip(item.data as ItemData_Equipment);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -76,6 +86,6 @@ public class UI_ItemSlot : MonoBehaviour, IPointerDownHandler, IPointerEnterHand
         if (item == null)
             return;
 
-        ui.itemTooltip.HideTooltip();
+        if (ui != null && ui.itemTooltip != null) ui.itemTooltip.HideTooltip();
     }
 }

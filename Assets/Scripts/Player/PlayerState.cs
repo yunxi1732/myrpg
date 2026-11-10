@@ -38,7 +38,7 @@ public class PlayerState
         // Simulation reads this actor's current data; local keyboard ownership only gates collection.
         xInput = player.InputData.CurrentAxis;
         yInput = player.InputData.WallSlideDown ? -1 : 0;
-        if (!CanSimulate || player.NetworkInputLocked || (player.IsLocalInputOwner && GameplayControlLock.IsLocked)) ClearMovementInput();
+        if (player.NetworkInputLocked || (player.IsLocalInputOwner && GameplayControlLock.IsLocked)) ClearMovementInput();
         player.anim.SetFloat("yVelocity", rb.velocity.y);
         stateTimer -= GameSimulationClock.DeltaTime;
     }

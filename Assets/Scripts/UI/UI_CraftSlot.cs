@@ -12,7 +12,7 @@ public class UI_CraftSlot : UI_ItemSlot
         if (_data == null)
             return;
 
-        item.data = _data;
+        item = new InventoryItem(_data);
         itemImage.sprite = _data.itemIcon;
         itemText.text = _data.itemName;
 
@@ -24,6 +24,8 @@ public class UI_CraftSlot : UI_ItemSlot
 
     public override void OnPointerDown(PointerEventData eventData)
     {
+        if (ui == null) ui = GetComponentInParent<UI>(true);
+        if (item?.data == null || ui == null || ui.craftWindow == null) return;
         ui.craftWindow.SetupCraftWindow(item.data as ItemData_Equipment);
     }
 }

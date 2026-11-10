@@ -37,7 +37,6 @@ public static class NetworkProtocolVerification
         VerifyMovementInput();
         VerifyPlayerPositions();
         VerifyJumpRequest();
-        VerifyWallSlideInput();
         VerifyDashRequest();
         VerifyPrimaryAttackRequest();
         VerifyLocalInputLock();
@@ -155,27 +154,6 @@ public static class NetworkProtocolVerification
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(new DashRequestDto { actionSeq = -1 }, true));
     }
 
-    private static void VerifyWallSlideInput()
-    {
-        foreach (bool held in new[] { false, true })
-        {
-            var input = new WallSlideInputDto { inputSeq = 1, slideDown = held };
-            NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(input));
-            var copy = (WallSlideInputDto)RoundTrip(input, true);
-            RequireSend(copy.inputSeq == 1 && copy.slideDown == held, "Wall-slide down and release round trip as current state");
-        }
-        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(new WallSlideInputDto(), true));
-        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(new WallSlideInputDto { inputSeq = -1 }, true));
-        var sender = new MovementInputSender();
-        var sent = new List<WallSlideInputDto>();
-        Action<MovementInputDto> send = value => sent.Add(new WallSlideInputDto { inputSeq = value.inputSeq, slideDown = value.currentAxis > 0 });
-        RequireSend(sender.TrySend(1, 0, send) && !sender.TrySend(0, .02, send) && sender.TrySend(0, .04, send),
-            "Wall-slide release merges and sends after the 40ms minimum");
-        RequireSend(!sender.TrySend(0, .139, send) && sender.TrySend(0, .14, send) &&
-            sent.Count == 3 && !sent[1].slideDown && !sent[2].slideDown && sent[2].inputSeq == 3,
-            "Released state resends at 100ms without retaining the hold");
-    }
-
     private static void VerifyJumpRequest()
     {
         var request = new JumpRequestDto { actionSeq = 1 };
@@ -243,10 +221,10 @@ public static class NetworkProtocolVerification
 
     private static void VerifyMovementInput()
     {
-        var input = new MovementInputDto { inputSeq = 1, currentAxis = -1 };
+        var input = new MovementInputDto { inputSeq = 1, currentAxis = -1, slideDown = true };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(input));
         var copy = (MovementInputDto)RoundTrip(input, true);
-        NetPacketVerificationCases.Require(copy.inputSeq == 1 && copy.currentAxis == -1, "Movement state round trip");
+        NetPacketVerificationCases.Require(copy.inputSeq == 1 && copy.currentAxis == -1 && copy.slideDown, "Movement and wall-slide hold round trip together");
         foreach (float axis in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity, -1.01f, 1.01f })
         {
             input.currentAxis = axis;
@@ -256,6 +234,17 @@ public static class NetworkProtocolVerification
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(input, true));
         input.inputSeq = -1;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(input, true));
+        var slideSender = new MovementInputSender();
+        var slideStates = new List<MovementInputDto>();
+        RequireSend(slideSender.TrySend(0, 0, slideStates.Add, true) &&
+            !slideSender.TrySend(0, .02, slideStates.Add) &&
+            slideSender.TrySend(0, .04, slideStates.Add) &&
+            slideStates[0].slideDown && !slideStates[1].slideDown,
+            "Wall-slide release shares movement coalescing and sequence");
+        slideSender.RequestStop();
+        RequireSend(slideSender.TrySend(1, .08, slideStates.Add, true) &&
+            slideStates[2].currentAxis == 0 && !slideStates[2].slideDown,
+            "A control lock clears both movement inputs in one state");
         foreach (string axis in new[] { "1.01", "-1.01" })
             NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Decode((short)ProtocolId.MovementInput,
                 Encoding.UTF8.GetBytes("{\"inputSeq\":1,\"currentAxis\":" + axis + "}"), true));

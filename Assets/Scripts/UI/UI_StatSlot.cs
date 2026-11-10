@@ -3,10 +3,16 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Rpg.Networking;
 
 public class UI_StatSlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private UI ui;
+    private bool networkBound;
+    private RoomEntityPresentation networkEntity;
+    private System.Action networkChanged;
+    private int subscriptionVersion;
+    public int BoundPlayerId => ValidNetworkStats() != null ? networkEntity.PlayerId : 0;
 
     [SerializeField] private string statName;
     [SerializeField] private StatType statType;
@@ -25,14 +31,64 @@ public class UI_StatSlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
 
     private void Start()
     {
+        ui = GetComponentInParent<UI>(true);
         UpdateStatValueUI();
-
-        ui = GetComponentInParent<UI>();
     }
+
+    public void BindNetwork(RoomEntityPresentation entity)
+    {
+        Detach(); networkBound = true;
+        networkEntity = entity != null && entity.IsValid && entity.View != null && entity.PlayerId > 0 &&
+            entity.View.GetComponent<NetworkEntityIdentity>()?.IsLocalInputOwner == true ? entity : null;
+        if (isActiveAndEnabled) Subscribe();
+        UpdateStatValueUI();
+    }
+    private PlayerStats ValidNetworkStats()
+    {
+        var entity = networkEntity;
+        if (entity == null || !entity.IsValid || !entity.IsReady || entity.View == null || !entity.HasHealth) return null;
+        var identity = entity.View.GetComponent<NetworkEntityIdentity>();
+        var player = entity.View.GetComponent<Player>();
+        var stats = entity.View.GetComponent<PlayerStats>();
+        return identity != null && identity.IsBound && identity.IsLocalInputOwner && identity.EntityId == entity.EntityId &&
+            identity.PlayerId == entity.PlayerId && identity.RoomSessionId == entity.RoomSessionId && player != null &&
+            player.IsRuntimeInitialized && stats != null && stats.IsRuntimeInitialized && player.Combat.RoomConfigurationId != null ? stats : null;
+    }
+    private void Subscribe()
+    {
+        if (networkEntity == null) return;
+        var expected = networkEntity; int version = subscriptionVersion;
+        networkChanged = () => { if (version == subscriptionVersion && ReferenceEquals(networkEntity, expected)) UpdateStatValueUI(); };
+        expected.Changed += networkChanged;
+    }
+    private void Detach()
+    {
+        subscriptionVersion++;
+        if (networkEntity != null && networkChanged != null) networkEntity.Changed -= networkChanged;
+        networkChanged = null;
+    }
+    private void OnEnable()
+    {
+        Detach();
+        if (networkBound) Subscribe();
+        UpdateStatValueUI();
+    }
+    private void OnDisable() { Detach(); HideTooltip(); }
+    private void OnDestroy() { Detach(); networkEntity = null; }
+    private void LateUpdate() { if (networkBound) UpdateStatValueUI(); } // Read only; includes current A attributes and B's last confirmed values.
 
     public void UpdateStatValueUI()
     {
-        PlayerStats playerStats = PlayerManager.instance.player.GetComponent<PlayerStats>();
+        if (statValueText == null) return;
+        bool room = networkBound || EntityRuntimePermissions.NetworkActive;
+        PlayerStats playerStats = room ? ValidNetworkStats() :
+            PlayerManager.instance != null && PlayerManager.instance.player != null ? PlayerManager.instance.player.GetComponent<PlayerStats>() : null;
+        if (playerStats == null)
+        {
+            statValueText.text = "—";
+            if (networkEntity != null && !networkEntity.IsValid) { Detach(); networkEntity = null; }
+            return;
+        }
 
         if (playerStats != null)
         {
@@ -60,11 +116,14 @@ public class UI_StatSlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        ui.statTooltip.ShowStatTooltip(statDescription);
+        if ((networkBound || EntityRuntimePermissions.NetworkActive) && ValidNetworkStats() == null) return;
+        if (ui == null) ui = GetComponentInParent<UI>(true);
+        if (ui != null && ui.statTooltip != null) ui.statTooltip.ShowStatTooltip(statDescription);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        ui.statTooltip.HideStatTooltip();
+        HideTooltip();
     }
+    private void HideTooltip() { if (ui != null && ui.statTooltip != null) ui.statTooltip.HideStatTooltip(); }
 }

@@ -9,6 +9,7 @@ public class UI_CraftList : MonoBehaviour, IPointerDownHandler
     [SerializeField] private GameObject craftSlotPrefab;
 
     [SerializeField] private List<ItemData_Equipment> craftEquipment;
+    public IReadOnlyList<ItemData_Equipment> CraftEquipment => craftEquipment ?? (IReadOnlyList<ItemData_Equipment>)System.Array.Empty<ItemData_Equipment>();
 
     private void Start()
     {

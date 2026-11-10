@@ -44,6 +44,18 @@ namespace Rpg.Networking
             ResolveDirectHit(source, hit.Target, targetView, hit.Attack, hit.SegmentId, hit.AuthorityTick);
         }
 
+        internal bool OnSwordHit(PrimaryAttackInstance attack, Enemy enemy)
+        {
+            if (disposed || context.IsGuest || !monsters.IsValidPrimaryAttackTarget(enemy)) return false;
+            int targetId = enemy.GetComponent<NetworkEntityIdentity>().EntityId;
+            ulong tick = GameSimulationClock.AuthorityTick;
+            if (!attack.TryRegisterHit(1, targetId, tick) || !attack.TryConsumeDamageHit(1, targetId)) return false;
+            context.TryGetEntity(attack.EntityId, out var source);
+            context.TryGetEntity(targetId, out var target);
+            ResolveDirectHit(source.View.GetComponent<Player>(), enemy, target, attack, 1, tick);
+            return true;
+        }
+
         public bool IsValidPlayerTarget(Player player)
         {
             var identity = player != null ? EntityRuntimePermissions.Identity(player) : null;

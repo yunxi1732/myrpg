@@ -14,6 +14,10 @@ public class UI : MonoBehaviour, ISaveManager
     [Space]
 
     [SerializeField] private GameObject characterUI;
+    public GameObject CharacterPanel => characterUI;
+    public GameObject CraftPanel => craftUI;
+    public GameObject SkillTreePanel => skillTreeUI;
+    public GameObject OptionsPanel => optionsUI;
     [SerializeField] private GameObject skillTreeUI;
     [SerializeField] private GameObject craftUI;
     [SerializeField] private GameObject optionsUI;
@@ -145,6 +149,21 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void SwitchTo(GameObject _menu)
     {
+        if (Rpg.Networking.RoomSceneCoordinator.ProtectSaves)
+        {
+            var owner = Rpg.Networking.RoomSceneCoordinator.Active;
+            if (owner == null || _menu != characterUI && _menu != craftUI && _menu != skillTreeUI && _menu != optionsUI && _menu != inGameUI) return;
+            owner.GetComponent<NetworkStatsPanel>()?.Close();
+            owner.GetComponent<NetworkCraftPanel>()?.Close();
+            owner.GetComponent<NetworkSkillTreePanel>()?.Close();
+            var presentation = owner.GetComponent<Rpg.Networking.NetworkScenePresentation>();
+            presentation?.CloseOptions();
+            if (_menu == characterUI) owner.GetComponent<NetworkStatsPanel>()?.Open();
+            else if (_menu == craftUI) owner.GetComponent<NetworkCraftPanel>()?.Open();
+            else if (_menu == skillTreeUI) owner.GetComponent<NetworkSkillTreePanel>()?.Open();
+            else if (_menu == optionsUI) presentation?.OpenOptions();
+            return;
+        }
         if (IsShuttingDown) return;
         EnsureSceneLifetime();
         if (_menu == null)

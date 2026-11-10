@@ -16,6 +16,15 @@ namespace Rpg.Networking
         private readonly RoomNetworkObjects.Registration rootRegistration;
         private readonly Player template;
         private readonly float teleportDistance;
+        private readonly int inventoryCapacity = 24;
+        private RoomMaterialDto[] startingMaterials = Array.Empty<RoomMaterialDto>();
+        private RoomCraftCatalog craftCatalog;
+        private RoomSkillTreeCatalog skillTreeCatalog;
+        private RoomFlaskCatalog flaskCatalog;
+        private readonly List<UI_SkillTreeSlot> skillTreeSlots = new List<UI_SkillTreeSlot>();
+        private readonly int startingCurrency;
+        private readonly Inventory roomInventorySource;
+        private readonly HashSet<ItemData_Equipment> roomRecipes = new HashSet<ItemData_Equipment>();
         private readonly GameObject root;
         private readonly Transform playersRoot, staging;
         private RoomPresentationContext context;
@@ -47,6 +56,19 @@ namespace Rpg.Networking
             template = playerTemplate;
             this.teleportDistance = Mathf.Max(0.01f, teleportDistance);
             ValidateTemplate(template);
+            foreach (var sceneRoot in scene.GetRootGameObjects())
+            {
+                var inventory = sceneRoot.GetComponentInChildren<Inventory>(true);
+                if (inventory != null) { inventoryCapacity = inventory.RoomViewCapacity; roomInventorySource = inventory; break; }
+            }
+            foreach (var sceneRoot in scene.GetRootGameObjects())
+            {
+                skillTreeSlots.AddRange(sceneRoot.GetComponentsInChildren<UI_SkillTreeSlot>(true));
+                var manager = sceneRoot.GetComponentInChildren<PlayerManager>(true);
+                if (manager != null) startingCurrency = Mathf.Max(0, manager.currency);
+                foreach (var list in sceneRoot.GetComponentsInChildren<UI_CraftList>(true))
+                    foreach (var product in list.CraftEquipment) if (product != null) roomRecipes.Add(product);
+            }
             root = new GameObject("NetworkPlayers");
             SceneManager.MoveGameObjectToScene(root, scene);
             HostSpawn = Child("Spawn_A", root.transform);
@@ -92,6 +114,16 @@ namespace Rpg.Networking
                 initializationLoadId = baseline.loadId;
             }
             context = owner; hostIdentity = host; guestIdentity = guest;
+            if (!owner.IsGuest && craftCatalog == null)
+            {
+                craftCatalog = new RoomCraftCatalog(roomRecipes);
+                skillTreeCatalog = new RoomSkillTreeCatalog(skillTreeSlots);
+                var flasks = new HashSet<ItemData_Equipment>(roomRecipes);
+                if (roomInventorySource != null && roomInventorySource.itemDataBase != null)
+                    foreach (var item in roomInventorySource.itemDataBase) if (item is ItemData_Equipment equipment) flasks.Add(equipment);
+                flaskCatalog = new RoomFlaskCatalog(flasks);
+                startingMaterials = RoomCraftCatalog.StartingMaterials(roomInventorySource != null ? roomInventorySource.startingItems : null);
+            }
             EnsurePlayer(host, HostSpawn.position, "A");
             EnsurePlayer(guest, GuestSpawn.position, "B");
         }
@@ -136,7 +168,8 @@ namespace Rpg.Networking
                 // Both identity and cleanup ownership must be live before authority-only configuration.
                 if (!context.IsGuest)
                 {
-                    RoomCombatConfiguration.InitializeAuthority(player, slot == "A");
+                    RoomCombatConfiguration.InitializeAuthority(player, slot == "A", inventoryCapacity, startingMaterials);
+                    player.Combat.InitializeRoomSkillTree(skillTreeCatalog, startingCurrency);
                     player.Combat.BindPrimaryAttack(networkObjects);
                 }
                 clone.SetActive(true); // Identity, role, spawn and input hold are set before Awake/Start.
@@ -178,8 +211,8 @@ namespace Rpg.Networking
                 position = new[] { player.transform.position.x, player.transform.position.y },
                 facingDir = player.facingDir,
                 movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y,
-                health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = 0,
-                combat = player.Combat.CaptureRoomConfiguration(), attack = CaptureAttack(player)
+                health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = player.Combat.RoomCurrency,
+                combat = player.Combat.CaptureRoomConfiguration(), attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState()
             };
         }
 
@@ -204,6 +237,8 @@ namespace Rpg.Networking
                 if (!presentation.ApplyVersionedHealth(value.roomSessionId, value.authorityTick, state.healthVersion, state.health, state.maxHealth) ||
                     !presentation.ApplyHud(value.roomSessionId, value.authorityTick, value.stateSeq, state.currency, null, 0, RoomCombatConfiguration.HudFills(state.combat)))
                     throw new InvalidDataException("Initial state is older than the player's current presentation state.");
+                presentation.ApplySkillTreePresentation(state.combat.skillTree, value.authorityTick);
+                presentation.ApplyFlaskState(value.roomSessionId, value.authorityTick, state.flask);
             }
             appliedStateSeq = value.stateSeq;
             appliedStateTick = value.authorityTick;
@@ -247,7 +282,7 @@ namespace Rpg.Networking
             return new PlayerPositionDto
             {
                 entityId = identity.EntityId, position = new[] { position.x, position.y }, facingDir = player.facingDir,
-                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y, attack = CaptureAttack(player)
+                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y, attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState()
             };
         }
 
@@ -275,29 +310,15 @@ namespace Rpg.Networking
                 // Each entity's position stream decides freshness independently of health/HUD and other entities.
                 presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
                     new Vector2(state.position[0], state.position[1]), false, state.facingDir, state.movementState, state.yVelocity, playerAttack: state.attack);
+                presentation.ApplyFlaskState(value.roomSessionId, value.authorityTick, state.flask);
             }
         }
 
         public bool ApplyGuestMovementInput(RoomPlayerIdentity source, MovementInputDto input)
         {
-            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
-                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
-                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
-                player == null || !player.IsAuthoritative || player.IsLocalInputOwner ||
+            if (!TryGetGuestMovementPlayer(source, out Player player) ||
                 player.GetComponent<NetworkEntityIdentity>().MovementHeld) return false;
             bool applied = player.InputData.TryApplyNetworkInput(input);
-            if (player.NetworkInputLocked) player.InputData.Clear();
-            return applied;
-        }
-
-        public bool ApplyGuestWallSlideInput(RoomPlayerIdentity source, WallSlideInputDto input)
-        {
-            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
-                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
-                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
-                player == null || !player.IsAuthoritative || player.IsLocalInputOwner ||
-                player.GetComponent<NetworkEntityIdentity>().MovementHeld) return false;
-            bool applied = player.InputData.TryApplyWallSlideInput(input);
             if (player.NetworkInputLocked) player.InputData.Clear();
             return applied;
         }
@@ -342,22 +363,65 @@ namespace Rpg.Networking
             return accepted;
         }
 
+        public EquipmentChangeResultDto RequestEquipmentChange(RoomPlayerIdentity source, EquipmentChangeRequestDto request, AuthorityResultSequence results)
+        {
+            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
+                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
+                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
+                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            return player.Combat.ChangeRoomEquipment(request, GameSimulationClock.AuthorityTick, results);
+        }
+        public CraftResultDto RequestCraft(RoomPlayerIdentity source, CraftRequestDto request, AuthorityResultSequence results)
+        {
+            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
+                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
+                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
+                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            return player.Combat.CraftRoomItem(request, craftCatalog, GameSimulationClock.AuthorityTick, results);
+        }
+        public SkillUnlockResultDto RequestSkillUnlock(RoomPlayerIdentity source, SkillUnlockRequestDto request, AuthorityResultSequence results)
+        {
+            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
+                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
+                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
+                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            return player.Combat.UnlockRoomSkill(request, skillTreeCatalog, GameSimulationClock.AuthorityTick, results);
+        }
+        public FlaskUseResultDto RequestFlaskUse(RoomPlayerIdentity source, FlaskUseRequestDto request, AuthorityResultSequence results)
+        {
+            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
+                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
+                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative || !player.isActiveAndEnabled ||
+                player.GetComponent<NetworkEntityIdentity>().MovementHeld || player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            return player.Combat.UseRoomFlask(request, flaskCatalog, GameSimulationClock.AuthorityTick, GameSimulationClock.FixedDeltaTime, results);
+        }
+        public void RefreshAuthorityFlaskHud()
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || GameSimulationClock.AuthorityTick == 0) return;
+            foreach (var pair in entities)
+                if (pair.Value != null && context.TryGetEntity(pair.Key, out var view))
+                    view.ApplyFlaskState(context.RoomSessionId, GameSimulationClock.AuthorityTick, pair.Value.Combat.CaptureRoomFlaskState());
+        }
+
         public bool RequestGuestDash(RoomPlayerIdentity source, DashRequestDto request)
         {
-            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null || request == null ||
-                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
-                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
-                player == null || !player.IsAuthoritative || player.IsLocalInputOwner) return false;
+            if (!TryGetGuestMovementPlayer(source, out Player player)) return false;
             return player.TryQueueNetworkDash(request.actionSeq, request.currentAxis);
         }
 
         public bool RequestGuestJump(RoomPlayerIdentity source, JumpRequestDto request)
         {
-            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null || request == null ||
-                source.RoomSessionId != context.RoomSessionId || source.PlayerId != guestIdentity.PlayerId ||
-                source.EntityId != guestIdentity.EntityId || !entities.TryGetValue(source.EntityId, out Player player) ||
-                player == null || !player.IsAuthoritative || player.IsLocalInputOwner) return false;
+            if (!TryGetGuestMovementPlayer(source, out Player player)) return false;
             return player.TryQueueNetworkJump(request.actionSeq);
+        }
+
+        private bool TryGetGuestMovementPlayer(RoomPlayerIdentity source, out Player player)
+        {
+            player = null;
+            return !disposed && context != null && !context.IsGuest && appliedStateSeq != 0 && source != null &&
+                source.RoomSessionId == context.RoomSessionId && source.PlayerId == guestIdentity.PlayerId &&
+                source.EntityId == guestIdentity.EntityId && entities.TryGetValue(source.EntityId, out player) &&
+                player.IsAuthoritative && !player.IsLocalInputOwner;
         }
 
         private static Transform Child(string name, Transform parent)

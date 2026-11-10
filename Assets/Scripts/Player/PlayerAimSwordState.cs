@@ -13,6 +13,7 @@ public class PlayerAimSwordState : PlayerState
     {
         base.Enter();
         throwCommitted = false;
+        if (player.RoomSword != null) { player.RoomSword.BeginAim(); return; }
         if (!player.CanUseLegacyActions || GameplayControlLock.IsActionInputBlocked) { CancelForControlLock(); return; }
         player.skill.sword.BeginAim();
     }
@@ -21,12 +22,13 @@ public class PlayerAimSwordState : PlayerState
     {
         base.Exit();
         if (throwCommitted) player.StartCoroutine("BusyFor", 0.2f);
-        else player.skill.sword.CancelAim();
+        else player.SwordAbility.CancelAim();
     }
 
     public override void Update()
     {
         base.Update();
+        if (player.RoomSword != null) { player.SetVelocity(0, 0); return; }
         if (!player.CanUseLegacyActions || GameplayControlLock.IsActionInputBlocked) { CancelForControlLock(); return; }
 
         player.SetVelocity(0, 0);
@@ -45,11 +47,16 @@ public class PlayerAimSwordState : PlayerState
     public void CancelForControlLock()
     {
         throwCommitted = false;
-        player.skill.sword.CancelAim();
+        player.SwordAbility.CancelAim();
         if (stateMachine.currentState == this)
         {
             player.SetVelocity(0, rb.velocity.y);
             stateMachine.ChangeState(player.IsGroundDetected() ? (PlayerState)player.idleState : player.airState);
         }
+    }
+    public void ReleaseRoomSword(Vector2 direction)
+    {
+        throwCommitted = player.RoomSword.RequestThrow(direction);
+        stateMachine.ChangeState(player.idleState);
     }
 }

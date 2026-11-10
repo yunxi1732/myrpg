@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using Unity.Burst.CompilerServices;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Rpg.Networking;
+using Rpg.Networking.Protocol;
 
 public class SwordSkillController : MonoBehaviour
 {
+    internal const float LifetimeSeconds = 7;
+    public NetworkSkillObject Network { get; internal set; }
     private Player player;
     private Animator anim;
     private Rigidbody2D rb;
@@ -49,12 +53,14 @@ public class SwordSkillController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (Network != null && !Network.IsAuthoritative) return;
         if (canRotate) transform.right = rb.velocity;
         if (isReturning)
         {
             transform.position = Vector2.MoveTowards(rb.transform.position, player.transform.position, returnSpeed * GameSimulationClock.FixedDeltaTime);
             if (Vector2.Distance(transform.position, player.transform.position) < 1) player.CatchTheSword();
         }
+        if (Network != null) return;
         BounceLogic();
         SpinLogic();
     }
@@ -128,7 +134,7 @@ public class SwordSkillController : MonoBehaviour
         returnSpeed = _returnSpeed;
         if (pierceAmount <= 0) anim.SetBool("Rotate", true);
         spinDirection = Mathf.Clamp(rb.velocity.x, -1, 1);
-        GameSimulationClock.Schedule(this, DestroyMe, nameof(DestroyMe), 7);
+        if (Network == null) GameSimulationClock.Schedule(this, DestroyMe, nameof(DestroyMe), LifetimeSeconds);
     }
 
     public void SetUpBounce(bool _isBouncing, int _bounceAmount, float _bounceSpeed)
@@ -154,13 +160,24 @@ public class SwordSkillController : MonoBehaviour
 
     public void ReturnSword()
     {
+        if (Network != null && !Network.IsAuthoritative) return;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
         transform.parent = null;
         isReturning = true;
+        if (Network != null) { Network.Phase = SwordPhase.Returning; Network.Room.Publish(); }
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        if (Network != null)
+        {
+            if (!Network.IsAuthoritative || Network.Phase != SwordPhase.Flying || collision.GetComponentInParent<Player>() != null) return;
+            var target = collision.GetComponentInParent<Enemy>();
+            if (target != null && !Network.Room.Hit(Network, target)) return;
+            StuckInto(collision);
+            Network.Phase = SwordPhase.Stuck; Network.Room.Publish();
+            return;
+        }
         if (isReturning) return;
 
         Enemy enemy = collision.GetComponent<Enemy>();
@@ -171,6 +188,12 @@ public class SwordSkillController : MonoBehaviour
         SetUpTargetForBounce(collision);
 
         StuckInto(collision);
+    }
+
+    internal void ShowNetworkPhase(SwordPhase phase, bool changed)
+    {
+        anim.SetBool("Rotate", phase == SwordPhase.Flying);
+        if (changed && phase == SwordPhase.Stuck) GetComponentInChildren<ParticleSystem>().Play();
     }
 
     private void SwordSkillDamage(Enemy enemy)

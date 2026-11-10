@@ -20,8 +20,31 @@ namespace Rpg.Networking
         public int Health { get; private set; }
         public int MaxHealth { get; private set; }
         public int Currency { get; private set; }
+        private long currencyVersion;
+        private ulong currencyTick;
+        internal bool ApplySkillTreePresentation(SkillTreeStateDto value, ulong tick)
+        {
+            if (!IsValid || PlayerId == 0 || tick == 0 || !ProtocolCodec.ValidSkillTree(value) ||
+                value.version <= currencyVersion || tick < currencyTick) return false;
+            currencyVersion = value.version; currencyTick = tick; Currency = value.currency;
+            NotifyChanged(); return true;
+        }
         public Sprite FlaskIcon { get; private set; }
         public float FlaskFill { get; private set; }
+        public string FlaskDefinitionId { get; private set; } = "";
+        public bool HasEquippedFlask { get; private set; }
+        private long flaskVersion, flaskSeq;
+        private ulong flaskTick;
+        public bool ApplyFlaskState(string room, ulong tick, RoomFlaskStateDto value)
+        {
+            if (!IsValid || PlayerId == 0 || View == null || room != RoomSessionId || tick == 0 || !ProtocolCodec.ValidFlaskState(value) ||
+                value.cooldownStartTick > tick || value.version < flaskVersion || value.stateSeq <= flaskSeq || tick < flaskTick) return false;
+            flaskVersion = value.version; flaskSeq = value.stateSeq; flaskTick = tick;
+            HasEquippedFlask = value.equippedItemId.Length > 0; FlaskDefinitionId = value.definitionId; FlaskIcon = null;
+            ulong remaining = value.cooldownEndTick > tick ? value.cooldownEndTick - tick : 0;
+            FlaskFill = value.durationTicks > 0 ? Mathf.Clamp01((float)remaining / value.durationTicks) : 0;
+            NotifyChanged(); return true;
+        }
         private readonly float[] skillFills = new float[5];
         private ulong healthTick, hudTick;
         public long HealthVersion { get; private set; }
@@ -30,6 +53,7 @@ namespace Rpg.Networking
         private ulong positionTick;
         private long positionSeq;
         public event Action Changed;
+        internal void NotifyEquipmentChanged() => NotifyChanged();
 
         // Position has its own per-entity stream. No arrival time or local wall clock participates.
         public bool ApplyPosition(string room, ulong authorityTick, long stateSeq, Vector2 position, bool reset = false, int facingDir = 1,
@@ -88,7 +112,8 @@ namespace Rpg.Networking
                 HasHud && authorityTick < hudTick || !ValidFill(flaskFill) || cooldownFills == null || cooldownFills.Length != 5) return false;
             foreach (float fill in cooldownFills) if (!ValidFill(fill)) return false;
             hudTick = authorityTick; hudSeq = stateSeq;
-            Currency = currency; FlaskIcon = flask; FlaskFill = flaskFill;
+            if (currencyVersion == 0) Currency = currency;
+            if (flaskVersion == 0) { FlaskIcon = flask; FlaskFill = flaskFill; }
             Array.Copy(cooldownFills, skillFills, 5); HasHud = true;
             NotifyChanged(); return true;
         }

@@ -7,6 +7,7 @@ public class HealEffect : ItemEffect
 {
     [Range(0f, 1f)]
     [SerializeField] private float healPercent;
+    public float RoomHealPercent => healPercent;
 
     public override void ExecuteEffect(Transform _enemyPosition)
     {

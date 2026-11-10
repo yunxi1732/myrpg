@@ -19,8 +19,9 @@ public class Player : Entity
     private NetworkJumpKind pendingJump;
     private long localDashPress;
     private float localDashAxis, pendingDashAxis;
-    private bool dashPending, networkDashConfigured;
+    private bool dashPending;
     private long nextPrimaryAttackRequestSeq, localPrimaryAttackPress;
+    private long nextFlaskRequestSeq, localFlaskPress;
     [Header("Network Primary Attack (A configuration)")]
     [Min(0.01f)] public float networkPrimaryAttackInterval = 0.8f;
     public float NetworkDashCooldownRemaining => Combat.Skills.Get<DashSkill>().Remaining;
@@ -44,14 +45,15 @@ public class Player : Entity
         InputData.Clear(); localJumpPress = 0; localDashPress = 0;
         pendingJump = NetworkJumpKind.None; dashPending = false;
         localPrimaryAttackPress = 0; combat?.PrimaryAttack?.CancelPending();
+        localFlaskPress = 0;
         if (locked && IsAuthoritative) ClearLockedMovement();
     }
     public MovementAnimationState MovementAnimation
     {
         get
         {
-            var state = stateMachine?.currentState;
-            if (state == null || stats != null && stats.NetworkHealthVersion > 0 && stats.currentHealth <= 0) return MovementAnimationState.Idle;
+            var state = stateMachine.currentState;
+            if (stats.NetworkHealthVersion > 0 && stats.currentHealth <= 0) return MovementAnimationState.Idle;
             if (state == moveState) return MovementAnimationState.Move;
             if (state == jumpState) return MovementAnimationState.Jump;
             if (state == airState) return MovementAnimationState.Fall;
@@ -83,6 +85,8 @@ public class Player : Entity
     private PlayerCombatContext combat;
     public PlayerCombatContext Combat => combat ?? (combat = new PlayerCombatContext(this));
     public SkillManager skill => Combat.LegacySkills;
+    public SwordSkill RoomSword { get; internal set; }
+    public SwordSkill SwordAbility => RoomSword != null ? RoomSword : skill.sword;
     public GameObject sword { get; private set; }
     public PlayerFX fx { get; private set; }
 
@@ -148,6 +152,7 @@ public class Player : Entity
         localJumpPress = 0; // A display-side press exists for this frame only, never a held/repeated input state.
         localDashPress = 0;
         localPrimaryAttackPress = 0;
+        localFlaskPress = 0;
         var identity = EntityRuntimePermissions.Identity(this);
         if (IsLocalInputOwner)
         {
@@ -161,6 +166,10 @@ public class Player : Entity
         }
         else if (!IsAuthoritative || identity?.MovementHeld == true)
             InputData.Clear();
+
+        if (GameSimulationClock.IsNetwork && identity != null && identity.CanCollectMovementInput &&
+            Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Alpha1))
+            localFlaskPress = checked(++nextFlaskRequestSeq);
 
         if (GameSimulationClock.IsNetwork && identity != null && identity.CanCollectMovementInput &&
             Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Mouse0))
@@ -256,7 +265,7 @@ public class Player : Entity
                 return; // Do not consume the 0.2s control window in the entry step.
             }
         }
-        stateMachine.currentState?.Update();
+        stateMachine.currentState.Update();
         if (GameSimulationClock.IsNetwork && pendingJump == NetworkJumpKind.Ground)
         {
             pendingJump = NetworkJumpKind.None; // Consume once; never turn an airborne request into a later jump.
@@ -275,6 +284,10 @@ public class Player : Entity
     {
         requestSeq = localPrimaryAttackPress; localPrimaryAttackPress = 0;
         return requestSeq > 0;
+    }
+    public bool TryConsumeFlaskPress(out long requestSeq)
+    {
+        requestSeq = localFlaskPress; localFlaskPress = 0; return requestSeq > 0;
     }
 
     internal PrimaryAttackRejection CheckNetworkPrimaryAttack()
@@ -298,22 +311,16 @@ public class Player : Entity
 
     public bool TryQueueNetworkJump(long actionSeq)
     {
-        if (!GameSimulationClock.IsNetwork || !IsAuthoritative || actionSeq <= lastActionSeq || actionSeq <= 0) return false;
-        lastActionSeq = actionSeq; // Also consumes rejected actions so replay cannot become a jump after landing.
-        if (pendingJump != NetworkJumpKind.None || dashPending) return false;
-        NetworkJumpKind kind = GetNetworkJumpKind();
-        if (kind == NetworkJumpKind.None) return false;
-        pendingJump = kind;
-        return true;
+        return TryQueueNetworkMovementAction(actionSeq, false, 0);
     }
 
     private NetworkJumpKind GetNetworkJumpKind()
     {
-        if (NetworkInputLocked || !IsRuntimeInitialized || !isActiveAndEnabled || rb == null || stats == null || stats.isDead || stats.currentHealth <= 0 || isBusy || isKnocked ||
+        if (NetworkInputLocked || stats.isDead || stats.currentHealth <= 0 || isBusy || isKnocked ||
             GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true ||
-            EntityRuntimePermissions.Identity(this)?.MovementHeld == true ||
+            GetComponent<NetworkEntityIdentity>().MovementHeld ||
             IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked) return NetworkJumpKind.None;
-        var current = stateMachine?.currentState;
+        var current = stateMachine.currentState;
         bool grounded = IsGroundDetected();
         if ((current == idleState || current == moveState) && grounded) return NetworkJumpKind.Ground;
         if (current == wallSlideState && !grounded && IsWallDetected()) return NetworkJumpKind.Wall;
@@ -323,7 +330,6 @@ public class Player : Entity
     internal void ConfigureNetworkDash(float cooldown)
     {
         Combat.Skills.Configure<DashSkill>(cooldown);
-        networkDashConfigured = true;
     }
 
     public bool TryConsumeDashPress(out long actionSeq, out float axis)
@@ -334,21 +340,33 @@ public class Player : Entity
 
     public bool TryQueueNetworkDash(long actionSeq, float axis)
     {
+        return TryQueueNetworkMovementAction(actionSeq, true, axis);
+    }
+
+    private bool TryQueueNetworkMovementAction(long actionSeq, bool dash, float axis)
+    {
         if (!GameSimulationClock.IsNetwork || !IsAuthoritative || actionSeq <= 0 || actionSeq <= lastActionSeq) return false;
-        lastActionSeq = actionSeq;
-        if (!ProtocolCodec.IsValidMovementAxis(axis) || dashPending || pendingJump != NetworkJumpKind.None || !CanPerformNetworkDash()) return false;
-        pendingDashAxis = axis; dashPending = true;
+        lastActionSeq = actionSeq; // Rejected presses are consumed too; they cannot execute after the state changes.
+        if (dashPending || pendingJump != NetworkJumpKind.None) return false;
+        if (dash)
+        {
+            if (!CanPerformNetworkDash()) return false;
+            pendingDashAxis = axis; dashPending = true;
+            return true;
+        }
+        NetworkJumpKind kind = GetNetworkJumpKind();
+        if (kind == NetworkJumpKind.None) return false;
+        pendingJump = kind;
         return true;
     }
 
     private bool CanPerformNetworkDash()
     {
-        if (NetworkInputLocked || !networkDashConfigured || !Combat.Skills.Get<DashSkill>().Unlocked || !IsRuntimeInitialized || !isActiveAndEnabled || rb == null || stats == null ||
+        if (NetworkInputLocked || !Combat.Skills.Get<DashSkill>().Unlocked ||
             stats.isDead || stats.currentHealth <= 0 || isBusy || isKnocked || GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true || NetworkDashCooldownRemaining > 0.000001f ||
-            !(dashSpeed > 0) || float.IsInfinity(dashSpeed) || !(dashDuraiton > 0) || float.IsInfinity(dashDuraiton) ||
-            EntityRuntimePermissions.Identity(this)?.MovementHeld == true ||
+            GetComponent<NetworkEntityIdentity>().MovementHeld ||
             IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked) return false;
-        var current = stateMachine?.currentState;
+        var current = stateMachine.currentState;
         return (current == idleState || current == moveState || current == jumpState || current == airState) && !IsWallDetected();
     }
 
@@ -361,6 +379,7 @@ public class Player : Entity
         InputData.Clear(); localJumpPress = 0; pendingJump = NetworkJumpKind.None;
         localDashPress = 0; dashPending = false;
         localPrimaryAttackPress = 0; combat?.PrimaryAttack?.CancelPending();
+        localFlaskPress = 0;
     }
 
     private void OnDestroy() => combat?.ReleaseRoomEquipment();
@@ -468,7 +487,7 @@ public class Player : Entity
     public void HoldNetworkAtZeroHealth()
     {
         if (!GameSimulationClock.IsNetwork || !IsAuthoritative) return;
-        InputData.Clear(); localJumpPress = 0; localDashPress = 0; localPrimaryAttackPress = 0;
+        InputData.Clear(); localJumpPress = 0; localDashPress = 0; localPrimaryAttackPress = 0; localFlaskPress = 0;
         pendingJump = NetworkJumpKind.None; dashPending = false;
         combat?.PrimaryAttack?.InterruptCurrent(); combat?.PrimaryAttackHits?.Reset();
         if (rb != null && GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive != true)

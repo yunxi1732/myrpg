@@ -13,27 +13,27 @@ namespace Rpg.Networking
         public void RequestStop() => stopPending = true;
         public long SentSequence { get; private set; }
         public float LastSentAxis { get; private set; }
+        public bool LastSentSlideDown { get; private set; }
         public int MinimumIntervalMilliseconds
         {
             get => minimumIntervalMilliseconds;
             set => minimumIntervalMilliseconds = Math.Max(30, Math.Min(50, value));
         }
 
-        public bool TrySend(float currentAxis, double now, Action<MovementInputDto> send)
+        public bool TrySend(float currentAxis, double now, Action<MovementInputDto> send, bool slideDown = false)
         {
-            if (!ProtocolCodec.IsValidMovementAxis(currentAxis)) throw new ArgumentOutOfRangeException(nameof(currentAxis));
-            if (send == null) throw new ArgumentNullException(nameof(send));
-            if (stopPending) currentAxis = 0; // A lock's zero must be sent before any subsequently sampled direction.
+            if (stopPending) { currentAxis = 0; slideDown = false; } // A lock's neutral state precedes new input.
             if (SentSequence > 0)
             {
                 double elapsed = now - lastSendTime;
                 if (elapsed + 1e-9 < minimumIntervalMilliseconds / 1000.0 ||
-                    !stopPending && currentAxis == LastSentAxis && elapsed + 1e-9 < ResendInterval) return false;
+                    !stopPending && currentAxis == LastSentAxis && slideDown == LastSentSlideDown && elapsed + 1e-9 < ResendInterval) return false;
             }
-            var message = new MovementInputDto { inputSeq = checked(SentSequence + 1), currentAxis = currentAxis };
+            var message = new MovementInputDto { inputSeq = checked(SentSequence + 1), currentAxis = currentAxis, slideDown = slideDown };
             send(message);
             SentSequence = message.inputSeq;
             LastSentAxis = currentAxis;
+            LastSentSlideDown = slideDown;
             lastSendTime = now;
             stopPending = false;
             return true;
@@ -43,6 +43,7 @@ namespace Rpg.Networking
         {
             SentSequence = 0;
             LastSentAxis = 0;
+            LastSentSlideDown = false;
             lastSendTime = 0;
             stopPending = false;
         }

@@ -10,6 +10,11 @@ public class Skill : MonoBehaviour
 
     protected Player player;
     public PlayerCombatContext Combat { get; private set; }
+    protected void BindRoomOwner(PlayerCombatContext context)
+    {
+        Combat = context;
+        player = context.Owner;
+    }
 
     public void BindOwner(PlayerCombatContext context)
     {

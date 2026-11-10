@@ -5,8 +5,8 @@ namespace Rpg.Networking.Protocol
     public static class ProtocolSchema
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
-        // Shared elemental lifecycle and A-selected shock strike states/results, with common room result IDs.
-        public const int SchemaVersion = 26;
+        // A-owned base sword requests and complete object snapshots.
+        public const int SchemaVersion = 31;
     }
 
     public enum ProtocolId : short
@@ -25,14 +25,23 @@ namespace Rpg.Networking.Protocol
         MovementInput = 12,
         PlayerPositions = 13,
         JumpRequest = 14,
-        WallSlideInput = 15,
         DashRequest = 16,
         LocalInputLock = 17,
         MonsterInitialization = 18,
         MonsterStates = 19,
         PrimaryAttackRequest = 20,
         DamageResult = 21,
-        ElementStates = 22
+        ElementStates = 22,
+        EquipmentChangeRequest = 23,
+        EquipmentChangeResult = 24,
+        CraftRequest = 25,
+        CraftResult = 26,
+        SkillUnlockRequest = 27,
+        SkillUnlockResult = 28,
+        FlaskUseRequest = 29,
+        FlaskUseResult = 30,
+        SwordInput = 31,
+        SwordStates = 32
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash }
@@ -131,6 +140,11 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class PlayerCombatDto
     {
+        public long equipmentVersion = 1;
+        public int inventoryCapacity = 24;
+        public RoomEquipmentDto[] inventory = Array.Empty<RoomEquipmentDto>();
+        public RoomMaterialDto[] materials = Array.Empty<RoomMaterialDto>();
+        public SkillTreeStateDto skillTree = new SkillTreeStateDto();
         public string configurationId;
         public int[] stats; // A's final values, including equipment. B never reads local assets to recalculate them.
         public RoomEquipmentDto[] equipment;
@@ -139,9 +153,57 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class RoomEquipmentDto
     {
+        public string definitionId = "", displayName = "";
         public RoomEquipmentSlot slot;
         public string configurationId; // Empty string explicitly means an empty slot.
         public int[] modifiers; // Same CombatStatId order. Data-only first-round equipment, no legacy effects.
+    }
+    public enum EquipmentChangeKind { Equip, Unequip }
+    public enum EquipmentChangeRejection { None, StaleInventory, MissingItem, InventoryFull, PlayerUnavailable }
+    [Serializable]
+    public sealed class EquipmentChangeRequestDto
+    {
+        public string roomSessionId;
+        public long requestSeq, expectedVersion;
+        public EquipmentChangeKind kind;
+        public RoomEquipmentSlot slot;
+        public string configurationId; // Identifies an item in A's room inventory; never accepts client modifiers.
+    }
+    [Serializable]
+    public abstract class RoomInventoryResultDto : AuthorityResultDto
+    {
+        public RoomFlaskStateDto flask = new RoomFlaskStateDto();
+        public int playerId, entityId;
+        public long requestSeq;
+        public PlayerCombatDto combat;
+        public int health, maxHealth;
+        public long healthVersion;
+    }
+    [Serializable]
+    public sealed class EquipmentChangeResultDto : RoomInventoryResultDto
+    {
+        public bool accepted;
+        public EquipmentChangeRejection rejection;
+    }
+    [Serializable]
+    public sealed class RoomMaterialDto
+    {
+        public string materialId, displayName;
+        public int count;
+    }
+    public enum CraftRejection { None, StaleInventory, UnknownRecipe, MissingMaterials, InventoryFull, PlayerUnavailable }
+    [Serializable]
+    public sealed class CraftRequestDto
+    {
+        public string roomSessionId, recipeId;
+        public long requestSeq, expectedVersion;
+    }
+    [Serializable]
+    public sealed class CraftResultDto : RoomInventoryResultDto
+    {
+        public string recipeId, productId;
+        public bool accepted;
+        public CraftRejection rejection;
     }
     [Serializable]
     public sealed class RoomSkillDto
@@ -150,6 +212,96 @@ namespace Rpg.Networking.Protocol
         public bool unlocked;
         public float cooldown;
         public float remaining;
+    }
+    [Serializable]
+    public sealed class SkillTreeStateDto
+    {
+        public long version = 1;
+        public int currency;
+        public SkillTreeNodeDto[] nodes = Array.Empty<SkillTreeNodeDto>();
+        public bool[] unlockedSkills = new bool[7];
+    }
+    [Serializable]
+    public sealed class SkillTreeNodeDto
+    {
+        public string nodeId;
+        public int cost;
+        public bool unlocked;
+    }
+    public enum SkillUnlockRejection { None, StaleState, UnknownNode, AlreadyUnlocked, Prerequisite, Excluded, InsufficientCurrency, PlayerUnavailable }
+    [Serializable]
+    public sealed class SkillUnlockRequestDto
+    {
+        public string roomSessionId, nodeId;
+        public long requestSeq, expectedVersion;
+    }
+    [Serializable]
+    public sealed class SkillUnlockResultDto : AuthorityResultDto
+    {
+        public int playerId, entityId;
+        public long requestSeq;
+        public string nodeId;
+        public bool accepted;
+        public SkillUnlockRejection rejection;
+        public SkillTreeStateDto state;
+    }
+    [Serializable]
+    public sealed class RoomFlaskStateDto
+    {
+        public long version = 1, stateSeq = 1;
+        public string equippedItemId = "", definitionId = "";
+        public ulong cooldownStartTick, cooldownEndTick;
+        public int durationTicks;
+    }
+    public enum FlaskUseRejection { None, PlayerUnavailable, InputLocked, NoFlask, UnsupportedFlask, Cooldown }
+    public enum SwordAction { Aim, Release, Recall, Cancel, Direction }
+    public enum SwordPhase { Flying, Stuck, Returning }
+    [Serializable]
+    public sealed class SwordInputDto
+    {
+        public string roomSessionId;
+        public long actionSeq;
+        public SwordAction action;
+        public float[] direction;
+    }
+    [Serializable]
+    public sealed class SwordOwnerDto
+    {
+        public int playerId, entityId;
+        public bool aiming, catching;
+    }
+    [Serializable]
+    public sealed class SwordObjectDto
+    {
+        public int entityId, sourcePlayerId, sourceEntityId;
+        public long skillInstanceId;
+        public ulong startTick, endTick;
+        public SwordPhase phase;
+        public float[] position, direction;
+    }
+    [Serializable]
+    public sealed class SwordStatesDto : AuthorityResultDto
+    {
+        public long stateSeq;
+        public SwordOwnerDto[] owners;
+        public SwordObjectDto[] swords;
+    }
+    [Serializable]
+    public sealed class FlaskUseRequestDto
+    {
+        public string roomSessionId;
+        public long requestSeq; // Own press stream; no player ID, recovery amount or client cooldown claim.
+    }
+    [Serializable]
+    public sealed class FlaskUseResultDto : AuthorityResultDto
+    {
+        public int playerId, entityId;
+        public long requestSeq;
+        public bool accepted;
+        public FlaskUseRejection rejection;
+        public int actualHealing, health, maxHealth;
+        public long healthVersion;
+        public RoomFlaskStateDto flask;
     }
 
     [Serializable]
@@ -262,6 +414,7 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class InitialPlayerDto
     {
+        public RoomFlaskStateDto flask = new RoomFlaskStateDto();
         public int playerId;
         public int entityId;
         public float[] position;
@@ -282,6 +435,7 @@ namespace Rpg.Networking.Protocol
     {
         public long inputSeq;
         public float currentAxis;
+        public bool slideDown;
     }
 
     [Serializable]
@@ -311,13 +465,6 @@ namespace Rpg.Networking.Protocol
         public bool locked;
     }
 
-    [Serializable]
-    public sealed class WallSlideInputDto
-    {
-        public long inputSeq;
-        public bool slideDown; // Current hold state; release=false replaces true. Never a client wall/contact claim.
-    }
-
     // Both entries share the snapshot's authority tick and sequence. Position is exactly [x, y].
     [Serializable]
     public sealed class PlayerPositionsDto
@@ -332,6 +479,7 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class PlayerPositionDto
     {
+        public RoomFlaskStateDto flask = new RoomFlaskStateDto();
         public int entityId;
         public float[] position;
         public int facingDir;

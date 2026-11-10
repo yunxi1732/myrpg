@@ -42,14 +42,23 @@ namespace Rpg.Networking.Protocol
             Register<MovementInputDto>(ProtocolId.MovementInput),
             Register<PlayerPositionsDto>(ProtocolId.PlayerPositions),
             Register<JumpRequestDto>(ProtocolId.JumpRequest),
-            Register<WallSlideInputDto>(ProtocolId.WallSlideInput),
             Register<DashRequestDto>(ProtocolId.DashRequest),
             Register<LocalInputLockDto>(ProtocolId.LocalInputLock),
             Register<MonsterInitializationDto>(ProtocolId.MonsterInitialization),
             Register<MonsterStatesDto>(ProtocolId.MonsterStates),
             Register<PrimaryAttackRequestDto>(ProtocolId.PrimaryAttackRequest),
             Register<DamageResultDto>(ProtocolId.DamageResult),
-            Register<ElementStatesDto>(ProtocolId.ElementStates)
+            Register<ElementStatesDto>(ProtocolId.ElementStates),
+            Register<EquipmentChangeRequestDto>(ProtocolId.EquipmentChangeRequest),
+            Register<EquipmentChangeResultDto>(ProtocolId.EquipmentChangeResult),
+            Register<CraftRequestDto>(ProtocolId.CraftRequest),
+            Register<CraftResultDto>(ProtocolId.CraftResult),
+            Register<SkillUnlockRequestDto>(ProtocolId.SkillUnlockRequest),
+            Register<SkillUnlockResultDto>(ProtocolId.SkillUnlockResult),
+            Register<FlaskUseRequestDto>(ProtocolId.FlaskUseRequest),
+            Register<FlaskUseResultDto>(ProtocolId.FlaskUseResult),
+            Register<SwordInputDto>(ProtocolId.SwordInput),
+            Register<SwordStatesDto>(ProtocolId.SwordStates)
         };
 
         private static Entry Register<T>(ProtocolId id, bool allowedBeforeHandshake = false)
@@ -151,6 +160,30 @@ namespace Rpg.Networking.Protocol
 
         private static void Validate(object dto)
         {
+            if (dto is SwordInputDto sword && Guid.TryParseExact(sword.roomSessionId, "N", out _) && sword.actionSeq > 0 &&
+                sword.action >= SwordAction.Aim && sword.action <= SwordAction.Direction && ValidSwordDirection(sword.direction)) return;
+            if (dto is SwordStatesDto swords && ValidSwordStates(swords)) return;
+            if (dto is FlaskUseRequestDto flaskRequest && ValidFlaskRequest(flaskRequest)) return;
+            if (dto is FlaskUseResultDto flask && ValidAuthorityResult(flask) && flask.playerId > 0 && flask.entityId > 0 &&
+                flask.requestSeq > 0 && flask.rejection >= FlaskUseRejection.None && flask.rejection <= FlaskUseRejection.Cooldown &&
+                flask.accepted == (flask.rejection == FlaskUseRejection.None) && flask.actualHealing >= 0 && flask.actualHealing <= flask.health &&
+                ValidHealth(flask.health, flask.maxHealth, flask.healthVersion) && ValidFlaskState(flask.flask) && flask.flask.cooldownStartTick <= flask.authorityTick &&
+                (!flask.accepted ? flask.actualHealing == 0 : flask.flask.equippedItemId.Length > 0 && flask.flask.cooldownStartTick == flask.authorityTick)) return;
+            if (dto is SkillUnlockRequestDto unlock && ValidSkillUnlockRequest(unlock)) return;
+            if (dto is SkillUnlockResultDto unlocked && ValidAuthorityResult(unlocked) && unlocked.playerId > 0 && unlocked.entityId > 0 &&
+                unlocked.requestSeq > 0 && ValidConfigurationId(unlocked.nodeId) && ValidSkillTree(unlocked.state) &&
+                unlocked.rejection >= SkillUnlockRejection.None && unlocked.rejection <= SkillUnlockRejection.PlayerUnavailable &&
+                unlocked.accepted == (unlocked.rejection == SkillUnlockRejection.None) &&
+                (!unlocked.accepted || Array.Exists(unlocked.state.nodes, node => node.nodeId == unlocked.nodeId && node.unlocked))) return;
+            if (dto is CraftRequestDto craft && ValidCraftRequest(craft)) return;
+            if (dto is CraftResultDto crafted && ValidInventoryResult(crafted) && ValidConfigurationId(crafted.recipeId) &&
+                crafted.rejection >= CraftRejection.None && crafted.rejection <= CraftRejection.PlayerUnavailable &&
+                crafted.accepted == (crafted.rejection == CraftRejection.None) &&
+                (crafted.accepted ? ValidCraftProduct(crafted) : crafted.productId == "")) return;
+            if (dto is EquipmentChangeRequestDto equipment && ValidEquipmentRequest(equipment)) return;
+            if (dto is EquipmentChangeResultDto changed && ValidInventoryResult(changed) &&
+                changed.rejection >= EquipmentChangeRejection.None && changed.rejection <= EquipmentChangeRejection.PlayerUnavailable &&
+                changed.accepted == (changed.rejection == EquipmentChangeRejection.None)) return;
             if (dto is ElementStatesDto burns && ValidElementStates(burns)) return;
             if (dto is DamageResultDto damage && ValidAuthorityResult(damage) && damage.sourcePlayerId >= 0 &&
                 damage.sourceEntityId > 0 && damage.targetEntityId > 0 && damage.sourceEntityId != damage.targetEntityId &&
@@ -164,12 +197,12 @@ namespace Rpg.Networking.Protocol
             if (dto is MonsterInitializationDto monsters && ValidMonsterInitialization(monsters)) return;
             if (dto is LocalInputLockDto inputLock && inputLock.lockSeq > 0) return;
             if (dto is DashRequestDto dash && dash.actionSeq > 0 && IsValidMovementAxis(dash.currentAxis)) return;
-            if (dto is WallSlideInputDto wallSlide && wallSlide.inputSeq > 0) return;
             if (dto is JumpRequestDto jump && jump.actionSeq > 0) return;
             if (dto is PlayerPositionsDto positions && Guid.TryParseExact(positions.roomSessionId, "N", out _) &&
                 positions.loadId > 0 && positions.authorityTick > 0 && positions.stateSeq > 0 &&
                 positions.players != null && positions.players.Length == 2 &&
                 ValidPlayerPosition(positions.players[0]) && ValidPlayerPosition(positions.players[1]) &&
+                positions.players[0].flask.cooldownStartTick <= positions.authorityTick && positions.players[1].flask.cooldownStartTick <= positions.authorityTick &&
                 ValidPlayerAttack(positions.players[0].attack, positions.players[0].entityId, positions.players[0].facingDir, positions.authorityTick) &&
                 ValidPlayerAttack(positions.players[1].attack, positions.players[1].entityId, positions.players[1].facingDir, positions.authorityTick) &&
                 positions.players[0].entityId != positions.players[1].entityId) return;
@@ -184,6 +217,7 @@ namespace Rpg.Networking.Protocol
                 initialization.loadId > 0 && initialization.authorityTick > 0 && initialization.stateSeq > 0 &&
                 initialization.players != null && initialization.players.Length == 2 &&
                 ValidInitialPlayer(initialization.players[0]) && ValidInitialPlayer(initialization.players[1]) &&
+                initialization.players[0].flask.cooldownStartTick <= initialization.authorityTick && initialization.players[1].flask.cooldownStartTick <= initialization.authorityTick &&
                 ValidPlayerAttack(initialization.players[0].attack, initialization.players[0].entityId, initialization.players[0].facingDir, initialization.authorityTick) &&
                 ValidPlayerAttack(initialization.players[1].attack, initialization.players[1].entityId, initialization.players[1].facingDir, initialization.authorityTick) &&
                 initialization.players[0].playerId != initialization.players[1].playerId &&
@@ -253,6 +287,7 @@ namespace Rpg.Networking.Protocol
         }
 
         private static bool ValidPlayerPosition(PlayerPositionDto player) => player != null && player.entityId > 0 &&
+            ValidFlaskState(player.flask) &&
             player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
             (player.facingDir == -1 || player.facingDir == 1) && IsValidMovementAnimation(player.movementState, player.yVelocity);
 
@@ -268,6 +303,7 @@ namespace Rpg.Networking.Protocol
             !float.IsNaN(axis) && !float.IsInfinity(axis) && axis >= -1 && axis <= 1;
 
         private static bool ValidInitialPlayer(InitialPlayerDto player) => player != null && player.playerId > 0 && player.entityId > 0 &&
+            ValidFlaskState(player.flask) &&
             player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
             (player.facingDir == -1 || player.facingDir == 1) &&
             IsValidMovementAnimation(player.movementState, player.yVelocity) &&
@@ -278,13 +314,20 @@ namespace Rpg.Networking.Protocol
         {
             if (value == null || !ValidConfigurationId(value.configurationId) || !ValidStats(value.stats) ||
                 value.stats[(int)CombatStatId.Health] + 5 * value.stats[(int)CombatStatId.Vitality] <= 0 ||
-                value.equipment == null || value.equipment.Length != 4 || value.skills == null || value.skills.Length != 7) return false;
+                value.equipment == null || value.equipment.Length != 4 || value.skills == null || value.skills.Length != 7 ||
+                value.equipmentVersion <= 0 || value.inventoryCapacity < 4 || value.inventoryCapacity > 128 ||
+                value.inventory == null || value.inventory.Length > value.inventoryCapacity || !ValidMaterials(value.materials) || !ValidSkillTree(value.skillTree)) return false;
+            var itemIds = new System.Collections.Generic.HashSet<string>();
+            foreach (var item in value.inventory)
+                if (item == null || !ValidConfigurationId(item.configurationId) || !itemIds.Add(item.configurationId) ||
+                    item.slot < RoomEquipmentSlot.Weapon || item.slot > RoomEquipmentSlot.Flask || !ValidStats(item.modifiers) || !ValidItemPresentation(item)) return false;
             var equipmentIds = new System.Collections.Generic.HashSet<RoomEquipmentSlot>();
             foreach (var item in value.equipment)
             {
                 if (item == null || item.slot < RoomEquipmentSlot.Weapon || item.slot > RoomEquipmentSlot.Flask ||
                     !equipmentIds.Add(item.slot) || item.configurationId == null ||
-                    item.configurationId.Length > 0 && !ValidConfigurationId(item.configurationId) || !ValidStats(item.modifiers)) return false;
+                    item.configurationId.Length > 0 && !ValidConfigurationId(item.configurationId) || !ValidStats(item.modifiers) || !ValidItemPresentation(item)) return false;
+                if (item.configurationId.Length > 0 && !itemIds.Add(item.configurationId)) return false;
                 for (int i = 0; i < value.stats.Length; i++)
                     if (item.modifiers[i] > value.stats[i] || item.configurationId.Length == 0 && item.modifiers[i] != 0) return false;
             }
@@ -298,6 +341,72 @@ namespace Rpg.Networking.Protocol
             foreach (var skill in value.skills)
                 if (skill == null || skill.skillId < RoomSkillId.Dash || skill.skillId > RoomSkillId.Dodge || !skillIds.Add(skill.skillId) ||
                     !ValidCooldown(skill.cooldown) || !ValidCooldown(skill.remaining) || skill.remaining > skill.cooldown) return false;
+            return true;
+        }
+        public static bool ValidEquipmentRequest(EquipmentChangeRequestDto value) => value != null &&
+            Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.expectedVersion > 0 &&
+            value.kind >= EquipmentChangeKind.Equip && value.kind <= EquipmentChangeKind.Unequip &&
+            value.slot >= RoomEquipmentSlot.Weapon && value.slot <= RoomEquipmentSlot.Flask && ValidConfigurationId(value.configurationId);
+        public static bool ValidCraftRequest(CraftRequestDto value) => value != null &&
+            Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.expectedVersion > 0 && ValidConfigurationId(value.recipeId);
+        public static bool ValidSkillUnlockRequest(SkillUnlockRequestDto value) => value != null &&
+            Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.expectedVersion > 0 && ValidConfigurationId(value.nodeId);
+        public static bool ValidFlaskRequest(FlaskUseRequestDto value) => value != null &&
+            Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0;
+        private static bool ValidSwordDirection(float[] value) => value != null && value.Length == 2 && ValidCoordinate(value[0]) && ValidCoordinate(value[1]) &&
+            Mathf.Abs(value[0] * value[0] + value[1] * value[1] - 1) < .01f;
+        private static bool ValidSwordStates(SwordStatesDto value)
+        {
+            if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.owners == null || value.owners.Length < 1 || value.owners.Length > 2 ||
+                value.swords == null || value.swords.Length > 2) return false;
+            var owners = new System.Collections.Generic.Dictionary<int, int>();
+            var ids = new System.Collections.Generic.HashSet<int>(); var instances = new System.Collections.Generic.HashSet<long>();
+            foreach (var owner in value.owners)
+                if (owner == null || owner.playerId <= 0 || owner.entityId <= 0 || owners.ContainsKey(owner.playerId) || !ids.Add(owner.entityId)) return false;
+                else owners.Add(owner.playerId, owner.entityId);
+            var sources = new System.Collections.Generic.HashSet<int>();
+            foreach (var sword in value.swords)
+                if (sword == null || sword.entityId <= 0 || !ids.Add(sword.entityId) || sword.skillInstanceId <= 0 || !instances.Add(sword.skillInstanceId) ||
+                    !sources.Add(sword.sourcePlayerId) || !owners.TryGetValue(sword.sourcePlayerId, out int entity) || entity != sword.sourceEntityId ||
+                    sword.startTick == 0 || sword.startTick > value.authorityTick || sword.endTick <= sword.startTick ||
+                    sword.phase < SwordPhase.Flying || sword.phase > SwordPhase.Returning || !ValidSwordDirection(sword.direction) ||
+                    sword.position == null || sword.position.Length != 2 || !ValidCoordinate(sword.position[0]) || !ValidCoordinate(sword.position[1])) return false;
+            return true;
+        }
+        public static bool ValidFlaskState(RoomFlaskStateDto value) => value != null && value.version > 0 && value.stateSeq > 0 &&
+            value.equippedItemId != null && value.definitionId != null && value.equippedItemId.Length <= 128 && value.definitionId.Length <= 128 &&
+            (value.equippedItemId.Length == 0 ? value.definitionId.Length == 0 : ValidConfigurationId(value.equippedItemId) && ValidConfigurationId(value.definitionId)) &&
+            value.durationTicks >= 0 && value.cooldownEndTick >= value.cooldownStartTick &&
+            value.cooldownEndTick - value.cooldownStartTick == (ulong)value.durationTicks;
+        public static bool ValidSkillTree(SkillTreeStateDto value)
+        {
+            if (value == null || value.version <= 0 || value.currency < 0 || value.nodes == null || value.nodes.Length > 128 ||
+                value.unlockedSkills == null || value.unlockedSkills.Length != 7) return false;
+            var ids = new System.Collections.Generic.HashSet<string>();
+            foreach (var node in value.nodes)
+                if (node == null || !ValidConfigurationId(node.nodeId) || !ids.Add(node.nodeId) || node.cost < 0) return false;
+            return true;
+        }
+        private static bool ValidInventoryResult(RoomInventoryResultDto value) => ValidAuthorityResult(value) && ValidFlaskState(value.flask) &&
+            value.flask.cooldownStartTick <= value.authorityTick && value.playerId > 0 && value.entityId > 0 &&
+            value.requestSeq > 0 && IsValidCombat(value.combat) && ValidHealth(value.health, value.maxHealth, value.healthVersion) &&
+            value.maxHealth == value.combat.stats[7] + 5 * value.combat.stats[3];
+        private static bool ValidCraftProduct(CraftResultDto value)
+        {
+            if (!ValidConfigurationId(value.productId)) return false;
+            foreach (var item in value.combat.inventory)
+                if (item.configurationId == value.productId && item.definitionId == value.recipeId) return true;
+            return false;
+        }
+        private static bool ValidItemPresentation(RoomEquipmentDto value) => value.definitionId != null && value.definitionId.Length <= 128 &&
+            value.displayName != null && value.displayName.Length <= 128;
+        public static bool ValidMaterials(RoomMaterialDto[] values)
+        {
+            if (values == null || values.Length > 128) return false;
+            var ids = new System.Collections.Generic.HashSet<string>();
+            foreach (var value in values)
+                if (value == null || !ValidConfigurationId(value.materialId) || !ids.Add(value.materialId) || value.count <= 0 || value.count > 1000000 ||
+                    string.IsNullOrWhiteSpace(value.displayName) || value.displayName.Length > 128) return false;
             return true;
         }
         private static bool ValidConfigurationId(string id) => !string.IsNullOrWhiteSpace(id) && id.Length <= 128;

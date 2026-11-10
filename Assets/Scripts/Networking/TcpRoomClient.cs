@@ -52,25 +52,28 @@ namespace Rpg.Networking
         public event Action<MonsterInitializationDto> MonsterInitializationReceived;
         public event Action<MonsterStatesDto> MonsterStatesReceived;
         public event Action<DamageResultDto> DamageResultReceived;
+        public event Action<EquipmentChangeResultDto> EquipmentChangeResultReceived;
+        public event Action<CraftResultDto> CraftResultReceived;
+        public event Action<SkillUnlockResultDto> SkillUnlockResultReceived;
+        public event Action<FlaskUseResultDto> FlaskUseResultReceived;
+        public event Action<SwordStatesDto> SwordStatesReceived;
         public event Action<ElementStatesDto> ElementStatesReceived;
         private long lastMonsterSeq;
         private ulong lastMonsterTick;
         private long lastPlayerInitializationSeq;
         private ulong lastPlayerInitializationTick;
         private readonly MovementInputSender movementSender = new MovementInputSender();
-        // Reuse the current-state timer for a binary (0/1) channel, encoded only as WallSlideInputDto on the wire.
-        private readonly MovementInputSender wallSlideSender = new MovementInputSender();
         public int MovementMinimumIntervalMilliseconds
         {
             get => movementSender.MinimumIntervalMilliseconds;
-            set { movementSender.MinimumIntervalMilliseconds = value; wallSlideSender.MinimumIntervalMilliseconds = value; }
+            set => movementSender.MinimumIntervalMilliseconds = value;
         }
         public long SentMovementInputSeq => movementSender.SentSequence;
         public long LastSentActionSeq { get; private set; }
         public long LastSentPrimaryAttackRequestSeq { get; private set; }
         private long inputLockSeq;
         private bool? sentInputLock;
-        public void RequestMovementStop() { movementSender.RequestStop(); wallSlideSender.RequestStop(); }
+        public void RequestMovementStop() => movementSender.RequestStop();
         public long SceneLoadId { get; private set; }
         public bool LocalSceneReady { get; private set; }
         public bool CanInitializeEntities { get; private set; }
@@ -228,6 +231,40 @@ namespace Rpg.Networking
                             lastPlayerInitializationSeq == 0 || lastMonsterSeq == 0 || damage.roomSessionId != RoomSessionId) return;
                         DamageResultReceived?.Invoke(damage); // No global maximum ID filter; room result receipts decide equality.
                     });
+                    handshakePeer.Subscribe<EquipmentChangeResultDto>(value =>
+                    {
+                        var result = (EquipmentChangeResultDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || result.roomSessionId != RoomSessionId) return;
+                        EquipmentChangeResultReceived?.Invoke(result);
+                    });
+                    handshakePeer.Subscribe<CraftResultDto>(value =>
+                    {
+                        var result = (CraftResultDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || result.roomSessionId != RoomSessionId) return;
+                        CraftResultReceived?.Invoke(result);
+                    });
+                    handshakePeer.Subscribe<SkillUnlockResultDto>(value =>
+                    {
+                        var result = (SkillUnlockResultDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || result.roomSessionId != RoomSessionId) return;
+                        SkillUnlockResultReceived?.Invoke(result);
+                    });
+                    handshakePeer.Subscribe<FlaskUseResultDto>(value =>
+                    {
+                        var result = (FlaskUseResultDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || result.roomSessionId != RoomSessionId) return;
+                        FlaskUseResultReceived?.Invoke(result);
+                    });
+                    handshakePeer.Subscribe<SwordStatesDto>(value =>
+                    {
+                        var result = (SwordStatesDto)value;
+                        if (ReferenceEquals(Connection, boundConnection) && State == RoomConnectionState.Connected && CanInitializeEntities &&
+                            lastPlayerInitializationSeq > 0 && result.roomSessionId == RoomSessionId) SwordStatesReceived?.Invoke(result);
+                    });
                     handshakePeer.Subscribe<MonsterStatesDto>(value =>
                     {
                         var states = (MonsterStatesDto)value;
@@ -344,7 +381,6 @@ namespace Rpg.Networking
             lastMonsterSeq = 0; lastMonsterTick = 0;
             LocalSceneReady = CanInitializeEntities = false;
             movementSender.Reset();
-            wallSlideSender.Reset();
             LastSentActionSeq = 0;
             LastSentPrimaryAttackRequestSeq = 0;
             inputLockSeq = 0; sentInputLock = null;
@@ -363,30 +399,11 @@ namespace Rpg.Networking
         }
 
         // Called after this frame's input collection. Timer uses the non-scaled monotonic clock.
-        public bool SendMovementInput(float currentAxis)
+        public bool SendMovementInput(float currentAxis, bool slideDown = false)
         {
             if (State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
-            try { return movementSender.TrySend(currentAxis, MonotonicClock.Now, value => Connection.Send(value, true)); }
-            catch (Exception error) when (error is IOException || error is SocketException ||
-                error is ObjectDisposedException || error is InvalidOperationException)
-            {
-                // Transport failure closes NetConnection; the existing peer update performs normal disconnect cleanup.
-                return false;
-            }
-        }
-
-        public bool SendWallSlideInput(bool slideDown)
-        {
-            if (State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
-                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
-            try
-            {
-                return wallSlideSender.TrySend(slideDown ? 1 : 0, MonotonicClock.Now, state =>
-                    Connection.Send(new WallSlideInputDto { inputSeq = state.inputSeq, slideDown = state.currentAxis > 0 }, true));
-            }
-            catch (Exception error) when (error is IOException || error is SocketException ||
-                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            return movementSender.TrySend(currentAxis, MonotonicClock.Now, value => Connection.Send(value, true), slideDown);
         }
 
         public bool SendPrimaryAttackRequest(long requestSeq)
@@ -404,19 +421,50 @@ namespace Rpg.Networking
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
+        public bool SendEquipmentChangeRequest(EquipmentChangeRequestDto request)
+        {
+            if (!ProtocolCodec.ValidEquipmentRequest(request) || request.roomSessionId != RoomSessionId ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(request, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+        public bool SendCraftRequest(CraftRequestDto request)
+        {
+            if (!ProtocolCodec.ValidCraftRequest(request) || request.roomSessionId != RoomSessionId ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(request, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+        public bool SendSkillUnlockRequest(SkillUnlockRequestDto request)
+        {
+            if (!ProtocolCodec.ValidSkillUnlockRequest(request) || request.roomSessionId != RoomSessionId ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(request, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+        public bool SendFlaskUseRequest(FlaskUseRequestDto request)
+        {
+            if (!ProtocolCodec.ValidFlaskRequest(request) || request.roomSessionId != RoomSessionId ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(request, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
+        public bool SendSwordInput(SwordInputDto input)
+        {
+            if (input.roomSessionId != RoomSessionId || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                lastPlayerInitializationSeq == 0 || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(input, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
         public bool SendJumpRequest(long actionSeq)
         {
-            if (actionSeq <= 0 || actionSeq <= LastSentActionSeq || State != RoomConnectionState.Connected ||
-                !CanInitializeEntities || lastPlayerInitializationSeq == 0 || LocalIdentity == null ||
-                Connection == null || !Connection.IsOpen) return false;
-            try
-            {
-                Connection.Send(new JumpRequestDto { actionSeq = actionSeq }, true);
-                LastSentActionSeq = actionSeq;
-                return true;
-            }
-            catch (Exception error) when (error is IOException || error is SocketException ||
-                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            return SendMovementAction(actionSeq, false, 0);
         }
 
         public bool SendLocalInputLock(bool locked)
@@ -437,17 +485,18 @@ namespace Rpg.Networking
 
         public bool SendDashRequest(long actionSeq, float axis)
         {
-            if (actionSeq <= 0 || actionSeq <= LastSentActionSeq || !ProtocolCodec.IsValidMovementAxis(axis) ||
+            return SendMovementAction(actionSeq, true, axis);
+        }
+
+        private bool SendMovementAction(long actionSeq, bool dash, float axis)
+        {
+            if (actionSeq <= 0 || actionSeq <= LastSentActionSeq ||
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
-            try
-            {
-                Connection.Send(new DashRequestDto { actionSeq = actionSeq, currentAxis = axis }, true);
-                LastSentActionSeq = actionSeq;
-                return true;
-            }
-            catch (Exception error) when (error is IOException || error is SocketException ||
-                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            if (dash) Connection.Send(new DashRequestDto { actionSeq = actionSeq, currentAxis = axis }, true);
+            else Connection.Send(new JumpRequestDto { actionSeq = actionSeq }, true);
+            LastSentActionSeq = actionSeq;
+            return true;
         }
 
         public void ReportSceneFailure()
@@ -490,6 +539,11 @@ namespace Rpg.Networking
             MonsterInitializationReceived = null;
             MonsterStatesReceived = null;
             DamageResultReceived = null;
+            EquipmentChangeResultReceived = null;
+            CraftResultReceived = null;
+            SkillUnlockResultReceived = null;
+            FlaskUseResultReceived = null;
+            SwordStatesReceived = null;
         }
     }
 }

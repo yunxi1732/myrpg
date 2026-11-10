@@ -35,20 +35,26 @@ namespace Rpg.Networking
             value.equipment[1].modifiers[(int)CombatStatId.Armor] = host ? 3 : 6;
             float[] cooldowns = { host ? 1.5f : 2.5f, 4, 3, 8, 4, 2, 1 };
             for (int i = 0; i < 7; i++)
+            {
                 value.skills[i] = new RoomSkillDto
                 {
                     skillId = (RoomSkillId)i, cooldown = cooldowns[i], remaining = 0,
                     unlocked = i == (int)RoomSkillId.Dash || i == (int)(host ? RoomSkillId.Sword : RoomSkillId.Crystal)
                 };
+                value.skillTree.unlockedSkills[i] = value.skills[i].unlocked;
+            }
             return value;
         }
 
-        public static void InitializeAuthority(Player player, bool host)
+        public static void InitializeAuthority(Player player, bool host, int inventoryCapacity = 24, RoomMaterialDto[] materials = null)
         {
             if (!player.IsAuthoritative || EntityRuntimePermissions.Identity(player)?.IsBound != true)
                 throw new InvalidOperationException("Only a bound A authority chooses the room combat profile.");
             if (player.Combat.RoomConfigurationId != null) return; // A survives guest departure/rejoin.
-            player.Combat.InstallRoomConfiguration(CreateTestProfile(host), false);
+            var profile = CreateTestProfile(host);
+            profile.inventoryCapacity = inventoryCapacity;
+            profile.materials = materials ?? Array.Empty<RoomMaterialDto>();
+            player.Combat.InstallRoomConfiguration(profile, false);
         }
 
         internal static EquipmentType EquipmentSlot(RoomEquipmentSlot slot)
@@ -67,7 +73,10 @@ namespace Rpg.Networking
             if (value.configurationId.Length == 0) return null;
             var item = ScriptableObject.CreateInstance<ItemData_Equipment>();
             item.hideFlags = HideFlags.HideAndDontSave;
-            item.name = value.configurationId; item.itemType = ItemType.Equipment; item.equipmentType = EquipmentSlot(value.slot);
+            item.name = value.configurationId;
+            item.itemName = string.IsNullOrEmpty(value.displayName) ? value.configurationId : value.displayName;
+            item.itemId = string.IsNullOrEmpty(value.definitionId) ? value.configurationId : value.definitionId;
+            item.itemType = ItemType.Equipment; item.equipmentType = EquipmentSlot(value.slot);
             item.itemEffects = Array.Empty<ItemEffect>();
             int[] s = value.modifiers;
             item.strength = s[0]; item.agility = s[1]; item.intelligence = s[2]; item.vitality = s[3];
@@ -79,6 +88,7 @@ namespace Rpg.Networking
         internal static RoomEquipmentDto CaptureEquipment(RoomEquipmentSlot slot, ItemData_Equipment item) => new RoomEquipmentDto
         {
             slot = slot, configurationId = item == null ? "" : item.name,
+            definitionId = item == null ? "" : item.itemId ?? "", displayName = item == null ? "" : item.itemName ?? item.name,
             modifiers = item == null ? new int[14] : new[]
             {
                 item.strength, item.agility, item.intelligence, item.vitality, item.damage, item.critChance, item.critPower,

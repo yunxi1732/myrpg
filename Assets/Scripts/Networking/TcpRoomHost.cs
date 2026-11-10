@@ -28,11 +28,14 @@ namespace Rpg.Networking
         public event Action<RoomPlayerIdentity, JumpRequestDto> JumpRequested;
         public event Action<RoomPlayerIdentity, DashRequestDto> DashRequested;
         public event Action<RoomPlayerIdentity, PrimaryAttackRequestDto> PrimaryAttackRequested;
+        public event Action<RoomPlayerIdentity, EquipmentChangeRequestDto> EquipmentChangeRequested;
+        public event Action<RoomPlayerIdentity, CraftRequestDto> CraftRequested;
+        public event Action<RoomPlayerIdentity, SkillUnlockRequestDto> SkillUnlockRequested;
+        public event Action<RoomPlayerIdentity, FlaskUseRequestDto> FlaskUseRequested;
+        public event Action<RoomPlayerIdentity, SwordInputDto> SwordInputReceived;
         public long LastPrimaryAttackRequestSeq { get; private set; }
         public event Action<RoomPlayerIdentity, LocalInputLockDto> InputLockReceived;
         public long LastInputLockSeq { get; private set; }
-        public event Action<RoomPlayerIdentity, WallSlideInputDto> WallSlideInputReceived;
-        public long LastWallSlideInputSeq { get; private set; }
         public long LastActionSeq { get; private set; }
         public long LastMovementInputSeq { get; private set; }
         private bool playerInitializationSent;
@@ -105,6 +108,40 @@ namespace Rpg.Networking
                     guestPeer = new RoomHandshakePeer(Guest);
                     guestPeer.Subscribe<HandshakeHelloDto>(value => AcceptHello((HandshakeHelloDto)value));
                     NetConnection boundGuest = Guest;
+                    guestPeer.Subscribe<SwordInputDto>(value =>
+                    {
+                        var input = (SwordInputDto)value;
+                        if (playerInitializationSent && CanInitializeEntities && input.roomSessionId == RoomSessionId &&
+                            TryResolvePlayer(boundGuest, out var actor)) SwordInputReceived?.Invoke(actor, input);
+                    });
+                    guestPeer.Subscribe<FlaskUseRequestDto>(value =>
+                    {
+                        var request = (FlaskUseRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities || request.roomSessionId != RoomSessionId ||
+                            !TryResolvePlayer(boundGuest, out var actor)) return;
+                        FlaskUseRequested?.Invoke(actor, request);
+                    });
+                    guestPeer.Subscribe<SkillUnlockRequestDto>(value =>
+                    {
+                        var request = (SkillUnlockRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities || request.roomSessionId != RoomSessionId ||
+                            !TryResolvePlayer(boundGuest, out var actor)) return;
+                        SkillUnlockRequested?.Invoke(actor, request);
+                    });
+                    guestPeer.Subscribe<CraftRequestDto>(value =>
+                    {
+                        var request = (CraftRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities || request.roomSessionId != RoomSessionId ||
+                            !TryResolvePlayer(boundGuest, out var actor)) return;
+                        CraftRequested?.Invoke(actor, request);
+                    });
+                    guestPeer.Subscribe<EquipmentChangeRequestDto>(value =>
+                    {
+                        var request = (EquipmentChangeRequestDto)value;
+                        if (!playerInitializationSent || !CanInitializeEntities || request.roomSessionId != RoomSessionId ||
+                            !TryResolvePlayer(boundGuest, out var actor)) return;
+                        EquipmentChangeRequested?.Invoke(actor, request);
+                    });
                     guestPeer.Subscribe<PrimaryAttackRequestDto>(value =>
                     {
                         var request = (PrimaryAttackRequestDto)value;
@@ -128,14 +165,6 @@ namespace Rpg.Networking
                             !TryResolvePlayer(boundGuest, out var actor) || dash.actionSeq <= LastActionSeq) return;
                         LastActionSeq = dash.actionSeq;
                         DashRequested?.Invoke(actor, dash);
-                    });
-                    guestPeer.Subscribe<WallSlideInputDto>(value =>
-                    {
-                        var input = (WallSlideInputDto)value;
-                        if (!playerInitializationSent || !CanInitializeEntities ||
-                            !TryResolvePlayer(boundGuest, out var actor) || input.inputSeq <= LastWallSlideInputSeq) return;
-                        LastWallSlideInputSeq = input.inputSeq;
-                        WallSlideInputReceived?.Invoke(actor, input);
                     });
                     guestPeer.Subscribe<JumpRequestDto>(value =>
                     {
@@ -328,6 +357,23 @@ namespace Rpg.Networking
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
+        public bool SendEquipmentChangeResult(EquipmentChangeResultDto value)
+            => SendInventoryResult(value);
+        public bool SendCraftResult(CraftResultDto value) => SendInventoryResult(value);
+        public bool SendSkillUnlockResult(SkillUnlockResultDto value) => SendAuthorityInventoryResult(value);
+        public bool SendFlaskUseResult(FlaskUseResultDto value) => SendAuthorityInventoryResult(value);
+        public bool SendSwordStates(SwordStatesDto value) => SendAuthorityInventoryResult(value);
+        private bool SendInventoryResult(RoomInventoryResultDto value)
+            => SendAuthorityInventoryResult(value);
+        private bool SendAuthorityInventoryResult(AuthorityResultDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!IsListening || !CanInitializeEntities || !playerInitializationSent || value.roomSessionId != RoomSessionId ||
+                Results == null || value.resultId > Results.LastAllocated || Guest == null || !Guest.IsOpen) return false;
+            try { Guest.Send(value, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+
         public bool SendMonsterStates(MonsterStatesDto value)
         {
             ProtocolCodec.ValidateMessage(value, true);
@@ -359,7 +405,6 @@ namespace Rpg.Networking
             monsterInitializationSent = false;
             var previous = guestPeer;
             LastMovementInputSeq = 0;
-            LastWallSlideInputSeq = 0;
             LastActionSeq = 0;
             LastPrimaryAttackRequestSeq = 0;
             LastInputLockSeq = 0;
@@ -417,7 +462,7 @@ namespace Rpg.Networking
         {
             if (disposed) return;
             try { CloseRoom(); }
-            finally { disposed = true; StateChanged = null; Disconnected = null; RoomExited = null; SceneInitializationAllowed = null; MovementInputReceived = null; JumpRequested = null; WallSlideInputReceived = null; DashRequested = null; InputLockReceived = null; PrimaryAttackRequested = null; }
+            finally { disposed = true; StateChanged = null; Disconnected = null; RoomExited = null; SceneInitializationAllowed = null; MovementInputReceived = null; JumpRequested = null; DashRequested = null; InputLockReceived = null; PrimaryAttackRequested = null; EquipmentChangeRequested = null; CraftRequested = null; SkillUnlockRequested = null; FlaskUseRequested = null; SwordInputReceived = null; }
         }
     }
 }

@@ -20,6 +20,7 @@ namespace Rpg.Networking
         public long PresentedPlayerAttackId { get; private set; }
         public int PlayerAttackStartCount { get; private set; }
         public float PlayerAttackPhase { get; private set; }
+        internal bool SwordActionActive;
         private readonly AuthorityPositionBuffer positions = new AuthorityPositionBuffer();
         public float TeleportDistance { get => teleportDistance; set => teleportDistance = Mathf.Max(0.01f, value); }
         public int BufferedStateCount => positions.Count;
@@ -134,8 +135,8 @@ namespace Rpg.Networking
             bool exitedAttack = holdingPlayerAttack;
             ReleasePlayerAttack();
             animator.SetBool("Attack", false);
-            animator.SetBool("Idle", state == MovementAnimationState.Idle);
-            animator.SetBool("Move", state == MovementAnimationState.Move);
+            animator.SetBool("Idle", !SwordActionActive && state == MovementAnimationState.Idle);
+            animator.SetBool("Move", !SwordActionActive && state == MovementAnimationState.Move);
             animator.SetBool("Jump", state == MovementAnimationState.Jump || state == MovementAnimationState.Fall || state == MovementAnimationState.WallJump);
             animator.SetBool("WallSlide", state == MovementAnimationState.WallSlide);
             animator.SetBool("Dash", state == MovementAnimationState.Dash);

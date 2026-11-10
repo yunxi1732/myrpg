@@ -34,6 +34,7 @@ public class PlayerAnimationTriggers : MonoBehaviour
 
     private void ThrowSword()
     {
+        if (player != null && player.IsAuthoritative && player.RoomSword != null) { player.RoomSword.TryCreateSwordFromInput(); return; }
         if (player == null || !player.CanUseLegacyActions) return;
         player.skill.sword.TryCreateSwordFromInput();
     }

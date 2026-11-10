@@ -35,6 +35,17 @@ namespace Rpg.Networking
         public RoomCombatDamage CombatDamage { get; private set; }
         private readonly System.Collections.Generic.Queue<DamageResultDto> pendingDamageResults = new System.Collections.Generic.Queue<DamageResultDto>();
         private ElementStatesDto pendingElementStates;
+        private readonly System.Collections.Generic.Queue<RoomInventoryResultDto> pendingInventoryResults = new System.Collections.Generic.Queue<RoomInventoryResultDto>();
+        private long localEquipmentRequestSeq;
+        private long localCraftRequestSeq;
+        private long localSkillUnlockRequestSeq;
+        private readonly System.Collections.Generic.Queue<SkillUnlockResultDto> pendingSkillUnlockResults = new System.Collections.Generic.Queue<SkillUnlockResultDto>();
+        private readonly System.Collections.Generic.Queue<FlaskUseResultDto> pendingFlaskResults = new System.Collections.Generic.Queue<FlaskUseResultDto>();
+        private float flaskHudTimer;
+        private SwordSkill swordTemplate;
+        private RoomSwordNetwork swords;
+        private SwordStatesDto pendingSwordStates;
+        private float swordStateTimer;
         private RoomSceneMonsters.SceneEntry[] monsterCatalog;
         private long monsterInitializationLoadId;
         private long entityOperation, initializationLoadId, initializedLoadId;
@@ -55,10 +66,14 @@ namespace Rpg.Networking
             client.SceneLoadRequested += OnSceneLoad;
             host.SceneInitializationAllowed += OnBothReady;
             host.MovementInputReceived += OnGuestMovementInput;
-            host.WallSlideInputReceived += OnGuestWallSlideInput;
             host.JumpRequested += OnGuestJumpRequested;
             host.DashRequested += OnGuestDashRequested;
             host.PrimaryAttackRequested += OnPrimaryAttackRequested;
+            host.EquipmentChangeRequested += OnEquipmentChangeRequested;
+            host.CraftRequested += OnCraftRequested;
+            host.SkillUnlockRequested += OnSkillUnlockRequested;
+            host.FlaskUseRequested += OnFlaskUseRequested;
+            host.SwordInputReceived += OnSwordInput;
             host.InputLockReceived += OnGuestInputLock;
             GameplayControlLock.Changed += OnLocalInputLockChanged;
             client.SceneInitializationAllowed += OnBothReady;
@@ -68,6 +83,11 @@ namespace Rpg.Networking
             client.MonsterStatesReceived += OnMonsterStates;
             client.DamageResultReceived += OnDamageResult;
             client.ElementStatesReceived += OnElementStates;
+            client.EquipmentChangeResultReceived += OnEquipmentChangeResult;
+            client.CraftResultReceived += OnCraftResult;
+            client.SkillUnlockResultReceived += OnSkillUnlockResult;
+            client.FlaskUseResultReceived += OnFlaskUseResult;
+            client.SwordStatesReceived += OnSwordStates;
             host.RoomExited += OnExit;
             client.RoomExited += OnExit;
             host.Disconnected += OnDisconnect;
@@ -276,8 +296,10 @@ namespace Rpg.Networking
             if (returning || token != entityOperation) yield break;
             try
             {
+                if (activeRoomIsHost) EnsureSwordNetwork();
                 if (initialState == null) initialState = Players.CaptureInitialState(loadId, GameSimulationClock.AuthorityTick);
                 Players.ApplyInitialState(initialState);
+                if (!activeRoomIsHost) EnsureSwordNetwork();
                 if (host.IsListening) host.SendPlayerInitialization(initialState);
                 if (host.IsListening)
                 {
@@ -289,6 +311,14 @@ namespace Rpg.Networking
                 }
                 Players.EnableAuthoritativeMovement();
                 initializedLoadId = loadId;
+                if (activeRoomIsHost) swords.Publish();
+                else if (pendingSwordStates != null) { swords.Apply(pendingSwordStates); pendingSwordStates = null; }
+                if (!activeRoomIsHost)
+                    while (pendingInventoryResults.Count > 0) OnInventoryResult(pendingInventoryResults.Dequeue());
+                if (!activeRoomIsHost)
+                    while (pendingSkillUnlockResults.Count > 0) OnSkillUnlockResult(pendingSkillUnlockResults.Dequeue());
+                if (!activeRoomIsHost)
+                    while (pendingFlaskResults.Count > 0) OnFlaskUseResult(pendingFlaskResults.Dequeue());
                 if (!activeRoomIsHost)
                     while (pendingDamageResults.Count > 0) CombatDamage.ApplyConfirmedResult(pendingDamageResults.Dequeue());
                 if (!activeRoomIsHost && pendingElementStates != null) { CombatDamage.ApplyElementStates(pendingElementStates); pendingElementStates = null; }
@@ -334,6 +364,13 @@ namespace Rpg.Networking
                     if (hostPlayer != null && hostPlayer.TryConsumePrimaryAttackPress(out long requestSeq) &&
                         hostPlayer.isActiveAndEnabled && Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
                         OnPrimaryAttackRequested(host.HostIdentity, new PrimaryAttackRequestDto { requestSeq = requestSeq });
+                    if (hostPlayer != null && hostPlayer.TryConsumeFlaskPress(out long flaskSeq) && hostPlayer.isActiveAndEnabled &&
+                        Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
+                        OnFlaskUseRequested(host.HostIdentity, new FlaskUseRequestDto { roomSessionId = activeRoomSessionId, requestSeq = flaskSeq });
+                    flaskHudTimer += GameSimulationClock.DeltaTime;
+                    if (flaskHudTimer >= PlayerStateSendInterval) { flaskHudTimer = 0; Players?.RefreshAuthorityFlaskHud(); }
+                    swordStateTimer += GameSimulationClock.DeltaTime;
+                    if (swordStateTimer >= PlayerStateSendInterval) { swordStateTimer = 0; swords?.Publish(); }
                 }
                 SendAuthoritativePositions();
                 return;
@@ -344,22 +381,19 @@ namespace Rpg.Networking
             var local = Presentation.LocalEntity;
             var identity = local.View.GetComponent<NetworkEntityIdentity>();
             var player = local.View.GetComponent<Player>();
-            if (identity == null || !identity.CanCollectMovementInput || player == null) return;
+            if (!identity.CanCollectMovementInput) return;
             client.SendLocalInputLock(GameplayControlLock.IsLocked);
             client.MovementMinimumIntervalMilliseconds = movementMinimumIntervalMilliseconds;
-            float axis = !player.isActiveAndEnabled || GameplayControlLock.IsLocked || !Application.isFocused ? 0 : player.InputData.CurrentAxis;
-            client.SendMovementInput(axis);
-            bool slideDown = player.isActiveAndEnabled && !GameplayControlLock.IsLocked && Application.isFocused && player.InputData.WallSlideDown;
-            client.SendWallSlideInput(slideDown);
-            if (player.TryConsumeJumpPress(out long actionSeq) && player.isActiveAndEnabled &&
-                Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
+            client.SendMovementInput(player.InputData.CurrentAxis, player.InputData.WallSlideDown);
+            if (player.TryConsumeJumpPress(out long actionSeq))
                 client.SendJumpRequest(actionSeq);
-            if (player.TryConsumeDashPress(out long dashActionSeq, out float dashAxis) && player.isActiveAndEnabled &&
-                Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
+            if (player.TryConsumeDashPress(out long dashActionSeq, out float dashAxis))
                 client.SendDashRequest(dashActionSeq, dashAxis);
             if (player.TryConsumePrimaryAttackPress(out long attackRequestSeq) && player.isActiveAndEnabled &&
                 Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
                 client.SendPrimaryAttackRequest(attackRequestSeq);
+            if (player.TryConsumeFlaskPress(out long flaskRequestSeq) && player.isActiveAndEnabled && Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
+                client.SendFlaskUseRequest(new FlaskUseRequestDto { roomSessionId = activeRoomSessionId, requestSeq = flaskRequestSeq });
         }
 
         private void SendAuthoritativePositions()
@@ -382,6 +416,28 @@ namespace Rpg.Networking
         private void FixedUpdate()
         {
             if (IsSceneSession && !returning && activeRoomIsHost) CombatDamage?.AdvanceElements(GameSimulationClock.AuthorityTick);
+            if (IsSceneSession && !returning && activeRoomIsHost) swords?.Advance();
+        }
+
+        private void EnsureSwordNetwork()
+        {
+            if (swords == null) swords = new RoomSwordNetwork(Presentation, Players, NetworkObjects, CombatDamage, swordTemplate,
+                (player, input) => { if (activeRoomIsHost) OnSwordInput(host.HostIdentity, input); else client.SendSwordInput(input); },
+                activeRoomIsHost ? host.Results : null, activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
+                activeRoomIsHost ? (Action<SwordStatesDto>)(value => host.SendSwordStates(value)) : null);
+            swords.EnsurePlayers();
+        }
+        private void OnSwordInput(RoomPlayerIdentity actor, SwordInputDto input) => swords?.Request(actor, input);
+        private void OnSwordStates(SwordStatesDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId) return;
+            if (swords == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingSwordStates == null || value.stateSeq > pendingSwordStates.stateSeq && value.authorityTick >= pendingSwordStates.authorityTick)
+                    pendingSwordStates = value;
+                return;
+            }
+            swords.Apply(value);
         }
 
         private void OnElementStates(ElementStatesDto value)
@@ -407,6 +463,148 @@ namespace Rpg.Networking
             CombatDamage.ApplyConfirmedResult(value);
         }
 
+        public bool RequestLocalEquipmentChange(RoomEntityPresentation local, ItemData_Equipment item, bool unequip)
+        {
+            if (!IsSceneSession || returning || Presentation == null || !ReferenceEquals(local, Presentation.LocalEntity) ||
+                local == null || !local.IsValid || !local.IsReady || item == null ||
+                !activeRoomIsHost && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return false;
+            var combat = local.View.GetComponent<Player>().Combat;
+            var request = new EquipmentChangeRequestDto { roomSessionId = activeRoomSessionId, requestSeq = ++localEquipmentRequestSeq,
+                expectedVersion = combat.EquipmentVersion, configurationId = item.name, slot = (RoomEquipmentSlot)item.equipmentType,
+                kind = unequip ? EquipmentChangeKind.Unequip : EquipmentChangeKind.Equip };
+            if (!activeRoomIsHost) return client.SendEquipmentChangeRequest(request);
+            OnEquipmentChangeRequested(host.HostIdentity, request); return true;
+        }
+
+        private void OnEquipmentChangeRequested(RoomPlayerIdentity actor, EquipmentChangeRequestDto request)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || Presentation == null || actor == null ||
+                actor.RoomSessionId != activeRoomSessionId ||
+                !ReferenceEquals(actor, host.HostIdentity) && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return;
+            var result = Players?.RequestEquipmentChange(actor, request, host.Results);
+            if (result == null) return;
+            if (Presentation.TryGetEntity(result.entityId, out var view))
+            {
+                view.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.healthVersion, result.health, result.maxHealth);
+                view.ApplyFlaskState(result.roomSessionId, result.authorityTick, result.flask);
+                view.NotifyEquipmentChanged();
+            }
+            host.SendEquipmentChangeResult(result);
+            Debug.Log($"[RoomEquipment] player={result.playerId} request={result.requestSeq} accepted={result.accepted} reason={result.rejection} version={result.combat.equipmentVersion} resultId={result.resultId}");
+        }
+
+        private void OnEquipmentChangeResult(EquipmentChangeResultDto result) => OnInventoryResult(result);
+        private void OnCraftResult(CraftResultDto result) => OnInventoryResult(result);
+        private void OnInventoryResult(RoomInventoryResultDto result)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || result.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingInventoryResults.Count >= 128) { Fail(false, "Inventory results exceeded the initialization buffer"); return; }
+                pendingInventoryResults.Enqueue(result); return;
+            }
+            ProtocolCodec.ValidateMessage(result, true);
+            if (!Presentation.TryGetEntity(result.entityId, out var view) || view.PlayerId != result.playerId ||
+                !CombatDamage.Receipts.TryAccept(result)) return;
+            view.View.GetComponent<Player>().Combat.ApplyInventoryConfirmation(result);
+            view.ApplyFlaskState(result.roomSessionId, result.authorityTick, result.flask);
+            view.ApplySkillTreePresentation(result.combat.skillTree, result.authorityTick);
+            view.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.healthVersion, result.health, result.maxHealth);
+            view.NotifyEquipmentChanged();
+            if (result is CraftResultDto crafted)
+                Debug.Log($"[RoomCraft] CONFIRMED player={crafted.playerId} request={crafted.requestSeq} accepted={crafted.accepted} reason={crafted.rejection} version={crafted.combat.equipmentVersion} resultId={crafted.resultId}");
+        }
+
+        public bool RequestLocalCraft(RoomEntityPresentation local, ItemData_Equipment recipe)
+        {
+            if (!IsSceneSession || returning || Presentation == null || !ReferenceEquals(local, Presentation.LocalEntity) ||
+                local == null || !local.IsValid || !local.IsReady || recipe == null ||
+                !activeRoomIsHost && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return false;
+            var request = new CraftRequestDto { roomSessionId = activeRoomSessionId, requestSeq = ++localCraftRequestSeq,
+                expectedVersion = local.View.GetComponent<Player>().Combat.EquipmentVersion, recipeId = RoomCraftCatalog.RecipeId(recipe) };
+            if (!activeRoomIsHost) return client.SendCraftRequest(request);
+            OnCraftRequested(host.HostIdentity, request); return true;
+        }
+        private void OnCraftRequested(RoomPlayerIdentity actor, CraftRequestDto request)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || Presentation == null || actor == null ||
+                actor.RoomSessionId != activeRoomSessionId ||
+                !ReferenceEquals(actor, host.HostIdentity) && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return;
+            var result = Players?.RequestCraft(actor, request, host.Results);
+            if (result == null) return;
+            if (Presentation.TryGetEntity(result.entityId, out var view)) view.NotifyEquipmentChanged();
+            host.SendCraftResult(result);
+            Debug.Log($"[RoomCraft] player={result.playerId} request={result.requestSeq} recipe={result.recipeId} accepted={result.accepted} reason={result.rejection} product={result.productId} version={result.combat.equipmentVersion} resultId={result.resultId}");
+        }
+
+        public bool RequestLocalSkillUnlock(RoomEntityPresentation local, string nodeId)
+        {
+            if (!IsSceneSession || returning || Presentation == null || !ReferenceEquals(local, Presentation.LocalEntity) ||
+                local == null || !local.IsValid || !local.IsReady || string.IsNullOrWhiteSpace(nodeId) ||
+                !activeRoomIsHost && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return false;
+            var request = new SkillUnlockRequestDto { roomSessionId = activeRoomSessionId, requestSeq = ++localSkillUnlockRequestSeq,
+                expectedVersion = local.View.GetComponent<Player>().Combat.SkillTreeVersion, nodeId = nodeId };
+            if (!activeRoomIsHost) return client.SendSkillUnlockRequest(request);
+            OnSkillUnlockRequested(host.HostIdentity, request); return true;
+        }
+        private void OnSkillUnlockRequested(RoomPlayerIdentity actor, SkillUnlockRequestDto request)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || Presentation == null || actor == null ||
+                actor.RoomSessionId != activeRoomSessionId ||
+                !ReferenceEquals(actor, host.HostIdentity) && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return;
+            var result = Players?.RequestSkillUnlock(actor, request, host.Results);
+            if (result == null) return;
+            if (Presentation.TryGetEntity(result.entityId, out var view))
+            { view.ApplySkillTreePresentation(result.state, result.authorityTick); view.NotifyEquipmentChanged(); }
+            host.SendSkillUnlockResult(result);
+            LogSkillUnlock(result);
+        }
+        private void OnSkillUnlockResult(SkillUnlockResultDto result)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || result.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingSkillUnlockResults.Count >= 128) { Fail(false, "Skill unlock results exceeded the initialization buffer"); return; }
+                pendingSkillUnlockResults.Enqueue(result); return;
+            }
+            ProtocolCodec.ValidateMessage(result, true);
+            if (!Presentation.TryGetEntity(result.entityId, out var view) || view.PlayerId != result.playerId || !CombatDamage.Receipts.TryAccept(result)) return;
+            view.View.GetComponent<Player>().Combat.ApplyRoomSkillTreeSnapshot(result.state, result.authorityTick);
+            view.ApplySkillTreePresentation(result.state, result.authorityTick); view.NotifyEquipmentChanged();
+            LogSkillUnlock(result);
+        }
+        private static void LogSkillUnlock(SkillUnlockResultDto result) => Debug.Log(
+            $"[RoomSkillUnlock] player={result.playerId} request={result.requestSeq} node={result.nodeId} accepted={result.accepted} reason={result.rejection} currency={result.state.currency} version={result.state.version} resultId={result.resultId}");
+
+        private void OnFlaskUseRequested(RoomPlayerIdentity actor, FlaskUseRequestDto request)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || Presentation == null || actor == null || actor.RoomSessionId != activeRoomSessionId ||
+                !ReferenceEquals(actor, host.HostIdentity) && (initializedLoadId == 0 || initializedLoadId != initializationLoadId)) return;
+            var result = Players?.RequestFlaskUse(actor, request, host.Results);
+            if (result == null) return;
+            if (Presentation.TryGetEntity(result.entityId, out var view)) ApplyFlaskResult(view, result);
+            host.SendFlaskUseResult(result); LogFlaskResult(result);
+        }
+        private void OnFlaskUseResult(FlaskUseResultDto result)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || result.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingFlaskResults.Count >= 128) { Fail(false, "Flask results exceeded the initialization buffer"); return; }
+                pendingFlaskResults.Enqueue(result); return;
+            }
+            ProtocolCodec.ValidateMessage(result, true);
+            if (!Presentation.TryGetEntity(result.entityId, out var view) || view.PlayerId != result.playerId || !CombatDamage.Receipts.TryAccept(result)) return;
+            ApplyFlaskResult(view, result); LogFlaskResult(result);
+        }
+        private static void ApplyFlaskResult(RoomEntityPresentation view, FlaskUseResultDto result)
+        {
+            view.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.healthVersion, result.health, result.maxHealth);
+            view.ApplyFlaskState(result.roomSessionId, result.authorityTick, result.flask);
+        }
+        private static void LogFlaskResult(FlaskUseResultDto result) => Debug.Log(
+            $"[RoomFlask] player={result.playerId} request={result.requestSeq} accepted={result.accepted} reason={result.rejection} heal={result.actualHealing} hp={result.health}/{result.maxHealth} cooldownEnd={result.flask.cooldownEndTick} tick={result.authorityTick} resultId={result.resultId}");
+
         private void OnMonsterStates(MonsterStatesDto value)
         {
             if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId ||
@@ -429,13 +627,6 @@ namespace Rpg.Networking
             if (!IsSceneSession || returning || !activeRoomIsHost || initializedLoadId == 0 ||
                 initializedLoadId != initializationLoadId || actor.RoomSessionId != activeRoomSessionId) return;
             Players?.ApplyGuestMovementInput(actor, input);
-        }
-
-        private void OnGuestWallSlideInput(RoomPlayerIdentity actor, WallSlideInputDto input)
-        {
-            if (!IsSceneSession || returning || !activeRoomIsHost || initializedLoadId == 0 ||
-                initializedLoadId != initializationLoadId || actor.RoomSessionId != activeRoomSessionId) return;
-            Players?.ApplyGuestWallSlideInput(actor, input);
         }
 
         private void OnLocalInputLockChanged(bool locked)
@@ -530,6 +721,11 @@ namespace Rpg.Networking
 
         private void PrepareRoomObjects(Scene scene)
         {
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                swordTemplate = root.GetComponentInChildren<SwordSkill>(true);
+                if (swordTemplate != null) break;
+            }
             NetworkObjects = new RoomNetworkObjects(activeRoomSessionId, scene, () =>
             {
                 InvalidateEntityInitialization();
@@ -553,8 +749,12 @@ namespace Rpg.Networking
                 Presentation?.RemovePlayer(departingPlayerId);
                 return;
             }
+            swords?.Dispose(); swords = null; pendingSwordStates = null; swordStateTimer = 0;
             CombatDamage?.Dispose(); CombatDamage = null;
             pendingDamageResults.Clear();
+            pendingInventoryResults.Clear(); localEquipmentRequestSeq = localCraftRequestSeq = 0;
+            pendingSkillUnlockResults.Clear(); localSkillUnlockRequestSeq = 0;
+            pendingFlaskResults.Clear(); flaskHudTimer = 0;
             pendingElementStates = null;
             if (NetworkObjects != null) NetworkObjects.Dispose();
             else if (presentationBinding != null) presentationBinding.Unbind();
@@ -606,7 +806,8 @@ namespace Rpg.Networking
                     skills.Append($"{skill.skillId}={(skill.unlocked ? "unlocked" : "locked")}({skill.remaining:0.00}/{skill.cooldown:0.00}s) ");
                 Debug.Log($"[RoomCombat] player={player.Combat.PlayerId} entity={pair.Key} role={player.GetComponent<NetworkEntityIdentity>().Role} profile={combat.configurationId} " +
                     $"HP={player.stats.currentHealth}/{player.stats.GetMaxHealthValue()} strength={player.stats.strength.GetValue()} damage={player.stats.damage.GetValue()} armor={player.stats.armor.GetValue()} " +
-                    $"weapon={player.Combat.GetEquipment(EquipmentType.Weapon)?.name} armorItem={player.Combat.GetEquipment(EquipmentType.Armor)?.name} skills={skills}");
+                    $"weapon={player.Combat.GetEquipment(EquipmentType.Weapon)?.name} armorItem={player.Combat.GetEquipment(EquipmentType.Armor)?.name} " +
+                    $"bag={combat.inventory.Length}/{combat.inventoryCapacity} equipmentVersion={combat.equipmentVersion} skills={skills}");
             }
         }
 
@@ -644,10 +845,14 @@ namespace Rpg.Networking
             {
                 host.StateChanged -= OnHostState; host.SceneInitializationAllowed -= OnBothReady;
                 host.MovementInputReceived -= OnGuestMovementInput;
-                host.WallSlideInputReceived -= OnGuestWallSlideInput;
                 host.JumpRequested -= OnGuestJumpRequested;
                 host.DashRequested -= OnGuestDashRequested;
                 host.PrimaryAttackRequested -= OnPrimaryAttackRequested;
+                host.EquipmentChangeRequested -= OnEquipmentChangeRequested;
+                host.CraftRequested -= OnCraftRequested;
+                host.SkillUnlockRequested -= OnSkillUnlockRequested;
+                host.FlaskUseRequested -= OnFlaskUseRequested;
+                host.SwordInputReceived -= OnSwordInput;
                 host.InputLockReceived -= OnGuestInputLock;
                 host.RoomExited -= OnExit; host.Disconnected -= OnDisconnect;
             }
@@ -660,6 +865,11 @@ namespace Rpg.Networking
                 client.MonsterStatesReceived -= OnMonsterStates;
                 client.DamageResultReceived -= OnDamageResult;
                 client.ElementStatesReceived -= OnElementStates;
+                client.EquipmentChangeResultReceived -= OnEquipmentChangeResult;
+                client.CraftResultReceived -= OnCraftResult;
+                client.SkillUnlockResultReceived -= OnSkillUnlockResult;
+                client.FlaskUseResultReceived -= OnFlaskUseResult;
+                client.SwordStatesReceived -= OnSwordStates;
                 client.RoomExited -= OnExit; client.Disconnected -= OnDisconnect;
             }
             if (ReferenceEquals(Active, this)) Active = null;

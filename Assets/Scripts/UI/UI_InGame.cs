@@ -29,6 +29,14 @@ public class UI_InGame : MonoBehaviour
     private CanvasGroup networkVisibility;
     private bool legacyStarted;
     private bool networkBound;
+    private readonly Dictionary<string, Sprite> roomFlaskIcons = new Dictionary<string, Sprite>();
+    public void ConfigureRoomFlaskIcons(IEnumerable<ItemData_Equipment> items)
+    {
+        roomFlaskIcons.Clear();
+        if (items == null) return;
+        foreach (var item in items) if (item != null && item.equipmentType == EquipmentType.Flask)
+            roomFlaskIcons[RoomCraftCatalog.RecipeId(item)] = item.itemIcon;
+    }
     public int BoundPlayerId => networkEntity != null && networkEntity.IsValid ? networkEntity.PlayerId : 0;
     private bool NetworkMode => RoomSceneCoordinator.ProtectSaves || networkBound;
 
@@ -122,12 +130,14 @@ public class UI_InGame : MonoBehaviour
         if (currentSouls != null) currentSouls.text = networkEntity.Currency.ToString();
         Image[] cooldowns = { dashImage, parryImage, crystalImage, swordImage, blackholeImage };
         for (int i = 0; i < cooldowns.Length; ++i) if (cooldowns[i] != null) cooldowns[i].fillAmount = networkEntity.SkillFill(i);
-        bool flaskVisible = networkEntity.FlaskIcon != null;
+        Sprite confirmedIcon = networkEntity.FlaskIcon;
+        if (networkEntity.HasEquippedFlask) roomFlaskIcons.TryGetValue(networkEntity.FlaskDefinitionId, out confirmedIcon);
+        bool flaskVisible = networkEntity.HasEquippedFlask || confirmedIcon != null;
         if (flaskUI != null) flaskUI.SetActive(flaskVisible);
         if (flaskVisible)
         {
-            if (flaskIcon != null) flaskIcon.sprite = networkEntity.FlaskIcon;
-            if (flaskImage != null) { flaskImage.sprite = networkEntity.FlaskIcon; flaskImage.fillAmount = networkEntity.FlaskFill; }
+            if (flaskIcon != null) flaskIcon.sprite = confirmedIcon;
+            if (flaskImage != null) { flaskImage.sprite = confirmedIcon; flaskImage.fillAmount = networkEntity.FlaskFill; }
         }
     }
 

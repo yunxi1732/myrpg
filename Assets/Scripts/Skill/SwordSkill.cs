@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using Rpg.Networking;
+using Rpg.Networking.Protocol;
 
 public enum SwordType
 {
@@ -49,6 +51,8 @@ public class SwordSkill : Skill
 
     private Vector2 finalDir;
     private bool throwRequested;
+    internal bool ThrowPending => throwRequested;
+    internal GameObject SwordPrefab => swordPrefab;
 
     [Header("Aim Dots Info")]
     [SerializeField] private int numberOfDots;
@@ -57,9 +61,31 @@ public class SwordSkill : Skill
     [SerializeField] private Transform dotsParent;
 
     private GameObject[] dots;
+    internal RoomSwordNetwork RoomNetwork { get; private set; }
+    internal Vector2 RoomDirection;
+    private bool localAim;
+    private long localActionSeq;
+    private double lastAimSend;
+    private Vector2 lastDirection;
+    private bool ActionLocked => RoomNetwork == null ? GameplayControlLock.IsActionInputBlocked :
+        player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked;
+
+    public SwordSkill CreateRoomAdapter(Player owner, RoomSwordNetwork room)
+    {
+        var adapter = new GameObject("Room SwordSkill").AddComponent<SwordSkill>();
+        adapter.transform.SetParent(owner.transform, false);
+        adapter.RoomNetwork = room; adapter.BindRoomOwner(owner.Combat);
+        adapter.swordPrefab = swordPrefab; adapter.launchingForce = launchingForce; adapter.swordGravity = swordGravity;
+        adapter.returnSpeed = returnSpeed; adapter.freezeDuration = freezeDuration; adapter.cooldown = cooldown;
+        adapter.dotPrefab = dotPrefab; adapter.numberOfDots = numberOfDots; adapter.spaceBetweenDots = spaceBetweenDots; adapter.dotsParent = adapter.transform;
+        adapter.RoomDirection = Vector2.right; adapter.swordType = SwordType.Regular;
+        if (owner.IsAuthoritative) owner.Combat.Skills.Configure<SwordSkill>(cooldown);
+        return adapter;
+    }
 
     protected override void Start()
     {
+        if (RoomNetwork != null) { if (player.IsLocalInputOwner) GenerateDots(); return; }
         base.Start();
         GenerateDots();
         SetUpGravity();
@@ -80,6 +106,7 @@ public class SwordSkill : Skill
     }
     protected override void Update()
     {
+        if (RoomNetwork != null) { if (player.IsLocalInputOwner) UpdateRoomInput(); return; }
         if (GameplayControlLock.IsActionInputBlocked)
         {
             CancelAim();
@@ -93,7 +120,7 @@ public class SwordSkill : Skill
 
     public void BeginAim()
     {
-        if (GameplayControlLock.IsActionInputBlocked) { CancelAim(); return; }
+        if (ActionLocked) { CancelAim(); return; }
         throwRequested = false;
         finalDir = Vector2.zero;
         DotsActive(true);
@@ -101,9 +128,12 @@ public class SwordSkill : Skill
 
     public bool RequestThrow()
     {
-        if (GameplayControlLock.IsActionInputBlocked) { CancelAim(); return false; }
-        Vector2 direction = AimDirection().normalized;
-        finalDir = new Vector2(direction.x * launchingForce.x, direction.y * launchingForce.y);
+        return RequestThrow(AimDirection().normalized);
+    }
+    internal bool RequestThrow(Vector2 direction)
+    {
+        if (ActionLocked) { CancelAim(); return false; }
+        finalDir = Vector2.Scale(direction, launchingForce);
         throwRequested = true;
         return true;
     }
@@ -118,7 +148,7 @@ public class SwordSkill : Skill
     // Animation events may arrive after cancellation. Only a fresh, permitted release can throw.
     public bool TryCreateSwordFromInput()
     {
-        if (GameplayControlLock.IsActionInputBlocked) { CancelAim(); return false; }
+        if (ActionLocked || RoomNetwork != null && player.stats.currentHealth <= 0) { CancelAim(); return false; }
         if (!throwRequested) return false;
         throwRequested = false;
         CreateSword();
@@ -126,17 +156,46 @@ public class SwordSkill : Skill
     }
     public void CreateSword()
     {
+        if (RoomNetwork != null && !player.IsAuthoritative) return;
         GameObject newSword = Instantiate(swordPrefab, player.transform.position, transform.rotation);
         SwordSkillController newSwordController = newSword.GetComponent<SwordSkillController>();
 
-        if (swordType == SwordType.Bounce) newSwordController.SetUpBounce(true, bounceAmount, bounceSpeed);
+        if (RoomNetwork != null) RoomNetwork.RegisterSword(player, newSword);
+        else if (swordType == SwordType.Bounce) newSwordController.SetUpBounce(true, bounceAmount, bounceSpeed);
         else if (swordType == SwordType.Pierce) newSwordController.SetUpPierce(pierceAmount);
         else if (swordType == SwordType.Spin) newSwordController.SetUpSpin(true, maxTravelDistance, spinDuration, hitCooldown);
 
         newSwordController.SetUpSword(finalDir, swordGravity, player, freezeDuration, returnSpeed);
-        AudioManager.instance.PlaySFX(12, null);
+        if (RoomNetwork == null) AudioManager.instance.PlaySFX(12, null);
         player.AssignNewSword(newSword);
         DotsActive(false);
+        if (RoomNetwork != null) { Combat.Skills.Commit<SwordSkill>(); RoomNetwork.Publish(); }
+    }
+    private void SendRoomInput(SwordAction action, Vector2 direction)
+    {
+        lastAimSend = MonotonicClock.Now; lastDirection = direction;
+        RoomNetwork.SendInput(player, new SwordInputDto { roomSessionId = Combat.RoomSessionId, actionSeq = ++localActionSeq,
+            action = action, direction = new[] { direction.x, direction.y } });
+    }
+    private void UpdateRoomInput()
+    {
+        if (ActionLocked || !Application.isFocused || player.stats.currentHealth <= 0)
+        {
+            if (localAim) SendRoomInput(SwordAction.Cancel, RoomDirection);
+            localAim = false; DotsActive(false); return;
+        }
+        Vector2 direction = AimDirection().normalized;
+        if (direction == Vector2.zero) direction = Vector2.right;
+        if (Input.GetKeyDown(KeyCode.Mouse1))
+        {
+            if (RoomNetwork.HasSword(Combat.PlayerId)) SendRoomInput(SwordAction.Recall, direction);
+            else if (Combat.Skills.Get<SwordSkill>().Unlocked) { localAim = true; SendRoomInput(SwordAction.Aim, direction); }
+        }
+        if (localAim && Input.GetKeyUp(KeyCode.Mouse1)) { localAim = false; SendRoomInput(SwordAction.Release, direction); }
+        else if (localAim && MonotonicClock.Now - lastAimSend >= .04 &&
+            ((direction - lastDirection).sqrMagnitude > .0001f || MonotonicClock.Now - lastAimSend >= .1)) SendRoomInput(SwordAction.Direction, direction);
+        DotsActive(localAim);
+        if (localAim) for (int i = 0; i < dots.Length; i++) dots[i].transform.position = DotsPosition(i * spaceBetweenDots);
     }
 
     #region Unlock region

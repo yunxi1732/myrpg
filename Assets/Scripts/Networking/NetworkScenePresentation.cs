@@ -1,6 +1,8 @@
 using Cinemachine;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
+using TMPro;
 
 namespace Rpg.Networking
 {
@@ -10,6 +12,12 @@ namespace Rpg.Networking
     {
         private RoomPresentationContext context;
         private UI_InGame hud;
+        private NetworkStatsPanel statsPanel;
+        private NetworkCraftPanel craftPanel;
+        private NetworkSkillTreePanel skillTreePanel;
+        private UI ui;
+        private GameObject optionsRoot;
+        private MenuControlLock optionsLock;
         private CinemachineVirtualCamera cameraRig;
         private CinemachineBrain brain;
         private RoomEntityPresentation bound;
@@ -19,10 +27,17 @@ namespace Rpg.Networking
         public void Prepare(Scene scene)
         {
             Unbind();
-            hud = null; cameraRig = null; brain = null;
+            hud = null; ui = null; optionsRoot = null; optionsLock = null; cameraRig = null; brain = null;
+            var flaskVisuals = new System.Collections.Generic.HashSet<ItemData_Equipment>();
             foreach (GameObject root in scene.GetRootGameObjects())
             {
+                var inventory = root.GetComponentInChildren<Inventory>(true);
+                if (inventory != null && inventory.itemDataBase != null)
+                    foreach (var data in inventory.itemDataBase) if (data is ItemData_Equipment equipment) flaskVisuals.Add(equipment);
+                foreach (var list in root.GetComponentsInChildren<UI_CraftList>(true))
+                    foreach (var equipment in list.CraftEquipment) if (equipment != null) flaskVisuals.Add(equipment);
                 if (hud == null) hud = root.GetComponentInChildren<UI_InGame>(true);
+                if (ui == null) ui = root.GetComponentInChildren<UI>(true);
                 if (cameraRig == null) cameraRig = root.GetComponentInChildren<CinemachineVirtualCamera>(true);
                 if (brain == null) brain = root.GetComponentInChildren<CinemachineBrain>(true);
                 // Allow the existing dialogue's explicit test/open entry without enabling NPC gameplay or the single-player UI controller.
@@ -33,7 +48,18 @@ namespace Rpg.Networking
                 originalUpdate = brain.m_UpdateMethod;
                 originalIgnoreTimeScale = brain.m_IgnoreTimeScale;
             }
-            if (hud != null) hud.BindNetwork(null);
+            if (hud != null) { hud.ConfigureRoomFlaskIcons(flaskVisuals); hud.BindNetwork(null); }
+            optionsRoot = ui.OptionsPanel;
+            optionsRoot.SetActive(false);
+            optionsLock = optionsRoot.GetComponent<MenuControlLock>();
+            if (optionsLock == null) optionsLock = optionsRoot.AddComponent<MenuControlLock>();
+            optionsLock.Configure();
+            if (statsPanel == null) statsPanel = gameObject.AddComponent<NetworkStatsPanel>();
+            statsPanel.Prepare(scene);
+            if (craftPanel == null) craftPanel = gameObject.AddComponent<NetworkCraftPanel>();
+            craftPanel.Prepare(scene);
+            if (skillTreePanel == null) skillTreePanel = gameObject.AddComponent<NetworkSkillTreePanel>();
+            skillTreePanel.Prepare(scene);
             if (cameraRig != null) { cameraRig.Follow = null; cameraRig.LookAt = null; }
         }
 
@@ -42,6 +68,27 @@ namespace Rpg.Networking
             if (ReferenceEquals(context, value)) return;
             Unbind();
             context = value;
+        }
+
+        private void Update()
+        {
+            if (bound == null || !Application.isFocused || !Input.GetKeyDown(KeyCode.O)) return;
+            var focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (focused != null && (focused.GetComponentInParent<TMP_InputField>() != null ||
+                focused.GetComponentInParent<UnityEngine.UI.InputField>() != null)) return;
+            ui.SwitchWithKeyTo(optionsRoot);
+        }
+
+        public void OpenOptions()
+        {
+            if (bound == null || !optionsLock.PrepareOpen()) return;
+            optionsRoot.SetActive(true);
+        }
+
+        public void CloseOptions()
+        {
+            optionsRoot.SetActive(false);
+            optionsLock.Release();
         }
 
         private void LateUpdate()
@@ -58,6 +105,10 @@ namespace Rpg.Networking
             {
                 bound = local;
                 if (hud != null) hud.BindNetwork(local);
+                if (statsPanel != null) statsPanel.BindNetwork(local);
+                if (craftPanel != null) craftPanel.BindNetwork(local);
+                if (skillTreePanel != null) skillTreePanel.BindNetwork(local);
+                if (local == null) CloseOptions();
                 if (cameraRig != null)
                 {
                     cameraRig.Follow = local?.View;
@@ -76,8 +127,16 @@ namespace Rpg.Networking
                     brain.enabled = local != null;
                 }
             }
-            if (bound != null && bound.HasHealth && bound.HasHud && hud != null && !hud.gameObject.activeInHierarchy)
-                ActivateHudPath();
+            if (bound != null && bound.HasHealth && bound.HasHud && hud != null)
+            {
+                bool menuOpen = statsPanel != null && statsPanel.IsOpen || craftPanel != null && craftPanel.IsOpen ||
+                    skillTreePanel != null && skillTreePanel.IsOpen || optionsRoot.activeInHierarchy;
+                if (menuOpen)
+                {
+                    if (hud.gameObject.activeSelf) hud.gameObject.SetActive(false);
+                }
+                else if (!hud.gameObject.activeInHierarchy) ActivateHudPath();
+            }
             // RemotePlayerView.LateUpdate (9000) finishes before this callback (10000).
             // Manually update B's camera now, preserving the scene's lens/body/damping.
             if (bound != null && context.IsGuest && brain != null) brain.ManualUpdate();
@@ -98,6 +157,10 @@ namespace Rpg.Networking
 
         public void Unbind()
         {
+            if (optionsRoot != null) CloseOptions();
+            if (statsPanel != null) statsPanel.Unbind();
+            if (craftPanel != null) craftPanel.Unbind();
+            if (skillTreePanel != null) skillTreePanel.Unbind();
             if (hud != null) hud.UnbindNetwork();
             if (cameraRig != null) { cameraRig.Follow = null; cameraRig.LookAt = null; }
             if (brain != null)

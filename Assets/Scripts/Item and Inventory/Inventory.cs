@@ -58,6 +58,12 @@ public class Inventory : MonoBehaviour, ISaveManager
     public List<InventoryItem> loadedItems;
     public List<ItemData_Equipment> loadedEquipment;
 
+    public Transform StatSlotParent => statSlotParent;
+    public Transform InventorySlotParent => inventorySlotParent;
+    public Transform EquipmentSlotParent => equipmentSlotParent;
+    public Transform StashSlotParent => stashSlotParent;
+    public int RoomViewCapacity => inventorySlotParent == null ? 24 : inventorySlotParent.GetComponentsInChildren<UI_ItemSlot>(true).Length;
+
     private void Awake()
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) { enabled = false; return; }
@@ -238,7 +244,7 @@ public class Inventory : MonoBehaviour, ISaveManager
 
     public void UseFlask()
     {
-        // Network flask use still requires the later authoritative request/result adaptation.
+        // Room flask use has a separate connection-bound authority request/result path.
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this) || !IsInitialized || GameplayControlLock.IsActionInputBlocked ||
             Time.timeScale <= 0 || PlayerManager.instance == null || PlayerManager.instance.player == null ||
             PlayerManager.instance.player.stats == null || PlayerManager.instance.player.stats.isDead) return;
