@@ -7,6 +7,7 @@ public class SkeletonBattleState : SkeletonGroundedState
     private EnemySkeleton enemy;
     private Transform player;
     private int moveDir;
+    public Transform Target => player;
 
     public SkeletonBattleState(Enemy _enemyBase, EnemyStateMachine _stateMachine, string _animBoolName, EnemySkeleton _enemy) : base(_enemyBase, _stateMachine, _animBoolName, _enemy)
     {
@@ -18,11 +19,6 @@ public class SkeletonBattleState : SkeletonGroundedState
         base.Enter();
         player = enemy.SelectLivingTarget(true);
         if (player == null) { stateMachine.ChangeState(enemy.idleState); return; }
-        if (enemy.NetworkMovementOnly)
-        {
-            stateTimer = enemy.battleTime;
-            return;
-        }
     }
 
     public override void Update()
@@ -30,23 +26,6 @@ public class SkeletonBattleState : SkeletonGroundedState
         Transform sensed = enemy.SelectLivingTarget(true);
         if (sensed != null) player = sensed;
         else if (!enemy.IsValidLivingTarget(player)) { stateMachine.ChangeState(enemy.idleState); return; }
-        if (enemy.NetworkMovementOnly)
-        {
-            stateTimer -= GameSimulationClock.DeltaTime;
-            bool detected = sensed != null;
-            if (detected) stateTimer = enemy.battleTime;
-            else if (stateTimer < 0 || Vector2.Distance(player.position, enemy.transform.position) > 10)
-            { stateMachine.ChangeState(enemy.idleState); return; }
-            float gap = player.position.x - enemy.transform.position.x;
-            enemy.FlipController(gap);
-            if (detected && Vector2.Distance(player.position, enemy.transform.position) < enemy.attackDistance && CanAttack())
-            { enemy.SetVelocity(0, 0); stateMachine.ChangeState(enemy.attackState); return; }
-            float direction = Mathf.Abs(gap) <= enemy.attackDistance ? 0 : Mathf.Sign(gap);
-            enemy.SetVelocity(enemy.moveSpeed * direction, rb.velocity.y);
-            enemy.anim.SetBool("Move", direction != 0);
-            enemy.anim.SetBool("Idle", direction == 0);
-            return; // Animation events stay disabled; A's fixed-tick attack window resolves hits separately.
-        }
         base.Update();
         if (sensed != null)
         {
@@ -64,12 +43,6 @@ public class SkeletonBattleState : SkeletonGroundedState
         else if (player.position.x < enemy.transform.position.x) moveDir = -1;
 
         enemy.SetVelocity(enemy.moveSpeed * moveDir, rb.velocity.y);
-    }
-
-    public override void Exit()
-    {
-        if (enemy.NetworkMovementOnly) enemy.anim.SetBool("Idle", false);
-        base.Exit();
     }
 
     private bool CanAttack()

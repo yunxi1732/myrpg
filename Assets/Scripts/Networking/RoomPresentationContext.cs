@@ -57,7 +57,8 @@ namespace Rpg.Networking
 
         // Position has its own per-entity stream. No arrival time or local wall clock participates.
         public bool ApplyPosition(string room, ulong authorityTick, long stateSeq, Vector2 position, bool reset = false, int facingDir = 1,
-            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null)
+            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null,
+            int monsterTargetEntityId = 0)
         {
             if (!IsValid || View == null || room != RoomSessionId || authorityTick == 0 || stateSeq <= positionSeq || (facingDir != -1 && facingDir != 1) ||
                 !ProtocolCodec.IsValidMovementAnimation(movementState, yVelocity) ||
@@ -67,7 +68,8 @@ namespace Rpg.Networking
             var display = View.GetComponent<RemotePlayerView>();
             if (display != null)
             {
-                if (!display.ApplyState(authorityTick, stateSeq, position, reset || !HasPosition, facingDir, movementState, yVelocity, monsterAttack, playerAttack)) return false;
+                if (!display.ApplyState(authorityTick, stateSeq, position, reset || !HasPosition, facingDir, movementState, yVelocity, monsterAttack, playerAttack,
+                    monsterTargetEntityId)) return false;
             }
             else View.position = new Vector3(position.x, position.y, View.position.z);
             positionTick = authorityTick; positionSeq = stateSeq; HasPosition = true;

@@ -45,11 +45,11 @@ namespace Rpg.Networking
             candidates.Clear();
             confirmedHits.Clear();
             Player source = context.Owner;
-            var attack = context.PrimaryAttack?.Current;
-            bool open = GameSimulationClock.IsNetwork && source != null && source.IsAuthoritative && source.isActiveAndEnabled && source.IsRuntimeInitialized &&
-                EntityRuntimePermissions.Identity(source)?.MovementHeld != true &&
-                source.stats != null && source.stats.IsRuntimeInitialized && !source.stats.isDead && source.stats.currentHealth > 0 &&
-                source.stateMachine?.currentState == source.primaryAttackState && attack != null &&
+            var attack = context.PrimaryAttack.Current;
+            bool open = GameSimulationClock.IsNetwork && source.IsAuthoritative && source.isActiveAndEnabled && source.IsRuntimeInitialized &&
+                !EntityRuntimePermissions.Identity(source).MovementHeld &&
+                source.stats.IsRuntimeInitialized && !source.stats.isDead && source.stats.currentHealth > 0 &&
+                source.stateMachine.currentState == source.primaryAttackState && attack != null &&
                 attack.RoomSessionId == context.RoomSessionId && attack.PlayerId == context.PlayerId && attack.EntityId == context.EntityId &&
                 attack.IsHitWindowOpen(tick);
             if (!open) { Close(tick); return; }
@@ -83,7 +83,6 @@ namespace Rpg.Networking
         public static void CollectCandidates(Player source, Func<Enemy, bool> validTarget, List<PrimaryAttackHitCandidate> output)
         {
             output.Clear();
-            if (source == null || EntityRuntimePermissions.Identity(source)?.PlayerId <= 0 || validTarget == null) return;
             AuthorityMeleeQuery.Collect<Enemy>(source, target => EntityRuntimePermissions.Identity(target)?.PlayerId == 0 && validTarget(target),
                 (target, collider, id) => output.Add(new PrimaryAttackHitCandidate(target, collider, id)));
         }

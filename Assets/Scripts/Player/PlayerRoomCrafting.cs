@@ -16,8 +16,7 @@ public sealed partial class PlayerCombatContext
     }
     internal CraftResultDto CraftRoomItem(CraftRequestDto request, RoomCraftCatalog catalog, ulong tick, AuthorityResultSequence results)
     {
-        if (!Owner.IsAuthoritative || RoomConfigurationId == null || tick == 0 || results == null || catalog == null ||
-            results.RoomSessionId != RoomSessionId || !ProtocolCodec.ValidCraftRequest(request) ||
+        if (!ProtocolCodec.ValidCraftRequest(request) ||
             request.roomSessionId != RoomSessionId || request.requestSeq <= craftRequestSeq) return null;
         craftRequestSeq = request.requestSeq;
         var rejection = CraftRejection.None;

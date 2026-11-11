@@ -52,6 +52,7 @@ namespace Rpg.Networking
         private bool applyingGuestInitialization;
         private const float PlayerStateSendInterval = 0.1f;
         private float playerStateSendTimer;
+        private MovementAnimationState lastHostAnimation, lastGuestAnimation;
         private PlayerPositionsDto pendingPositions;
         public RoomNetworkObjects NetworkObjects { get; private set; }
         private string activeRoomSessionId;
@@ -405,12 +406,17 @@ namespace Rpg.Networking
                 playerStateSendTimer = 0;
                 return;
             }
-            // LocalPlayerStateSender timer structure, using shared non-scaled time. Never burst to catch up.
+            // Short states such as Dash and WallJump must not fall entirely between periodic snapshots.
             playerStateSendTimer += GameSimulationClock.DeltaTime;
-            if (playerStateSendTimer < PlayerStateSendInterval) return;
-            playerStateSendTimer = 0;
+            var hostAnimation = Players.Entities[host.HostIdentity.EntityId].MovementAnimation;
+            var guestAnimation = Players.Entities[host.GuestIdentity.EntityId].MovementAnimation;
+            bool periodic = playerStateSendTimer >= PlayerStateSendInterval;
+            if (!periodic &&
+                hostAnimation == lastHostAnimation && guestAnimation == lastGuestAnimation) return;
+            if (periodic) playerStateSendTimer = 0;
+            lastHostAnimation = hostAnimation; lastGuestAnimation = guestAnimation;
             host.SendPlayerPositions(Players.CapturePositions(initializedLoadId));
-            host.SendMonsterStates(Monsters.CaptureStates(initializedLoadId, GameSimulationClock.AuthorityTick));
+            if (periodic) host.SendMonsterStates(Monsters.CaptureStates(initializedLoadId, GameSimulationClock.AuthorityTick));
         }
 
         private void FixedUpdate()

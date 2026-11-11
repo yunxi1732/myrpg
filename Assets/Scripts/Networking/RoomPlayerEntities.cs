@@ -288,8 +288,8 @@ namespace Rpg.Networking
 
         private static PlayerAttackDto CaptureAttack(Player player)
         {
-            var attack = player.Combat.PrimaryAttack?.Current;
-            if (attack == null || attack.IsClosed || player.stateMachine?.currentState != player.primaryAttackState ||
+            var attack = player.Combat.PrimaryAttack.Current;
+            if (attack == null || attack.IsClosed || player.stateMachine.currentState != player.primaryAttackState ||
                 GameSimulationClock.AuthorityTick >= attack.EndTick) return null;
             return new PlayerAttackDto { attackInstanceId = attack.AttackInstanceId, sourceEntityId = attack.EntityId,
                 comboIndex = attack.ComboIndex, facingDir = attack.FacingDir, startTick = attack.StartTick,
@@ -342,21 +342,16 @@ namespace Rpg.Networking
         {
             if (disposed || context == null || context.IsGuest || damage == null) return;
             foreach (var player in entities.Values)
-                if (player.Combat.PrimaryAttackHits != null)
-                {
-                    player.Combat.PrimaryAttackHits.HitConfirmed -= damage.OnPrimaryHit;
-                    player.Combat.PrimaryAttackHits.HitConfirmed += damage.OnPrimaryHit;
-                }
+            {
+                player.Combat.PrimaryAttackHits.HitConfirmed -= damage.OnPrimaryHit;
+                player.Combat.PrimaryAttackHits.HitConfirmed += damage.OnPrimaryHit;
+            }
         }
 
         public bool RequestPrimaryAttack(RoomPlayerIdentity source, PrimaryAttackRequestDto request)
         {
-            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 ||
-                source == null || request == null || source.RoomSessionId != context.RoomSessionId ||
-                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) ||
-                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
-                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId ||
-                player.IsLocalInputOwner != ReferenceEquals(source, hostIdentity) || player.Combat.PrimaryAttack == null) return false;
+            if (!TryGetAuthorityCombatPlayer(source, out Player player) || request == null ||
+                player.IsLocalInputOwner != ReferenceEquals(source, hostIdentity)) return false;
             var runtime = player.Combat.PrimaryAttack;
             bool accepted = runtime.TryQueue(request.requestSeq, GameSimulationClock.AuthorityTick, player.CheckNetworkPrimaryAttack());
             if (!accepted) Debug.Log($"[PrimaryAttack] REJECT player={source.PlayerId} requestSeq={request.requestSeq} phase=request reason={runtime.LastRejection}");
@@ -365,35 +360,33 @@ namespace Rpg.Networking
 
         public EquipmentChangeResultDto RequestEquipmentChange(RoomPlayerIdentity source, EquipmentChangeRequestDto request, AuthorityResultSequence results)
         {
-            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
-                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
-                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
-                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            if (!TryGetAuthorityCombatPlayer(source, out Player player)) return null;
             return player.Combat.ChangeRoomEquipment(request, GameSimulationClock.AuthorityTick, results);
         }
         public CraftResultDto RequestCraft(RoomPlayerIdentity source, CraftRequestDto request, AuthorityResultSequence results)
         {
-            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
-                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
-                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
-                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            if (!TryGetAuthorityCombatPlayer(source, out Player player)) return null;
             return player.Combat.CraftRoomItem(request, craftCatalog, GameSimulationClock.AuthorityTick, results);
         }
         public SkillUnlockResultDto RequestSkillUnlock(RoomPlayerIdentity source, SkillUnlockRequestDto request, AuthorityResultSequence results)
         {
-            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
-                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
-                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative ||
-                player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            if (!TryGetAuthorityCombatPlayer(source, out Player player)) return null;
             return player.Combat.UnlockRoomSkill(request, skillTreeCatalog, GameSimulationClock.AuthorityTick, results);
         }
         public FlaskUseResultDto RequestFlaskUse(RoomPlayerIdentity source, FlaskUseRequestDto request, AuthorityResultSequence results)
         {
-            if (disposed || networkObjects.IsDisposed || context == null || context.IsGuest || appliedStateSeq == 0 || source == null ||
-                (!ReferenceEquals(source, hostIdentity) && !ReferenceEquals(source, guestIdentity)) || source.RoomSessionId != context.RoomSessionId ||
-                !entities.TryGetValue(source.EntityId, out Player player) || player == null || !player.IsAuthoritative || !player.isActiveAndEnabled ||
-                player.GetComponent<NetworkEntityIdentity>().MovementHeld || player.Combat.PlayerId != source.PlayerId || player.Combat.EntityId != source.EntityId) return null;
+            if (!TryGetAuthorityCombatPlayer(source, out Player player) || !player.isActiveAndEnabled ||
+                player.GetComponent<NetworkEntityIdentity>().MovementHeld) return null;
             return player.Combat.UseRoomFlask(request, flaskCatalog, GameSimulationClock.AuthorityTick, GameSimulationClock.FixedDeltaTime, results);
+        }
+        private bool TryGetAuthorityCombatPlayer(RoomPlayerIdentity source, out Player player)
+        {
+            player = null;
+            return !disposed && !networkObjects.IsDisposed && context != null && !context.IsGuest && appliedStateSeq != 0 &&
+                source != null && source.RoomSessionId == context.RoomSessionId &&
+                (ReferenceEquals(source, hostIdentity) || ReferenceEquals(source, guestIdentity)) &&
+                entities.TryGetValue(source.EntityId, out player) && player.IsAuthoritative &&
+                player.Combat.PlayerId == source.PlayerId && player.Combat.EntityId == source.EntityId;
         }
         public void RefreshAuthorityFlaskHud()
         {

@@ -327,6 +327,7 @@ namespace Rpg.Networking.Protocol
     public sealed class MonsterStateDto
     {
         public int entityId;
+        public int targetEntityId;
         public float[] position;
         public int facingDir;
         public MonsterAiState aiState;
@@ -349,6 +350,7 @@ namespace Rpg.Networking.Protocol
     public sealed class InitialMonsterDto
     {
         public int entityId;
+        public int targetEntityId;
         public string sceneKey;
         public string monsterType;
         public float[] position;

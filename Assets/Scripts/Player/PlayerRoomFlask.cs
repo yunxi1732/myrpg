@@ -19,9 +19,8 @@ public sealed partial class PlayerCombatContext
     }
     internal FlaskUseResultDto UseRoomFlask(FlaskUseRequestDto request, RoomFlaskCatalog catalog, ulong tick, float fixedDelta, AuthorityResultSequence results)
     {
-        if (!Owner.IsAuthoritative || RoomConfigurationId == null || tick == 0 || catalog == null || results == null || results.RoomSessionId != RoomSessionId ||
-            !ProtocolCodec.ValidFlaskRequest(request) || request.roomSessionId != RoomSessionId || request.requestSeq <= flaskRequestSeq ||
-            float.IsNaN(fixedDelta) || float.IsInfinity(fixedDelta) || fixedDelta <= 0) return null;
+        if (!ProtocolCodec.ValidFlaskRequest(request) || request.roomSessionId != RoomSessionId ||
+            request.requestSeq <= flaskRequestSeq) return null;
         flaskRequestSeq = request.requestSeq;
         var rejection = FlaskUseRejection.None;
         var item = GetEquipment(EquipmentType.Flask); RoomFlaskCatalog.Definition definition = null;

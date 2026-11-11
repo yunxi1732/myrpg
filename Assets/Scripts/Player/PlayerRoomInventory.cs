@@ -14,8 +14,7 @@ public sealed partial class PlayerCombatContext
     // Called on A's main thread only, after resolving the actor from the admitted connection/local identity.
     internal EquipmentChangeResultDto ChangeRoomEquipment(EquipmentChangeRequestDto request, ulong tick, AuthorityResultSequence results)
     {
-        if (!Owner.IsAuthoritative || RoomConfigurationId == null || tick == 0 || results == null ||
-            results.RoomSessionId != RoomSessionId || !ProtocolCodec.ValidEquipmentRequest(request) ||
+        if (!ProtocolCodec.ValidEquipmentRequest(request) ||
             request.roomSessionId != RoomSessionId || request.requestSeq <= equipmentRequestSeq) return null;
         equipmentRequestSeq = request.requestSeq; // Rejected requests also consume their own sequence.
         var rejection = EquipmentChangeRejection.None;
@@ -32,7 +31,7 @@ public sealed partial class PlayerCombatContext
         }
         else
         {
-            next = roomInventory.Find(item => item != null && item.name == request.configurationId && item.equipmentType == slot);
+            next = roomInventory.Find(item => item.name == request.configurationId && item.equipmentType == slot);
             if (next == null) rejection = EquipmentChangeRejection.MissingItem;
         }
         if (rejection == EquipmentChangeRejection.None)
@@ -56,7 +55,7 @@ public sealed partial class PlayerCombatContext
 
     internal bool ApplyInventoryConfirmation(RoomInventoryResultDto value)
     {
-        if (EntityRuntimePermissions.Identity(Owner)?.Role != NetworkEntityRole.Display || value == null ||
+        if (EntityRuntimePermissions.Identity(Owner).Role != NetworkEntityRole.Display ||
             !ProtocolCodec.IsValidCombat(value.combat) || value.authorityTick == 0 ||
             value.roomSessionId != RoomSessionId || value.playerId != PlayerId || value.entityId != EntityId) return false;
         ApplyRoomSkillTreeSnapshot(value.combat.skillTree, value.authorityTick);

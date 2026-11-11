@@ -63,13 +63,14 @@ public static class NetworkProtocolVerification
             roomSessionId = Guid.NewGuid().ToString("N"), loadId = 1, authorityTick = 105, stateSeq = 2,
             monsters = new[] {
                 new MonsterStateDto { entityId = 3, position = new[] { 1f, 2f }, facingDir = -1, aiState = MonsterAiState.Patrol, moving = true, active = true },
-                new MonsterStateDto { entityId = 4, position = new[] { 3f, 2f }, facingDir = 1, aiState = MonsterAiState.Chase, active = true }
+                new MonsterStateDto { entityId = 4, targetEntityId = 20, position = new[] { 3f, 2f }, facingDir = 1, aiState = MonsterAiState.Chase, active = true }
             }
         };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value));
         var copy = (MonsterStatesDto)RoundTrip(value, true);
-        RequireSend(copy.authorityTick == 105 && copy.stateSeq == 2 && copy.monsters[0].moving && copy.monsters[1].aiState == MonsterAiState.Chase,
-            "Monster AI snapshots carry a common authority tick/sequence and independent per-monster animation state");
+        RequireSend(copy.authorityTick == 105 && copy.stateSeq == 2 && copy.monsters[0].moving &&
+            copy.monsters[1].aiState == MonsterAiState.Chase && copy.monsters[1].targetEntityId == 20,
+            "Monster AI snapshots carry movement, target and animation state on one authority timeline");
         var attacking = value.monsters[1];
         attacking.aiState = MonsterAiState.Attack;
         attacking.attack = new MonsterAttackDto { actionId = 7, actionNumber = 1, startTick = 100, durationTicks = 57, facingDir = 1 };
@@ -87,6 +88,9 @@ public static class NetworkProtocolVerification
         attacking.attack.actionId = 7; attacking.moving = true;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         attacking.moving = false;
+        attacking.targetEntityId = -1;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
+        attacking.targetEntityId = 20;
         value.monsters[0].aiState = (MonsterAiState)99;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         value.monsters[0].aiState = MonsterAiState.Idle; value.monsters[1].entityId = 3;
@@ -109,9 +113,10 @@ public static class NetworkProtocolVerification
         RequireSend(copy.monsters.Length == 2 && copy.monsters[1].entityId == 4 && copy.monsters[1].sceneKey == "Skeleton[1]",
             "Monster manifest shares the sole protocol mapping and authority metadata");
         value.monsters[0].aiState = MonsterAiState.Attack;
+        value.monsters[0].targetEntityId = 20;
         value.monsters[0].attack = new MonsterAttackDto { actionId = 8, actionNumber = 1, startTick = 80, durationTicks = 57, facingDir = 1 };
         copy = (MonsterInitializationDto)RoundTrip(value, true);
-        RequireSend(copy.monsters[0].attack.actionId == 8 && copy.monsters[0].attack.startTick == 80,
+        RequireSend(copy.monsters[0].attack.actionId == 8 && copy.monsters[0].attack.startTick == 80 && copy.monsters[0].targetEntityId == 20,
             "Joining during an attack retains its original identity and start tick rather than starting a new action");
         value.monsters[1].entityId = 3;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));

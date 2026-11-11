@@ -48,8 +48,7 @@ public sealed partial class PlayerCombatContext
     }
     internal SkillUnlockResultDto UnlockRoomSkill(SkillUnlockRequestDto request, RoomSkillTreeCatalog catalog, ulong tick, AuthorityResultSequence results)
     {
-        if (!Owner.IsAuthoritative || RoomConfigurationId == null || roomSkillTree == null || tick == 0 || results == null || catalog == null ||
-            results.RoomSessionId != RoomSessionId || !ProtocolCodec.ValidSkillUnlockRequest(request) || request.roomSessionId != RoomSessionId ||
+        if (!ProtocolCodec.ValidSkillUnlockRequest(request) || request.roomSessionId != RoomSessionId ||
             request.requestSeq <= skillUnlockRequestSeq) return null;
         skillUnlockRequestSeq = request.requestSeq;
         var rejection = SkillUnlockRejection.None;

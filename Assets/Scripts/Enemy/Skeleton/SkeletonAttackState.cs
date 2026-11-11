@@ -41,8 +41,8 @@ public class SkeletonAttackState : EnemyState
         if (enemy.NetworkMovementOnly)
         {
             var attack = enemy.NetworkAttack;
-            if (attack != null) enemy.FlipController(attack.facingDir);
-            if (attack != null && GameSimulationClock.AuthorityTick - attack.startTick >= (ulong)attack.durationTicks)
+            enemy.FlipController(attack.facingDir);
+            if (GameSimulationClock.AuthorityTick - attack.startTick >= (ulong)attack.durationTicks)
                 stateMachine.ChangeState(enemy.battleState);
             return;
         }

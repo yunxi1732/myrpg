@@ -12,7 +12,7 @@ public class Enemy : Entity
     public void ConfigureNetworkMovement(System.Func<IEnumerable<Player>> players)
     { networkPlayers = players; NetworkMovementOnly = true; }
 
-    private IEnumerable<Player> TargetCandidates => networkPlayers != null ? networkPlayers() : Player.ActivePlayers;
+    private IEnumerable<Player> TargetCandidates => NetworkMovementOnly ? networkPlayers() : Player.ActivePlayers;
     private static bool IsLivingPlayer(Player candidate) => candidate != null && candidate.isActiveAndEnabled && candidate.IsAuthoritative &&
         candidate.stats != null && !candidate.stats.isDead && candidate.stats.currentHealth > 0;
 

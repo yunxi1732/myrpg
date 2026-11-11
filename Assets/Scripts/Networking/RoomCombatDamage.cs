@@ -30,15 +30,15 @@ namespace Rpg.Networking
 
         public void OnPrimaryHit(PrimaryAttackConfirmedHit hit)
         {
-            if (disposed || context.IsGuest || hit == null || hit.Attack == null || hit.Target == null || hit.Attack.RoomSessionId != context.RoomSessionId ||
+            if (disposed || context.IsGuest || hit.Attack.RoomSessionId != context.RoomSessionId ||
                 !context.TryGetEntity(hit.Attack.EntityId, out var sourceView) || sourceView.PlayerId != hit.Attack.PlayerId ||
                 !context.TryGetEntity(hit.TargetEntityId, out var targetView) || targetView.PlayerId != 0 || targetView.View != hit.Target.transform ||
-                monsters == null || !monsters.IsValidPrimaryAttackTarget(hit.Target)) return;
+                !monsters.IsValidPrimaryAttackTarget(hit.Target)) return;
             var source = sourceView.View.GetComponent<Player>();
             var target = targetView.View.GetComponent<EnemyStats>();
-            if (source == null || !source.IsAuthoritative || !source.isActiveAndEnabled || !source.IsRuntimeInitialized ||
-                source.stats == null || !source.stats.IsRuntimeInitialized || source.stats.currentHealth <= 0 || source.stats.isDead ||
-                target == null || !target.IsAuthoritative || !ReferenceEquals(source.Combat.PrimaryAttack.Current, hit.Attack) ||
+            if (!source.IsAuthoritative || !source.isActiveAndEnabled || !source.IsRuntimeInitialized ||
+                !source.stats.IsRuntimeInitialized || source.stats.currentHealth <= 0 || source.stats.isDead ||
+                !target.IsAuthoritative || !ReferenceEquals(source.Combat.PrimaryAttack.Current, hit.Attack) ||
                 hit.Attack.SegmentAt(hit.AuthorityTick)?.SegmentId != hit.SegmentId ||
                 !hit.Attack.TryConsumeDamageHit(hit.SegmentId, hit.TargetEntityId)) return;
             ResolveDirectHit(source, hit.Target, targetView, hit.Attack, hit.SegmentId, hit.AuthorityTick);
@@ -58,22 +58,22 @@ namespace Rpg.Networking
 
         public bool IsValidPlayerTarget(Player player)
         {
-            var identity = player != null ? EntityRuntimePermissions.Identity(player) : null;
+            var identity = EntityRuntimePermissions.Identity(player);
             return !disposed && !context.IsGuest && player != null && player.isActiveAndEnabled && player.IsRuntimeInitialized &&
                 identity != null && identity.IsAuthoritative && !identity.MovementHeld && identity.RoomSessionId == context.RoomSessionId && identity.PlayerId > 0 &&
                 context.TryGetEntity(identity.EntityId, out var view) && view.PlayerId == identity.PlayerId && view.View == player.transform &&
-                player.stats != null && player.stats.IsRuntimeInitialized && !player.stats.isDead && player.stats.currentHealth > 0;
+                player.stats.IsRuntimeInitialized && !player.stats.isDead && player.stats.currentHealth > 0;
         }
 
         public void OnMonsterHit(MonsterAttackConfirmedHit hit)
         {
-            if (disposed || context.IsGuest || hit == null || hit.Source == null || hit.Attack == null || hit.Target == null ||
-                hit.Attack.RoomSessionId != context.RoomSessionId || hit.Attack.PlayerId != 0 || monsters == null ||
+            if (disposed || context.IsGuest ||
+                hit.Attack.RoomSessionId != context.RoomSessionId || hit.Attack.PlayerId != 0 ||
                 !hit.Source.NetworkMovementOnly || EntityRuntimePermissions.Identity(hit.Source)?.MovementHeld != false ||
                 !monsters.IsValidPrimaryAttackTarget(hit.Source) || !IsValidPlayerTarget(hit.Target) ||
                 !context.TryGetEntity(hit.Attack.EntityId, out var sourceView) || sourceView.PlayerId != 0 || sourceView.View != hit.Source.transform ||
                 !context.TryGetEntity(hit.TargetEntityId, out var targetView) || targetView.View != hit.Target.transform || targetView.PlayerId <= 0 ||
-                hit.Source.NetworkAiState != MonsterAiState.Attack || !ReferenceEquals(hit.Source.NetworkHits?.Current, hit.Attack) ||
+                hit.Source.NetworkAiState != MonsterAiState.Attack || !ReferenceEquals(hit.Source.NetworkHits.Current, hit.Attack) ||
                 hit.Attack.SegmentAt(hit.AuthorityTick)?.SegmentId != hit.SegmentId ||
                 !hit.Attack.TryConsumeDamageHit(hit.SegmentId, hit.TargetEntityId)) return;
             ResolveDirectHit(hit.Source, hit.Target, targetView, hit.Attack, hit.SegmentId, hit.AuthorityTick);
@@ -113,10 +113,7 @@ namespace Rpg.Networking
                 critical = outcome.Critical, evaded = outcome.Evaded,
                 impact = outcome.Evaded || target.isInvincible ? null : NetworkHitFeedback.CreateAuthorityImpact(targetEntity, source)
             };
-            ProtocolCodec.ValidateMessage(result, true);
-            lastAuthorityResult = result;
-            targetView.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, version, result.finalHealth, result.maxHealth);
-            PresentOnce(result, targetView.View);
+            ConfirmAuthorityResult(result, targetView);
             if (result.finalHealth == 0)
             {
                 if (targetEntity is Player player) player.HoldNetworkAtZeroHealth();
@@ -135,7 +132,7 @@ namespace Rpg.Networking
             ProtocolCodec.ValidateMessage(result, true);
             if (result.roomSessionId != context.RoomSessionId || !context.TryGetEntity(result.sourceEntityId, out var source) ||
                 source.PlayerId != result.sourcePlayerId || !context.TryGetEntity(result.targetEntityId, out var target) ||
-                target.View == null || target.View.GetComponent<CharaterStats>() == null || target.View.GetComponent<NetworkEntityIdentity>()?.Role != NetworkEntityRole.Display ||
+                target.View.GetComponent<NetworkEntityIdentity>().Role != NetworkEntityRole.Display ||
                 (source.PlayerId > 0) == (target.PlayerId > 0) || !receipts.TryAccept(result)) return false;
             bool applied = target.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.targetStateVersion, result.finalHealth, result.maxHealth);
             Present(result, target.View);
@@ -146,6 +143,13 @@ namespace Rpg.Networking
         private void PresentOnce(DamageResultDto result, Transform target)
         {
             if (receipts.TryAccept(result)) Present(result, target);
+        }
+        private void ConfirmAuthorityResult(DamageResultDto result, RoomEntityPresentation target)
+        {
+            ProtocolCodec.ValidateMessage(result, true);
+            lastAuthorityResult = result;
+            target.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.targetStateVersion, result.finalHealth, result.maxHealth);
+            PresentOnce(result, target.View);
         }
         private static void Present(DamageResultDto result, Transform target)
         {

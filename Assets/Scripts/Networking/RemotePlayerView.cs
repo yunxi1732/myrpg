@@ -24,6 +24,7 @@ namespace Rpg.Networking
         private readonly AuthorityPositionBuffer positions = new AuthorityPositionBuffer();
         public float TeleportDistance { get => teleportDistance; set => teleportDistance = Mathf.Max(0.01f, value); }
         public int BufferedStateCount => positions.Count;
+        public int MonsterTargetEntityId => positions.MonsterTargetEntityId;
 
         internal void Bind(NetworkEntityIdentity owner)
         {
@@ -41,12 +42,14 @@ namespace Rpg.Networking
         }
 
         public bool ApplyState(ulong tick, long sequence, Vector2 position, bool reset = false, int facingDir = 1,
-            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null)
+            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null,
+            int monsterTargetEntityId = 0)
         {
             if (identity == null || identity.Role != NetworkEntityRole.Display) return false;
             if (!ProtocolCodec.ValidPlayerAttack(playerAttack, identity.EntityId, facingDir, tick)) return false;
             float tickSeconds = GameSimulationClock.FixedDeltaTime; // Shared project's fixed simulation step.
-            if (!positions.Add(tick, sequence, position, interpolationDelaySeconds / tickSeconds, teleportDistance, reset, facingDir, movementState, yVelocity, monsterAttack, playerAttack)) return false;
+            if (!positions.Add(tick, sequence, position, interpolationDelaySeconds / tickSeconds, teleportDistance, reset, facingDir, movementState, yVelocity,
+                monsterAttack, playerAttack, monsterTargetEntityId)) return false;
             if (positions.Snapped) Place(positions.Position);
             return true;
         }

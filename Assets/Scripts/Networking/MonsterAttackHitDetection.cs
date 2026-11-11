@@ -35,7 +35,7 @@ namespace Rpg.Networking
         internal void Begin(ulong tick, int facing, PrimaryAttackTiming timing)
         {
             Reset();
-            var identity = source != null ? EntityRuntimePermissions.Identity(source) : null;
+            var identity = EntityRuntimePermissions.Identity(source);
             if (identity == null || !identity.IsAuthoritative || identity.PlayerId != 0 || tick == 0 || timing == null || !timing.IsValid) return;
             // Room-wide melee instance IDs are independent of the monster's animation actionId and result IDs.
             long id = allocateInstance();
@@ -48,9 +48,9 @@ namespace Rpg.Networking
         public void Step(ulong tick)
         {
             var attack = Current;
-            var identity = source != null ? EntityRuntimePermissions.Identity(source) : null;
-            if (source == null || !source.NetworkMovementOnly || !source.isActiveAndEnabled || identity == null || !identity.IsAuthoritative || identity.MovementHeld ||
-                source.stats == null || !source.stats.IsRuntimeInitialized || source.stats.isDead || source.stats.currentHealth <= 0 ||
+            var identity = EntityRuntimePermissions.Identity(source);
+            if (!source.NetworkMovementOnly || !source.isActiveAndEnabled || !identity.IsAuthoritative || identity.MovementHeld ||
+                !source.stats.IsRuntimeInitialized || source.stats.isDead || source.stats.currentHealth <= 0 ||
                 source.NetworkAiState != Protocol.MonsterAiState.Attack || attack == null || attack.IsClosed ||
                 attack.RoomSessionId != identity.RoomSessionId || attack.EntityId != identity.EntityId)
             { Reset(); return; }

@@ -418,18 +418,22 @@ public static class NetworkPresentationVerification
             var states = aMonsters.CaptureStates(1, 105);
             states.monsters[0].position = new[] { 1f, 2f };
             states.monsters[0].facingDir = -1;
-            states.monsters[0].aiState = MonsterAiState.Patrol; states.monsters[0].moving = true;
+            states.monsters[0].aiState = MonsterAiState.Chase; states.monsters[0].moving = true;
+            states.monsters[0].targetEntityId = host.HostIdentity.EntityId;
             bMonsters.ApplyStates(states);
             var firstDisplay = bEntries[0].Enemy;
             firstDisplay.GetComponent<RemotePlayerView>().AdvanceDisplay(.1f);
-            Require(Mathf.Abs(firstDisplay.transform.position.x - 1) < .001f && firstDisplay.facingDir == -1 && !firstDisplay.enabled,
-                "B interpolates monster position/facing without starting its AI");
+            Require(Mathf.Abs(firstDisplay.transform.position.x - 1) < .001f && firstDisplay.facingDir == -1 && !firstDisplay.enabled &&
+                firstDisplay.GetComponent<RemotePlayerView>().MonsterTargetEntityId == host.HostIdentity.EntityId,
+                "B interpolates monster position/facing/target without starting its AI");
             states.authorityTick = 104; states.stateSeq += 10;
             states.monsters[0].position = new[] { 99f, 99f }; states.monsters[0].facingDir = 1;
+            states.monsters[0].targetEntityId = client.LocalIdentity.EntityId;
             bMonsters.ApplyStates(states);
             firstDisplay.GetComponent<RemotePlayerView>().AdvanceDisplay(.1f);
-            Require(Mathf.Abs(firstDisplay.transform.position.x - 1) < .001f && firstDisplay.facingDir == -1,
-                "A newer sequence with an old authority tick cannot rewind or teleport a monster display");
+            Require(Mathf.Abs(firstDisplay.transform.position.x - 1) < .001f && firstDisplay.facingDir == -1 &&
+                firstDisplay.GetComponent<RemotePlayerView>().MonsterTargetEntityId == host.HostIdentity.EntityId,
+                "A newer sequence with an old authority tick cannot rewind monster position, direction or target");
             aMonsters.BindAuthority(authority, host.AllocateSceneEntityId);
             var repeat = aMonsters.Capture(1, 106);
             Require(repeat.monsters[0].entityId == firstId && bMonsters.Apply(display, repeat) && bObjects.Count == 2,
@@ -483,12 +487,15 @@ public static class NetworkPresentationVerification
         var buffer = new AuthorityPositionBuffer();
         var attack = new MonsterAttackDto { actionId = 7, actionNumber = 1, startTick = 103, durationTicks = 57, facingDir = -1 };
         Require(buffer.Add(100, 1, Vector2.zero, 5, 5) &&
-            buffer.Add(105, 2, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "Attack shares position ordering and the display timeline");
+            buffer.Add(105, 2, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack, monsterTargetEntityId: 20), "Attack and target share the display timeline");
         buffer.Advance(.05f, .02f);
-        Require(buffer.MonsterAttack == null && buffer.FacingDirection == 1, "Buffered future attack and facing do not play early");
+        Require(buffer.MonsterAttack == null && buffer.FacingDirection == 1 && buffer.MonsterTargetEntityId == 0,
+            "Buffered future attack, target and facing do not play early");
         buffer.Advance(.05f, .02f);
-        Require(buffer.MonsterAttack?.actionId == 7 && buffer.FacingDirection == -1, "Attack and its fixed facing begin at the same display sample");
-        Require(buffer.Add(110, 3, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack), "A periodic snapshot can repeat the same action ID");
+        Require(buffer.MonsterAttack?.actionId == 7 && buffer.FacingDirection == -1 && buffer.MonsterTargetEntityId == 20,
+            "Attack, target and fixed facing begin at the same display sample");
+        Require(buffer.Add(110, 3, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack, monsterTargetEntityId: 20),
+            "A periodic snapshot repeats the same attack and target");
         attack.actionId = 99;
         buffer.Advance(.1f, .02f);
         Require(buffer.MonsterAttack.actionId == 7 && buffer.RenderTick - buffer.MonsterAttack.startTick > 6.9,

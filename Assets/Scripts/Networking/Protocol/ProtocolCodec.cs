@@ -245,7 +245,7 @@ namespace Rpg.Networking.Protocol
             var ids = new System.Collections.Generic.HashSet<int>();
             var keys = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
             foreach (var monster in value.monsters)
-                if (monster == null || monster.entityId <= 0 || !ids.Add(monster.entityId) ||
+                if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) ||
                     string.IsNullOrEmpty(monster.sceneKey) || monster.sceneKey.Length > 1024 || !keys.Add(monster.sceneKey) ||
                     string.IsNullOrEmpty(monster.monsterType) || monster.monsterType.Length > 256 ||
                     !ValidHealth(monster.health, monster.maxHealth, monster.healthVersion) ||
@@ -268,7 +268,7 @@ namespace Rpg.Networking.Protocol
                 value.monsters == null || value.monsters.Length > 1024) return false;
             var ids = new System.Collections.Generic.HashSet<int>();
             foreach (var monster in value.monsters)
-                if (monster == null || monster.entityId <= 0 || !ids.Add(monster.entityId) || !ValidMonsterAi(monster.aiState) ||
+                if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) || !ValidMonsterAi(monster.aiState) ||
                     monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;

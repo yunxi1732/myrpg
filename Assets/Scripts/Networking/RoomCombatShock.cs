@@ -25,8 +25,8 @@ namespace Rpg.Networking
         {
             if (!parent.State.active || parent.State.kind != ElementEffectKind.Shock || parent.State.sourcePlayerId <= 0 ||
                 !context.TryGetEntity(parent.State.sourceEntityId, out var source)) return;
-            var target = monsters?.FindShockTarget(origin);
-            var prefab = source.View.GetComponent<CharaterStats>()?.ShockStrikePrefab;
+            var target = monsters.FindShockTarget(origin);
+            var prefab = source.View.GetComponent<CharaterStats>().ShockStrikePrefab;
             var controller = prefab != null ? prefab.GetComponent<ShockStrikeController>() : null;
             if (target == null || controller == null || !(controller.TravelSpeed > 0) || float.IsInfinity(controller.TravelSpeed)) return;
             Vector2 position = origin.transform.position;
@@ -46,7 +46,7 @@ namespace Rpg.Networking
             {
                 var record = pair.Value; var s = record.State;
                 if (!context.TryGetEntity(s.sourceEntityId, out _) || !context.TryGetEntity(s.targetEntityId, out var target) ||
-                    target.View.GetComponent<Enemy>() is not Enemy enemy || monsters == null ||
+                    target.View.GetComponent<Enemy>() is not Enemy enemy ||
                     (!record.settled && !monsters.IsValidPrimaryAttackTarget(enemy)))
                 { chains.Remove(pair.Key); changed = true; continue; }
                 if (s.phase == ChainStrikePhase.Flying)
@@ -84,9 +84,8 @@ namespace Rpg.Networking
                         actualDamage = damage, finalHealth = health, maxHealth = stats.GetMaxHealthValue(),
                         targetStateVersion = stats.ApplyAuthorityNetworkHealth(health), components = new DirectDamageDto { shockDamage = damage },
                         impact = stats.isInvincible ? null : NetworkHitFeedback.CreateAuthorityImpact(enemy, impactSource) };
-                    ProtocolCodec.ValidateMessage(result, true);
-                    target.ApplyVersionedHealth(result.roomSessionId, tick, result.targetStateVersion, health, result.maxHealth);
-                    lastAuthorityResult = result; PresentOnce(result, target.View); publish?.Invoke(result);
+                    ConfirmAuthorityResult(result, target);
+                    publish?.Invoke(result);
                     Debug.Log($"[ShockChain] HIT chain={s.chainId} resultId={result.resultId} player={s.sourcePlayerId} target={s.targetEntityId} damage={damage} hp={health} tick={tick}");
                     if (health == 0)
                     {
@@ -122,7 +121,7 @@ namespace Rpg.Networking
                 if (!context.TryGetEntity(state.sourceEntityId, out var source) || !context.TryGetEntity(state.targetEntityId, out _)) continue;
                 if (!chainViews.TryGetValue(state.chainId, out var view) || view == null)
                 {
-                    var prefab = source.View.GetComponent<CharaterStats>()?.ShockStrikePrefab;
+                    var prefab = source.View.GetComponent<CharaterStats>().ShockStrikePrefab;
                     if (prefab == null) continue;
                     view = TemporaryEffectPool.ForScene(source.View.gameObject.scene).Take(prefab,
                         new Vector3(state.position[0], state.position[1]), Quaternion.identity).GetComponent<ShockStrikeController>();

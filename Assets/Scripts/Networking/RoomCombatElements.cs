@@ -85,7 +85,7 @@ namespace Rpg.Networking
                 if (!context.TryGetEntity(state.targetEntityId, out var target) || !context.TryGetEntity(state.sourceEntityId, out _))
                 { EndElement(state.targetEntityId, tick); continue; }
                 var stats = target.View.GetComponent<CharaterStats>();
-                if (stats == null || !stats.IsAuthoritative || !stats.IsRuntimeInitialized || stats.currentHealth <= 0 || !target.View.gameObject.activeInHierarchy)
+                if (!stats.IsAuthoritative || !stats.IsRuntimeInitialized || stats.currentHealth <= 0 || !target.View.gameObject.activeInHierarchy)
                 { EndElement(state.targetEntityId, tick); continue; }
                 // All due ticks are settled by A, never by an FX callback. The end boundary is exclusive.
                 while (state.kind == ElementEffectKind.Burn && record.NextTick <= tick && record.NextTick < state.endTick && state.active)
@@ -99,9 +99,8 @@ namespace Rpg.Networking
                         attackInstanceId = record.AttackId, hitSegmentId = record.Segment, actualDamage = damage, finalHealth = health,
                         maxHealth = stats.GetMaxHealthValue(), targetStateVersion = stats.ApplyAuthorityNetworkHealth(health),
                         components = new DirectDamageDto { burnDamage = damage } };
-                    ProtocolCodec.ValidateMessage(result, true);
-                    target.ApplyVersionedHealth(result.roomSessionId, tick, result.targetStateVersion, health, result.maxHealth);
-                    lastAuthorityResult = result; PresentOnce(result, target.View); publish?.Invoke(result);
+                    ConfirmAuthorityResult(result, target);
+                    publish?.Invoke(result);
                     Debug.Log($"[Burn] TICK burnId={state.effectId} jump={record.Ordinal} resultId={result.resultId} target={state.targetEntityId} tick={tick} damage={damage} hp={health}");
                     if (health == 0)
                     {

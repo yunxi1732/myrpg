@@ -8,7 +8,7 @@ namespace Rpg.Networking
     /// <summary>A bounded position timeline in A's fixed simulation ticks, not packet arrival timestamps.</summary>
     public sealed class AuthorityPositionBuffer
     {
-        private struct Sample { public ulong Tick; public Vector2 Position; public int Facing; public MovementAnimationState Movement; public float YVelocity; public MonsterAttackDto Attack; public PlayerAttackDto PlayerAttack; }
+        private struct Sample { public ulong Tick; public Vector2 Position; public int Facing; public MovementAnimationState Movement; public float YVelocity; public MonsterAttackDto Attack; public PlayerAttackDto PlayerAttack; public int MonsterTargetEntityId; }
         private readonly List<Sample> samples = new List<Sample>(32);
         public int Count => samples.Count;
         public double RenderTick { get; private set; }
@@ -20,13 +20,15 @@ namespace Rpg.Networking
         public float YVelocity { get; private set; }
         public bool Snapped { get; private set; }
         public MonsterAttackDto MonsterAttack { get; private set; }
+        public int MonsterTargetEntityId { get; private set; }
         private MonsterAttackDto latestAttack;
         public PlayerAttackDto PlayerAttack { get; private set; }
         private PlayerAttackDto latestPlayerAttack;
         private long retiredPlayerAttack;
 
         public bool Add(ulong tick, long sequence, Vector2 position, double delayTicks, float snapDistance, bool reset = false, int facingDir = 1,
-            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null)
+            MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null,
+            int monsterTargetEntityId = 0)
         {
             if (tick == 0 || sequence <= 0 || !ProtocolCodec.IsValidMovementAnimation(movementState, yVelocity) ||
                 (facingDir != -1 && facingDir != 1) || float.IsNaN(position.x) || float.IsInfinity(position.x) ||
@@ -67,9 +69,11 @@ namespace Rpg.Networking
                 FacingDirection = facingDir;
                 MovementState = movementState; YVelocity = yVelocity;
                 MonsterAttack = monsterAttack;
+                MonsterTargetEntityId = monsterTargetEntityId;
                 PlayerAttack = playerAttack;
             }
-            var sample = new Sample { Tick = tick, Position = position, Facing = facingDir, Movement = movementState, YVelocity = yVelocity, Attack = monsterAttack, PlayerAttack = playerAttack };
+            var sample = new Sample { Tick = tick, Position = position, Facing = facingDir, Movement = movementState, YVelocity = yVelocity,
+                Attack = monsterAttack, PlayerAttack = playerAttack, MonsterTargetEntityId = monsterTargetEntityId };
             if (Count > 0 && samples[Count - 1].Tick == tick) samples[Count - 1] = sample;
             else samples.Add(sample);
             // Recover from long gaps without accumulating an ever-growing playback delay.
@@ -88,6 +92,7 @@ namespace Rpg.Networking
             FacingDirection = first.Facing; // Discrete state: switch at the sample tick, never interpolate a direction through zero.
             MovementState = first.Movement; YVelocity = first.YVelocity;
             MonsterAttack = first.Attack;
+            MonsterTargetEntityId = first.MonsterTargetEntityId;
             PlayerAttack = first.PlayerAttack;
             // A's next snapshot can reveal an action that began between position samples.
             // Start at its authority start tick, rather than delaying until that packet's sample tick.
@@ -113,6 +118,7 @@ namespace Rpg.Networking
             FacingDirection = 1;
             MovementState = MovementAnimationState.Idle; YVelocity = 0;
             MonsterAttack = null; latestAttack = null;
+            MonsterTargetEntityId = 0;
             PlayerAttack = null; latestPlayerAttack = null; retiredPlayerAttack = 0;
         }
     }
