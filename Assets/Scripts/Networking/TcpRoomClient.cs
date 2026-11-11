@@ -52,6 +52,10 @@ namespace Rpg.Networking
         public event Action<MonsterInitializationDto> MonsterInitializationReceived;
         public event Action<MonsterStatesDto> MonsterStatesReceived;
         public event Action<DamageResultDto> DamageResultReceived;
+        public event Action<MonsterDeathDto> MonsterDeathReceived;
+        public event Action<PlayerDeathDto> PlayerDeathReceived;
+        public event Action<DropSpawnDto> DropSpawnReceived;
+        public event Action<DropStatesDto> DropStatesReceived;
         public event Action<EquipmentChangeResultDto> EquipmentChangeResultReceived;
         public event Action<CraftResultDto> CraftResultReceived;
         public event Action<SkillUnlockResultDto> SkillUnlockResultReceived;
@@ -233,6 +237,34 @@ namespace Rpg.Networking
                         if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
                             lastPlayerInitializationSeq == 0 || lastMonsterSeq == 0 || damage.roomSessionId != RoomSessionId) return;
                         DamageResultReceived?.Invoke(damage); // No global maximum ID filter; room result receipts decide equality.
+                    });
+                    handshakePeer.Subscribe<MonsterDeathDto>(value =>
+                    {
+                        var death = (MonsterDeathDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastMonsterSeq == 0 || death.roomSessionId != RoomSessionId) return;
+                        MonsterDeathReceived?.Invoke(death);
+                    });
+                    handshakePeer.Subscribe<PlayerDeathDto>(value =>
+                    {
+                        var death = (PlayerDeathDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastPlayerInitializationSeq == 0 || death.roomSessionId != RoomSessionId) return;
+                        PlayerDeathReceived?.Invoke(death);
+                    });
+                    handshakePeer.Subscribe<DropSpawnDto>(value =>
+                    {
+                        var drop = (DropSpawnDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastMonsterSeq == 0 || drop.roomSessionId != RoomSessionId) return;
+                        DropSpawnReceived?.Invoke(drop);
+                    });
+                    handshakePeer.Subscribe<DropStatesDto>(value =>
+                    {
+                        var states = (DropStatesDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
+                            lastMonsterSeq == 0 || states.roomSessionId != RoomSessionId || states.loadId != SceneLoadId) return;
+                        DropStatesReceived?.Invoke(states);
                     });
                     handshakePeer.Subscribe<EquipmentChangeResultDto>(value =>
                     {
@@ -550,6 +582,10 @@ namespace Rpg.Networking
             MonsterInitializationReceived = null;
             MonsterStatesReceived = null;
             DamageResultReceived = null;
+            MonsterDeathReceived = null;
+            PlayerDeathReceived = null;
+            DropSpawnReceived = null;
+            DropStatesReceived = null;
             EquipmentChangeResultReceived = null;
             CraftResultReceived = null;
             SkillUnlockResultReceived = null;

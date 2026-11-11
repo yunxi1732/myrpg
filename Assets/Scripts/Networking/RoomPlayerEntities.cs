@@ -11,6 +11,9 @@ namespace Rpg.Networking
     public sealed class RoomPlayerEntities : IDisposable
     {
         private readonly Dictionary<int, Player> entities = new Dictionary<int, Player>();
+        private readonly HashSet<int> confirmedDeaths = new HashSet<int>();
+        private readonly Dictionary<int, PlayerDeathCause> deathCauses = new Dictionary<int, PlayerDeathCause>();
+        private readonly Dictionary<int, PlayerDeathCause> pendingDeathCauses = new Dictionary<int, PlayerDeathCause>();
         private readonly Dictionary<int, RoomNetworkObjects.Registration> registrations = new Dictionary<int, RoomNetworkObjects.Registration>();
         private readonly RoomNetworkObjects networkObjects;
         private readonly RoomNetworkObjects.Registration rootRegistration;
@@ -166,6 +169,9 @@ namespace Rpg.Networking
                     finally
                     {
                         entities.Remove(identity.EntityId);
+                        confirmedDeaths.Remove(identity.EntityId);
+                        deathCauses.Remove(identity.EntityId);
+                        pendingDeathCauses.Remove(identity.EntityId);
                         registrations.Remove(identity.EntityId);
                     }
                 }));
@@ -216,6 +222,7 @@ namespace Rpg.Networking
                 facingDir = player.facingDir,
                 movementState = player.MovementAnimation, yVelocity = player.rb.linearVelocity.y,
                 health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = player.Combat.RoomCurrency,
+                deathCause = DeathCauseFor(identity.EntityId, player),
                 combat = player.Combat.CaptureRoomConfiguration(), attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState()
             };
         }
@@ -243,6 +250,12 @@ namespace Rpg.Networking
                     throw new InvalidDataException("Initial state is older than the player's current presentation state.");
                 presentation.ApplySkillTreePresentation(state.combat.skillTree, value.authorityTick);
                 presentation.ApplyFlaskState(value.roomSessionId, value.authorityTick, state.flask);
+                if (context.IsGuest && state.health == 0)
+                {
+                    player.stats.MarkNetworkDead();
+                    deathCauses[state.entityId] = state.deathCause;
+                    confirmedDeaths.Add(state.entityId);
+                }
             }
             appliedStateSeq = value.stateSeq;
             appliedStateTick = value.authorityTick;
@@ -256,7 +269,7 @@ namespace Rpg.Networking
             disposed = true;
             foreach (var registration in new List<RoomNetworkObjects.Registration>(registrations.Values)) registration.Dispose();
             rootRegistration.Dispose();
-            registrations.Clear(); entities.Clear();
+            registrations.Clear(); entities.Clear(); confirmedDeaths.Clear(); deathCauses.Clear(); pendingDeathCauses.Clear();
             context = null;
         }
 
@@ -265,6 +278,65 @@ namespace Rpg.Networking
             if (disposed || context == null || context.IsGuest || appliedStateSeq == 0) return;
             foreach (Player player in entities.Values)
                 player.GetComponent<NetworkEntityIdentity>().ReleaseAuthoritativeMovement();
+        }
+
+        public void AdvanceDeaths(ulong tick, AuthorityResultSequence sequence, Action<PlayerDeathDto> publish)
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0) return;
+            foreach (var pair in entities)
+            {
+                Player player = pair.Value;
+                if (confirmedDeaths.Contains(pair.Key) || !player.stats.IsRuntimeInitialized || player.stats.currentHealth != 0) continue;
+                PlayerDeathCause cause = DeathCauseFor(pair.Key, player);
+                confirmedDeaths.Add(pair.Key);
+                deathCauses[pair.Key] = cause;
+                pendingDeathCauses.Remove(pair.Key);
+                player.HoldNetworkAtZeroHealth();
+                player.stats.MarkNetworkDead();
+                player.Die();
+                player.GetComponent<NetworkEntityIdentity>().HoldMovement();
+                var result = new PlayerDeathDto { roomSessionId = context.RoomSessionId, authorityTick = tick,
+                    resultId = sequence.Allocate(), playerId = player.Combat.PlayerId, entityId = pair.Key,
+                    healthVersion = player.stats.NetworkHealthVersion, maxHealth = player.stats.GetMaxHealthValue(), cause = cause };
+                publish?.Invoke(result);
+            }
+        }
+
+        public bool ApplyDeath(PlayerDeathDto result, AuthorityResultReceipts receipts)
+        {
+            ProtocolCodec.ValidateMessage(result, true);
+            if (disposed || context == null || !context.IsGuest || result.roomSessionId != context.RoomSessionId ||
+                !entities.TryGetValue(result.entityId, out var player) || player.Combat.PlayerId != result.playerId ||
+                !context.TryGetEntity(result.entityId, out var presentation) || presentation.PlayerId != result.playerId) return false;
+            presentation.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.healthVersion, 0, result.maxHealth);
+            if (player.stats.currentHealth != 0 || !receipts.TryAccept(result)) return false;
+            player.stats.MarkNetworkDead();
+            confirmedDeaths.Add(result.entityId);
+            deathCauses[result.entityId] = result.cause;
+            return true;
+        }
+
+        public bool TryKillFromDeadZone(Player player)
+        {
+            if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || player == null ||
+                !player.isActiveAndEnabled || !player.IsAuthoritative || player.stats.currentHealth <= 0) return false;
+            var identity = player.GetComponent<NetworkEntityIdentity>();
+            if (identity == null || identity.RoomSessionId != context.RoomSessionId || identity.PlayerId <= 0 ||
+                !entities.TryGetValue(identity.EntityId, out var registered) || registered != player ||
+                !context.TryGetEntity(identity.EntityId, out var presentation) || presentation.View != player.transform) return false;
+            ulong tick = GameSimulationClock.AuthorityTick;
+            long version = player.stats.ApplyAuthorityNetworkHealth(0);
+            pendingDeathCauses[identity.EntityId] = PlayerDeathCause.DeadZone;
+            presentation.ApplyVersionedHealth(context.RoomSessionId, tick, version, 0, player.stats.GetMaxHealthValue());
+            player.HoldNetworkAtZeroHealth();
+            return true;
+        }
+
+        private PlayerDeathCause DeathCauseFor(int entityId, Player player)
+        {
+            if (player.stats.currentHealth > 0) return PlayerDeathCause.None;
+            if (deathCauses.TryGetValue(entityId, out var confirmed)) return confirmed;
+            return pendingDeathCauses.TryGetValue(entityId, out var pending) ? pending : PlayerDeathCause.Combat;
         }
 
         public PlayerPositionsDto CapturePositions(long loadId)
@@ -288,6 +360,9 @@ namespace Rpg.Networking
             {
                 entityId = identity.EntityId, position = new[] { position.x, position.y }, facingDir = player.facingDir,
                 movementState = movement, yVelocity = player.rb.linearVelocity.y, attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState(),
+                deathCause = DeathCauseFor(identity.EntityId, player),
+                deathHealthVersion = player.stats.currentHealth == 0 ? player.stats.NetworkHealthVersion : 0,
+                deathMaxHealth = player.stats.currentHealth == 0 ? player.stats.GetMaxHealthValue() : 0,
                 skillFills = RoomCombatConfiguration.HudFills(player.Combat.Skills),
                 parrying = movement == MovementAnimationState.Parry || movement == MovementAnimationState.ParrySuccess,
                 parrySucceeded = movement == MovementAnimationState.ParrySuccess, invincible = player.stats.isInvincible
@@ -324,6 +399,16 @@ namespace Rpg.Networking
                     display.ParryActive = state.parrying;
                     display.ParrySucceeded = state.parrySucceeded;
                     player.stats.ApplyConfirmedInvincibility(state.invincible);
+                    if (state.deathCause != PlayerDeathCause.None)
+                    {
+                        if (presentation.ApplyVersionedHealth(value.roomSessionId, value.authorityTick,
+                                state.deathHealthVersion, 0, state.deathMaxHealth) && player.stats.currentHealth == 0)
+                        {
+                            player.stats.MarkNetworkDead();
+                            confirmedDeaths.Add(state.entityId);
+                            deathCauses[state.entityId] = state.deathCause;
+                        }
+                    }
                 }
                 presentation.ApplyFlaskState(value.roomSessionId, value.authorityTick, state.flask);
                 presentation.ApplySkillFills(value.roomSessionId, value.authorityTick, value.stateSeq, state.skillFills);
@@ -435,7 +520,7 @@ namespace Rpg.Networking
             return !disposed && context != null && !context.IsGuest && appliedStateSeq != 0 && source != null &&
                 source.RoomSessionId == context.RoomSessionId && source.PlayerId == guestIdentity.PlayerId &&
                 source.EntityId == guestIdentity.EntityId && entities.TryGetValue(source.EntityId, out player) &&
-                player.IsAuthoritative && !player.IsLocalInputOwner;
+                player.IsAuthoritative && !player.IsLocalInputOwner && player.stats.currentHealth > 0;
         }
 
         private static Transform Child(string name, Transform parent)

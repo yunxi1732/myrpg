@@ -49,6 +49,7 @@ namespace Rpg.Networking
                 originalIgnoreTimeScale = brain.m_IgnoreTimeScale;
             }
             if (hud != null) { hud.ConfigureRoomFlaskIcons(flaskVisuals); hud.BindNetwork(null); }
+            ui.HideNetworkDeathWaiting();
             optionsRoot = ui.OptionsPanel;
             optionsRoot.SetActive(false);
             optionsLock = optionsRoot.GetComponent<MenuControlLock>();
@@ -137,6 +138,8 @@ namespace Rpg.Networking
                 }
                 else if (!hud.gameObject.activeInHierarchy) ActivateHudPath();
             }
+            if (bound != null && bound.HasHealth && bound.Health == 0) ui.ShowNetworkDeathWaiting();
+            else ui.HideNetworkDeathWaiting();
             // RemotePlayerView.LateUpdate (9000) finishes before this callback (10000).
             // Manually update B's camera now, preserving the scene's lens/body/damping.
             if (bound != null && context.IsGuest && brain != null) brain.ManualUpdate();
@@ -157,6 +160,7 @@ namespace Rpg.Networking
 
         public void Unbind()
         {
+            if (ui != null) ui.HideNetworkDeathWaiting();
             if (optionsRoot != null) CloseOptions();
             if (statsPanel != null) statsPanel.Unbind();
             if (craftPanel != null) craftPanel.Unbind();

@@ -94,6 +94,11 @@ public class CharaterStats : MonoBehaviour
             throw new System.InvalidOperationException("Only a display applies A-confirmed final health.");
         currentHealth = health; confirmedNetworkMaximum = maximum; NetworkHealthVersion = version;
     }
+    internal void MarkNetworkDead()
+    {
+        if (!GameSimulationClock.IsNetwork || currentHealth != 0) throw new System.InvalidOperationException("Only a zero-health room entity can die.");
+        isDead = true;
+    }
 
     public System.Action OnHealthChanged;
     public bool isDead { get; private set; }

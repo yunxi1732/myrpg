@@ -34,6 +34,10 @@ namespace Rpg.Networking
         public RoomSceneMonsters Monsters { get; private set; }
         public RoomCombatDamage CombatDamage { get; private set; }
         private readonly System.Collections.Generic.Queue<DamageResultDto> pendingDamageResults = new System.Collections.Generic.Queue<DamageResultDto>();
+        private readonly System.Collections.Generic.Queue<MonsterDeathDto> pendingMonsterDeaths = new System.Collections.Generic.Queue<MonsterDeathDto>();
+        private readonly System.Collections.Generic.Queue<DropSpawnDto> pendingDropSpawns = new System.Collections.Generic.Queue<DropSpawnDto>();
+        private DropStatesDto pendingDropStates;
+        private readonly System.Collections.Generic.Queue<PlayerDeathDto> pendingPlayerDeaths = new System.Collections.Generic.Queue<PlayerDeathDto>();
         private ElementStatesDto pendingElementStates;
         private readonly System.Collections.Generic.Queue<RoomInventoryResultDto> pendingInventoryResults = new System.Collections.Generic.Queue<RoomInventoryResultDto>();
         private long localEquipmentRequestSeq;
@@ -97,6 +101,10 @@ namespace Rpg.Networking
             client.MonsterInitializationReceived += OnMonsterInitialization;
             client.MonsterStatesReceived += OnMonsterStates;
             client.DamageResultReceived += OnDamageResult;
+            client.MonsterDeathReceived += OnMonsterDeath;
+            client.DropSpawnReceived += OnDropSpawn;
+            client.DropStatesReceived += OnDropStates;
+            client.PlayerDeathReceived += OnPlayerDeath;
             client.ElementStatesReceived += OnElementStates;
             client.EquipmentChangeResultReceived += OnEquipmentChangeResult;
             client.CraftResultReceived += OnCraftResult;
@@ -209,6 +217,15 @@ namespace Rpg.Networking
                 foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
                     if (behaviour != null) behaviour.enabled = false;
             }
+            if (host.IsListening)
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    var zone = root.GetComponent<DeadZone>();
+                    if (zone == null) continue;
+                    zone.enabled = false;
+                    root.SetActive(true);
+                    root.AddComponent<RoomDeadZoneTrigger>().Bind(this, zone);
+                }
             preparedSceneHandle = scene.handle;
             try
             {
@@ -348,6 +365,14 @@ namespace Rpg.Networking
                     while (pendingFlaskResults.Count > 0) OnFlaskUseResult(pendingFlaskResults.Dequeue());
                 if (!activeRoomIsHost)
                     while (pendingDamageResults.Count > 0) CombatDamage.ApplyConfirmedResult(pendingDamageResults.Dequeue());
+                if (!activeRoomIsHost)
+                    while (pendingMonsterDeaths.Count > 0) Monsters.ApplyDeath(pendingMonsterDeaths.Dequeue(), CombatDamage.Receipts);
+                if (!activeRoomIsHost)
+                    while (pendingDropSpawns.Count > 0) Monsters.ApplyDropSpawn(pendingDropSpawns.Dequeue(), CombatDamage.Receipts);
+                if (!activeRoomIsHost && pendingDropStates != null)
+                { Monsters.ApplyDropStates(pendingDropStates); pendingDropStates = null; }
+                if (!activeRoomIsHost)
+                    while (pendingPlayerDeaths.Count > 0) Players.ApplyDeath(pendingPlayerDeaths.Dequeue(), CombatDamage.Receipts);
                 if (!activeRoomIsHost && pendingElementStates != null) { CombatDamage.ApplyElementStates(pendingElementStates); pendingElementStates = null; }
                 if (!activeRoomIsHost) client.SendLocalInputLock(GameplayControlLock.IsLocked);
                 if (!activeRoomIsHost && pendingPositions != null)
@@ -396,9 +421,9 @@ namespace Rpg.Networking
                         OnFlaskUseRequested(host.HostIdentity, new FlaskUseRequestDto { roomSessionId = activeRoomSessionId, requestSeq = flaskSeq });
                     if (hostPlayer != null && hostPlayer.TryConsumeCrystalPress(out long crystalSeq))
                         OnCrystalInput(host.HostIdentity, new CrystalInputDto { roomSessionId = activeRoomSessionId, actionSeq = crystalSeq });
-                    if (hostPlayer != null && Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R))
+                    if (hostPlayer != null && hostPlayer.stats.currentHealth > 0 && Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R))
                         blackholes.SendCastOrRelease(hostPlayer);
-                    if (hostPlayer != null && Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Q))
+                    if (hostPlayer != null && hostPlayer.stats.currentHealth > 0 && Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Q))
                         OnParryInput(host.HostIdentity, new ParryInputDto { roomSessionId = activeRoomSessionId, actionSeq = ++localParrySeq });
                     flaskHudTimer += GameSimulationClock.DeltaTime;
                     if (flaskHudTimer >= PlayerStateSendInterval) { flaskHudTimer = 0; Players?.RefreshAuthorityFlaskHud(); }
@@ -417,6 +442,12 @@ namespace Rpg.Networking
             if (!identity.CanCollectMovementInput) return;
             client.SendLocalInputLock(GameplayControlLock.IsLocked);
             client.MovementMinimumIntervalMilliseconds = movementMinimumIntervalMilliseconds;
+            if (player.stats.currentHealth <= 0)
+            {
+                player.InputData.Clear();
+                client.SendMovementInput(0);
+                return;
+            }
             client.SendMovementInput(player.InputData.CurrentAxis, player.InputData.WallSlideDown);
             if (player.TryConsumeJumpPress(out long actionSeq))
                 client.SendJumpRequest(actionSeq);
@@ -455,11 +486,26 @@ namespace Rpg.Networking
             lastHostAnimation = hostAnimation; lastGuestAnimation = guestAnimation;
             host.SendPlayerPositions(Players.CapturePositions(initializedLoadId));
             if (periodic) host.SendMonsterStates(Monsters.CaptureStates(initializedLoadId, GameSimulationClock.AuthorityTick));
+            if (periodic && Monsters.HasDrops)
+                host.SendDropStates(Monsters.CaptureDropStates(initializedLoadId, GameSimulationClock.AuthorityTick));
         }
 
         private void FixedUpdate()
         {
+            if (IsSceneSession && !returning && activeRoomIsHost && host?.Results != null)
+                Players?.AdvanceDeaths(GameSimulationClock.AuthorityTick, host.Results, value =>
+                {
+                    host.SendPlayerDeath(value);
+                    CombatDamage?.RemovePlayerElements(value.playerId, value.authorityTick);
+                });
             if (IsSceneSession && !returning && activeRoomIsHost) CombatDamage?.AdvanceElements(GameSimulationClock.AuthorityTick);
+            if (IsSceneSession && !returning && activeRoomIsHost && host?.Results != null)
+                Monsters?.AdvanceDeaths(GameSimulationClock.AuthorityTick, host.Results, value =>
+                {
+                    host.SendMonsterDeath(value);
+                    Monsters.GenerateDrops(value.entityId, value.authorityTick, host.AllocateSceneEntityId, host.Results,
+                        drop => host.SendDropSpawn(drop));
+                });
             if (IsSceneSession && !returning && activeRoomIsHost) swords?.Advance();
             if (IsSceneSession && !returning && activeRoomIsHost) crystals?.Advance();
         }
@@ -549,6 +595,67 @@ namespace Rpg.Networking
                 return;
             }
             CombatDamage.ApplyConfirmedResult(value);
+        }
+
+        private void OnMonsterDeath(MonsterDeathDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || Monsters == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingMonsterDeaths.Count >= 256) { Fail(false, "Monster deaths exceeded the initialization buffer"); return; }
+                pendingMonsterDeaths.Enqueue(value);
+                return;
+            }
+            Monsters.ApplyDeath(value, CombatDamage.Receipts);
+        }
+
+        private void OnDropSpawn(DropSpawnDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || Monsters == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingDropSpawns.Count >= 256) { Fail(false, "Drop spawns exceeded the initialization buffer"); return; }
+                pendingDropSpawns.Enqueue(value);
+                return;
+            }
+            Monsters.ApplyDropSpawn(value, CombatDamage.Receipts);
+        }
+
+        private void OnDropStates(DropStatesDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId ||
+                value.loadId != initializationLoadId || monsterInitializationLoadId != value.loadId) return;
+            if (Monsters == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingDropStates == null || value.stateSeq > pendingDropStates.stateSeq &&
+                    value.authorityTick >= pendingDropStates.authorityTick) pendingDropStates = value;
+                return;
+            }
+            Monsters.ApplyDropStates(value);
+        }
+
+        private void OnPlayerDeath(PlayerDeathDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId || Presentation == null) return;
+            if (CombatDamage == null || Players == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            {
+                if (pendingPlayerDeaths.Count >= 256) { Fail(false, "Player deaths exceeded the initialization buffer"); return; }
+                pendingPlayerDeaths.Enqueue(value);
+                return;
+            }
+            Players.ApplyDeath(value, CombatDamage.Receipts);
+        }
+
+        public bool TryKillFromDeadZone(DeadZone zone, Collider2D collision)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || initializedLoadId == 0 ||
+                initializedLoadId != initializationLoadId || Players == null || zone == null || !zone.gameObject.activeInHierarchy ||
+                zone.gameObject.scene.handle != preparedSceneHandle || collision == null ||
+                collision.gameObject.scene.handle != preparedSceneHandle) return false;
+            var player = collision.GetComponentInParent<Player>();
+            if (player == null || !Players.TryKillFromDeadZone(player)) return false;
+            Debug.Log($"[DeadZone] A player={player.Combat.PlayerId} entity={player.Combat.EntityId} tick={GameSimulationClock.AuthorityTick}");
+            return true;
         }
 
         public bool RequestLocalEquipmentChange(RoomEntityPresentation local, ItemData_Equipment item, bool unequip)
@@ -848,6 +955,10 @@ namespace Rpg.Networking
             parryRequests.Clear(); localParrySeq = 0;
             CombatDamage?.Dispose(); CombatDamage = null;
             pendingDamageResults.Clear();
+            pendingMonsterDeaths.Clear();
+            pendingDropSpawns.Clear();
+            pendingDropStates = null;
+            pendingPlayerDeaths.Clear();
             pendingInventoryResults.Clear(); localEquipmentRequestSeq = localCraftRequestSeq = 0;
             pendingSkillUnlockResults.Clear(); localSkillUnlockRequestSeq = 0;
             pendingFlaskResults.Clear(); flaskHudTimer = 0;
@@ -963,6 +1074,10 @@ namespace Rpg.Networking
                 client.MonsterInitializationReceived -= OnMonsterInitialization;
                 client.MonsterStatesReceived -= OnMonsterStates;
                 client.DamageResultReceived -= OnDamageResult;
+                client.MonsterDeathReceived -= OnMonsterDeath;
+                client.DropSpawnReceived -= OnDropSpawn;
+                client.DropStatesReceived -= OnDropStates;
+                client.PlayerDeathReceived -= OnPlayerDeath;
                 client.ElementStatesReceived -= OnElementStates;
                 client.EquipmentChangeResultReceived -= OnEquipmentChangeResult;
                 client.CraftResultReceived -= OnCraftResult;

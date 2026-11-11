@@ -82,7 +82,8 @@ namespace Rpg.Networking
                     if (!context.TryGetEntity(state.targetEntityId, out _)) { effects.Remove(state.targetEntityId); displayedElements.Remove(state.targetEntityId); }
                     continue;
                 }
-                if (!context.TryGetEntity(state.targetEntityId, out var target) || !context.TryGetEntity(state.sourceEntityId, out _))
+                if (!context.TryGetEntity(state.targetEntityId, out var target) || !context.TryGetEntity(state.sourceEntityId, out var source) ||
+                    state.sourcePlayerId > 0 && source.View.GetComponent<Player>().stats.currentHealth <= 0)
                 { EndElement(state.targetEntityId, tick); continue; }
                 var stats = target.View.GetComponent<CharaterStats>();
                 if (!stats.IsAuthoritative || !stats.IsRuntimeInitialized || stats.currentHealth <= 0 || !target.View.gameObject.activeInHierarchy)

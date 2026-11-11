@@ -45,7 +45,9 @@ namespace Rpg.Networking
             foreach (var pair in new List<KeyValuePair<long, ChainRecord>>(chains))
             {
                 var record = pair.Value; var s = record.State;
-                if (!context.TryGetEntity(s.sourceEntityId, out _) || !context.TryGetEntity(s.targetEntityId, out var target) ||
+                if (!context.TryGetEntity(s.sourceEntityId, out var source) ||
+                    s.sourcePlayerId > 0 && source.View.GetComponent<Player>().stats.currentHealth <= 0 ||
+                    !context.TryGetEntity(s.targetEntityId, out var target) ||
                     target.View.GetComponent<Enemy>() is not Enemy enemy ||
                     (!record.settled && !monsters.IsValidPrimaryAttackTarget(enemy)))
                 { chains.Remove(pair.Key); changed = true; continue; }

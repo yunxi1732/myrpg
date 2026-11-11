@@ -5,8 +5,8 @@ namespace Rpg.Networking.Protocol
     public static class ProtocolSchema
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
-        // A-owned room skill requests and object snapshots.
-        public const int SchemaVersion = 40;
+        // A-owned item drop movement states.
+        public const int SchemaVersion = 45;
     }
 
     public enum ProtocolId : short
@@ -47,7 +47,11 @@ namespace Rpg.Networking.Protocol
         CloneStates = 35,
         BlackholeInput = 36,
         BlackholeStates = 37,
-        ParryInput = 38
+        ParryInput = 38,
+        MonsterDeath = 39,
+        PlayerDeath = 40,
+        DropSpawn = 41,
+        DropStates = 42
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash, Parry, ParrySuccess }
@@ -70,6 +74,49 @@ namespace Rpg.Networking.Protocol
         public string roomSessionId;
         public ulong authorityTick;
         public long resultId;
+    }
+    [Serializable]
+    public sealed class MonsterDeathDto : AuthorityResultDto
+    {
+        public int entityId;
+        public long healthVersion;
+        public int maxHealth;
+    }
+    [Serializable]
+    public sealed class PlayerDeathDto : AuthorityResultDto
+    {
+        public int playerId;
+        public int entityId;
+        public long healthVersion;
+        public int maxHealth;
+        public PlayerDeathCause cause;
+    }
+    public enum PlayerDeathCause { None, Combat, DeadZone }
+    [Serializable]
+    public sealed class DropSpawnDto : AuthorityResultDto
+    {
+        public int dropId;
+        public int sourceMonsterEntityId;
+        public string configurationId;
+        public int quantity;
+        public float[] position;
+        public float[] velocity;
+    }
+    [Serializable]
+    public sealed class DropStatesDto
+    {
+        public string roomSessionId;
+        public long loadId;
+        public ulong authorityTick;
+        public long stateSeq;
+        public DropStateDto[] drops;
+    }
+    [Serializable]
+    public sealed class DropStateDto
+    {
+        public int dropId;
+        public float[] position;
+        public bool grounded;
     }
     [Serializable]
     public sealed class DamageResultDto : AuthorityResultDto
@@ -406,6 +453,7 @@ namespace Rpg.Networking.Protocol
         public bool moving;
         public bool counterWindow;
         public bool active;
+        public bool dead;
         public MonsterAttackDto attack;
     }
 
@@ -429,6 +477,7 @@ namespace Rpg.Networking.Protocol
         public float[] position;
         public int facingDir;
         public bool active;
+        public bool dead;
         public MonsterAiState aiState;
         public bool moving;
         public MonsterAttackDto attack;
@@ -499,6 +548,7 @@ namespace Rpg.Networking.Protocol
         public int health;
         public int maxHealth;
         public long healthVersion;
+        public PlayerDeathCause deathCause;
         public int currency;
         public PlayerCombatDto combat;
         public PlayerAttackDto attack;
@@ -561,6 +611,9 @@ namespace Rpg.Networking.Protocol
         public int facingDir;
         public MovementAnimationState movementState;
         public float yVelocity;
+        public PlayerDeathCause deathCause;
+        public long deathHealthVersion;
+        public int deathMaxHealth;
         public bool parrying, parrySucceeded, invincible;
         public PlayerAttackDto attack;
     }

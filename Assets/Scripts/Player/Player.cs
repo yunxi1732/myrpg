@@ -160,6 +160,11 @@ public class Player : Entity
         localFlaskPress = 0;
         localCrystalPress = 0;
         var identity = EntityRuntimePermissions.Identity(this);
+        if (GameSimulationClock.IsNetwork && stats != null && stats.currentHealth <= 0)
+        {
+            InputData.Clear();
+            return;
+        }
         if (IsLocalInputOwner)
         {
             // B collects its own input without running simulation. A never samples keys for B.

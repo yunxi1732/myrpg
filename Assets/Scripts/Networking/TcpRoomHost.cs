@@ -357,6 +357,19 @@ namespace Rpg.Networking
             catch (Exception error) when (error is IOException || error is SocketException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
+        public bool SendMonsterDeath(MonsterDeathDto value) => SendAuthorityInventoryResult(value);
+        public bool SendPlayerDeath(PlayerDeathDto value) => SendAuthorityInventoryResult(value);
+        public bool SendDropSpawn(DropSpawnDto value) => SendAuthorityInventoryResult(value);
+
+        public bool SendDropStates(DropStatesDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!CanInitializeEntities || !playerInitializationSent || Guest == null || !Guest.IsOpen ||
+                value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId) return false;
+            try { Guest.Send(value, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException ||
+                error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
 
         public bool SendEquipmentChangeResult(EquipmentChangeResultDto value)
             => SendInventoryResult(value);

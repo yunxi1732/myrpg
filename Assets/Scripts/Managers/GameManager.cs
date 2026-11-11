@@ -44,6 +44,7 @@ public class GameManager : MonoBehaviour, ISaveManager
     }
     public void RestartScene()
     {
+        if (Rpg.Networking.RoomSceneCoordinator.ProtectSaves) return;
         SaveManager.instance.SaveGame();
         Scene scene = SceneManager.GetActiveScene();
         SceneManager.LoadScene(scene.name);

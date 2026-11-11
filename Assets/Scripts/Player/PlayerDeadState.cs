@@ -17,6 +17,8 @@ public class PlayerDeadState : PlayerState
     {
         base.Enter();
 
+        if (GameSimulationClock.IsNetwork) return;
+
         GameObject.Find("Canvas").GetComponent<UI>().SwitchOnEndScreen();
         AudioManager.instance.PlaySFX(5, null);
     }

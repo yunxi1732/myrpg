@@ -11,6 +11,9 @@ public class UI : MonoBehaviour, ISaveManager
     [SerializeField] private GameObject endText;
     public UI_FadeScreen fadeScreen;
     [SerializeField] private GameObject restartButton;
+    private string networkEndTextOriginal;
+    private bool networkEndTextRaycastOriginal;
+    private bool networkDeathWaiting;
     [Space]
 
     [SerializeField] private GameObject characterUI;
@@ -235,6 +238,34 @@ public class UI : MonoBehaviour, ISaveManager
     { 
         fadeScreen.FadeOut();
         StartCoroutine(EndScreenCorutione());
+    }
+
+    public void ShowNetworkDeathWaiting()
+    {
+        if (!networkDeathWaiting)
+        {
+            var label = endText.GetComponent<TMP_Text>();
+            networkEndTextOriginal = label.text;
+            networkEndTextRaycastOriginal = label.raycastTarget;
+            label.text = "You died. Waiting in room.\nPress Esc to leave.";
+            label.raycastTarget = false;
+            networkDeathWaiting = true;
+        }
+        endText.SetActive(true);
+        restartButton.SetActive(false);
+    }
+
+    public void HideNetworkDeathWaiting()
+    {
+        if (networkDeathWaiting)
+        {
+            var label = endText.GetComponent<TMP_Text>();
+            label.text = networkEndTextOriginal;
+            label.raycastTarget = networkEndTextRaycastOriginal;
+            networkDeathWaiting = false;
+        }
+        endText.SetActive(false);
+        restartButton.SetActive(false);
     }
 
     IEnumerator EndScreenCorutione()

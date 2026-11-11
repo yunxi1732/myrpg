@@ -85,6 +85,16 @@ namespace Rpg.Networking
             if (animator == null || animator.runtimeAnimatorController == null) return;
             // Parameter playback only. Never enter PlayerState or restart the clip on each received snapshot.
             animator.fireEvents = false;
+            var playerStats = GetComponent<PlayerStats>();
+            if (playerStats != null && playerStats.NetworkHealthVersion > 0 && playerStats.currentHealth == 0)
+            {
+                ReleasePlayerAttack(); ReleaseAttackAnimation();
+                animator.SetBool("Attack", false); animator.SetBool("Move", false); animator.SetBool("Jump", false);
+                animator.SetBool("Dash", false); animator.SetBool("WallSlide", false); animator.SetBool("Idle", false);
+                animator.SetBool("CounterAttack", false); animator.SetBool("SuccessfulCounterAttack", false);
+                animator.SetBool("Die", true);
+                return;
+            }
             var feedback = GetComponent<NetworkHitFeedback>();
             if (feedback != null && feedback.IsReactingAt(positions.RenderTick))
             {

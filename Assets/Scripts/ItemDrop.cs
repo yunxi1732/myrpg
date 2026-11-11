@@ -11,8 +11,13 @@ public class ItemDrop : MonoBehaviour
     private List<ItemData> dropList = new List<ItemData>();
 
     [SerializeField] private GameObject dropPrefab;
+    internal ItemData[] PossibleDrops => possibleDrop;
+    internal GameObject DropPrefab => dropPrefab;
 
     public virtual void GenerateDrop()
+        => SelectDrops((item, velocity) => SpawnItem(item, velocity));
+
+    internal void SelectDrops(System.Action<ItemData, Vector2> spawn)
     {
         if (!EntityRuntimePermissions.CanSimulate(this)) return;
         dropList.Clear();
@@ -23,20 +28,26 @@ public class ItemDrop : MonoBehaviour
                 dropList.Add(possibleDrop[i]);
         }
 
-        for (int i = 0; i < possibleItemDrop; i++)
+        for (int i = 0; i < possibleItemDrop && dropList.Count > 0; i++)
         {
             ItemData randomItem = dropList[Random.Range(0, Mathf.Max(dropList.Count - 1, 0))];
 
             dropList.Remove(randomItem);
-            DropItem(randomItem);
+            Vector2 velocity = new Vector2(Random.Range(-5, 5), Random.Range(15, 20));
+            spawn(randomItem, velocity);
         }
     }
 
     protected void DropItem(ItemData _itemData)
     {
         if (!EntityRuntimePermissions.CanSimulate(this)) return;
-        GameObject newDrop = Instantiate(dropPrefab, transform.position, Quaternion.identity);
         Vector2 randomVelocity = new Vector2(Random.Range(-5, 5), Random.Range(15, 20));
-        newDrop.GetComponent<ItemObject>().SetUpItem(_itemData, randomVelocity);
+        SpawnItem(_itemData, randomVelocity);
+    }
+
+    private void SpawnItem(ItemData item, Vector2 velocity)
+    {
+        GameObject newDrop = Instantiate(dropPrefab, transform.position, Quaternion.identity);
+        newDrop.GetComponent<ItemObject>().SetUpItem(item, velocity);
     }
 }

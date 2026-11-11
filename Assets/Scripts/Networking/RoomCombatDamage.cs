@@ -50,10 +50,11 @@ namespace Rpg.Networking
         internal bool OnSkillHit(PrimaryAttackInstance attack, Enemy enemy, bool parry = false, float multiplier = 0, bool magicOnly = false)
         {
             if (disposed || context.IsGuest || !monsters.IsValidPrimaryAttackTarget(enemy)) return false;
+            if (!context.TryGetEntity(attack.EntityId, out var source) || source.PlayerId != attack.PlayerId ||
+                !IsValidPlayerTarget(source.View.GetComponent<Player>())) return false;
             int targetId = enemy.GetComponent<NetworkEntityIdentity>().EntityId;
             ulong tick = GameSimulationClock.AuthorityTick;
             if (!attack.TryRegisterHit(1, targetId, tick) || !attack.TryConsumeDamageHit(1, targetId)) return false;
-            context.TryGetEntity(attack.EntityId, out var source);
             context.TryGetEntity(targetId, out var target);
             ResolveDirectHit(source.View.GetComponent<Player>(), enemy, target, attack, 1, tick, parry, multiplier, magicOnly);
             return true;

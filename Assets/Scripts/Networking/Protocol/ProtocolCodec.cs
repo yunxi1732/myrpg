@@ -64,7 +64,11 @@ namespace Rpg.Networking.Protocol
             Register<CloneStatesDto>(ProtocolId.CloneStates),
             Register<BlackholeInputDto>(ProtocolId.BlackholeInput),
             Register<BlackholeStatesDto>(ProtocolId.BlackholeStates),
-            Register<ParryInputDto>(ProtocolId.ParryInput)
+            Register<ParryInputDto>(ProtocolId.ParryInput),
+            Register<MonsterDeathDto>(ProtocolId.MonsterDeath),
+            Register<PlayerDeathDto>(ProtocolId.PlayerDeath),
+            Register<DropSpawnDto>(ProtocolId.DropSpawn),
+            Register<DropStatesDto>(ProtocolId.DropStates)
         };
 
         private static Entry Register<T>(ProtocolId id, bool allowedBeforeHandshake = false)
@@ -166,6 +170,16 @@ namespace Rpg.Networking.Protocol
 
         private static void Validate(object dto)
         {
+            if (dto is DropStatesDto dropStates && ValidDropStates(dropStates)) return;
+            if (dto is DropSpawnDto drop && ValidAuthorityResult(drop) && drop.dropId > 0 &&
+                drop.sourceMonsterEntityId > 0 && ValidConfigurationId(drop.configurationId) && drop.quantity == 1 &&
+                drop.position != null && drop.position.Length == 2 && ValidCoordinate(drop.position[0]) && ValidCoordinate(drop.position[1]) &&
+                drop.velocity != null && drop.velocity.Length == 2 && ValidCoordinate(drop.velocity[0]) && ValidCoordinate(drop.velocity[1])) return;
+            if (dto is MonsterDeathDto death && ValidAuthorityResult(death) && death.entityId > 0 &&
+                ValidHealth(0, death.maxHealth, death.healthVersion)) return;
+            if (dto is PlayerDeathDto playerDeath && ValidAuthorityResult(playerDeath) && playerDeath.playerId > 0 &&
+                playerDeath.entityId > 0 && ValidPlayerDeathCause(playerDeath.cause, true) &&
+                ValidHealth(0, playerDeath.maxHealth, playerDeath.healthVersion)) return;
             if (dto is ParryInputDto parryInput && Guid.TryParseExact(parryInput.roomSessionId, "N", out _) && parryInput.actionSeq > 0) return;
             if (dto is BlackholeInputDto blackholeInput && Guid.TryParseExact(blackholeInput.roomSessionId, "N", out _) &&
                 blackholeInput.actionSeq > 0 && blackholeInput.action >= BlackholeAction.Cast && blackholeInput.action <= BlackholeAction.Release &&
@@ -263,7 +277,7 @@ namespace Rpg.Networking.Protocol
                 if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) ||
                     string.IsNullOrEmpty(monster.sceneKey) || monster.sceneKey.Length > 1024 || !keys.Add(monster.sceneKey) ||
                     string.IsNullOrEmpty(monster.monsterType) || monster.monsterType.Length > 256 ||
-                    !ValidHealth(monster.health, monster.maxHealth, monster.healthVersion) ||
+                    !ValidHealth(monster.health, monster.maxHealth, monster.healthVersion) || monster.dead && monster.health != 0 ||
                     monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) || !ValidMonsterAi(monster.aiState) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;
@@ -285,9 +299,21 @@ namespace Rpg.Networking.Protocol
             foreach (var monster in value.monsters)
                 if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) || !ValidMonsterAi(monster.aiState) ||
                     monster.counterWindow && monster.aiState != MonsterAiState.Attack ||
+                    monster.dead && (monster.aiState != MonsterAiState.Idle || monster.moving || monster.counterWindow || monster.targetEntityId != 0) ||
                     monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;
+            return true;
+        }
+
+        private static bool ValidDropStates(DropStatesDto value)
+        {
+            if (!Guid.TryParseExact(value.roomSessionId, "N", out _) || value.loadId <= 0 || value.authorityTick == 0 ||
+                value.stateSeq <= 0 || value.drops == null || value.drops.Length > 1024) return false;
+            var ids = new System.Collections.Generic.HashSet<int>();
+            foreach (var drop in value.drops)
+                if (drop == null || drop.dropId <= 0 || !ids.Add(drop.dropId) || drop.position == null ||
+                    drop.position.Length != 2 || !ValidCoordinate(drop.position[0]) || !ValidCoordinate(drop.position[1])) return false;
             return true;
         }
 
@@ -302,7 +328,13 @@ namespace Rpg.Networking.Protocol
             return null;
         }
 
+        private static bool ValidPlayerDeathCause(PlayerDeathCause cause, bool required) =>
+            cause >= (required ? PlayerDeathCause.Combat : PlayerDeathCause.None) && cause <= PlayerDeathCause.DeadZone;
+
         private static bool ValidPlayerPosition(PlayerPositionDto player) => player != null && player.entityId > 0 &&
+            ValidPlayerDeathCause(player.deathCause, false) &&
+            (player.deathCause == PlayerDeathCause.None ? player.deathHealthVersion == 0 && player.deathMaxHealth == 0 :
+                ValidHealth(0, player.deathMaxHealth, player.deathHealthVersion) && player.movementState == MovementAnimationState.Idle && player.attack == null) &&
             player.parrying == (player.movementState == MovementAnimationState.Parry || player.movementState == MovementAnimationState.ParrySuccess) &&
             player.parrySucceeded == (player.movementState == MovementAnimationState.ParrySuccess) &&
             ValidFlaskState(player.flask) &&
@@ -330,6 +362,8 @@ namespace Rpg.Networking.Protocol
             !float.IsNaN(axis) && !float.IsInfinity(axis) && axis >= -1 && axis <= 1;
 
         private static bool ValidInitialPlayer(InitialPlayerDto player) => player != null && player.playerId > 0 && player.entityId > 0 &&
+            ValidPlayerDeathCause(player.deathCause, false) &&
+            (player.health == 0 ? player.deathCause != PlayerDeathCause.None : player.deathCause == PlayerDeathCause.None) &&
             ValidFlaskState(player.flask) &&
             player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
             (player.facingDir == -1 || player.facingDir == 1) &&
