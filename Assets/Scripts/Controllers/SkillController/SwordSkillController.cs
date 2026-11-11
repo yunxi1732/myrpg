@@ -54,7 +54,7 @@ public class SwordSkillController : MonoBehaviour
     private void FixedUpdate()
     {
         if (Network != null && !Network.IsAuthoritative) return;
-        if (canRotate) transform.right = rb.velocity;
+        if (canRotate) transform.right = rb.linearVelocity;
         if (isReturning)
         {
             transform.position = Vector2.MoveTowards(rb.transform.position, player.transform.position, returnSpeed * GameSimulationClock.FixedDeltaTime);
@@ -128,12 +128,12 @@ public class SwordSkillController : MonoBehaviour
     public void SetUpSword(Vector2 _dir, float _gravityScale, Player _player, float _freezeDuration, float _returnSpeed)
     {
         player = _player;
-        rb.velocity = _dir;
+        rb.linearVelocity = _dir;
         rb.gravityScale = _gravityScale;
         freezeDuration = _freezeDuration;   
         returnSpeed = _returnSpeed;
         if (pierceAmount <= 0) anim.SetBool("Rotate", true);
-        spinDirection = Mathf.Clamp(rb.velocity.x, -1, 1);
+        spinDirection = Mathf.Clamp(rb.linearVelocity.x, -1, 1);
         if (Network == null) GameSimulationClock.Schedule(this, DestroyMe, nameof(DestroyMe), LifetimeSeconds);
     }
 
@@ -244,7 +244,7 @@ public class SwordSkillController : MonoBehaviour
 
         canRotate = false;
         cd.enabled = false;
-        rb.isKinematic = true;
+        rb.bodyType = RigidbodyType2D.Kinematic;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
         GetComponentInChildren<ParticleSystem>().Play();
         if (isBouncing && enemyTarget.Count > 0) return;

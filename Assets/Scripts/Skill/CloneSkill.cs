@@ -9,6 +9,13 @@ public class CloneSkill : Skill
     [SerializeField] private float attackMultiplier;
     [SerializeField] private GameObject clonePrefab;
     [SerializeField] private float cloneDuration;
+    internal GameObject ClonePrefab => clonePrefab;
+    internal float CloneDuration => cloneDuration;
+    internal float RoomBaseMultiplier => cloneAttackMultiplier;
+    internal float RoomAggressiveMultiplier => aggresiveCloneAttackMultiplier;
+    internal float RoomMultipleMultiplier => multipleCloneAttackMultiplier;
+    internal float RoomDuplicateChance => chanceToDuplicate;
+    internal Transform FindRoomTarget(Transform position) => FindClosestEnemy(position);
 
     [Header("Clone attack")]
     [SerializeField] private UI_SkillTreeSlot cloneAttackUnlockButton;

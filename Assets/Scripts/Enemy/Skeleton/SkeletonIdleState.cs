@@ -15,7 +15,7 @@ public class SkeletonIdleState : EnemyState
     {
         base.Enter();
         stateTimer = enemy.idleTime;
-        if (enemy.NetworkMovementOnly) enemy.SetVelocity(0, rb.velocity.y);
+        if (enemy.NetworkMovementOnly) enemy.SetVelocity(0, rb.linearVelocity.y);
     }
 
     public override void Exit()

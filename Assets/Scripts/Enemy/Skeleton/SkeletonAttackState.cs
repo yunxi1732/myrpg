@@ -28,6 +28,7 @@ public class SkeletonAttackState : EnemyState
         if (enemy.NetworkMovementOnly)
         {
             enemy.NetworkHits?.Reset();
+            enemy.CloseCounterAttackWindow();
             enemy.anim.speed = enemy.GetComponent<Rpg.Networking.NetworkElementState>()?.NormalAnimationSpeed ?? 1;
         }
         base.Exit();

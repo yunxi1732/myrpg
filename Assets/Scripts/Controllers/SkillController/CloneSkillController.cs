@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class CloneSkillController : MonoBehaviour
 {
+    internal Rpg.Networking.RoomCloneNetwork Room;
+    internal int AttackNumber { get; private set; }
     private Player player;
     private float cloneTimer;
     private SpriteRenderer sr;
@@ -10,6 +12,7 @@ public class CloneSkillController : MonoBehaviour
     private Transform closestEnemy;
 
     private float attackMultiplier;
+    private bool canAttack;
     [SerializeField] private Transform attackCheck;
     [SerializeField] private float attackCheckRadius = 0.85f;
     [SerializeField] private bool canDuplicateClone;
@@ -32,7 +35,8 @@ public class CloneSkillController : MonoBehaviour
 
     public void SetupClone(Transform _newPosition, float _cloneDuration, bool _canAttack, Vector3 _offset, Transform _closestEnemy, bool _canDuplicateClone, float _chanceToDuplicate, Player _player, float _attackMultiplier)
     {
-        if (_canAttack) anim.SetInteger("AttackNumber", Random.Range(1, 4));
+        canAttack = _canAttack;
+        if (_canAttack) { AttackNumber = Random.Range(1, 4); anim.SetInteger("AttackNumber", AttackNumber); }
 
         attackMultiplier = _attackMultiplier;
         transform.position = _newPosition.position + _offset;
@@ -52,6 +56,13 @@ public class CloneSkillController : MonoBehaviour
 
     private void AttackTrigger()
     {
+        if (!canAttack) return;
+        if (Room != null)
+        {
+            foreach (var hit in Physics2D.OverlapCircleAll(attackCheck.position, attackCheckRadius))
+                if (hit.GetComponent<Enemy>() is Enemy enemy) Room.Hit(this, enemy);
+            return;
+        }
         Collider2D[] colliders = Physics2D.OverlapCircleAll(attackCheck.position, attackCheckRadius);
         foreach (var hit in colliders)
         {

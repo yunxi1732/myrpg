@@ -5,8 +5,8 @@ namespace Rpg.Networking.Protocol
     public static class ProtocolSchema
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
-        // A-owned base sword requests and complete object snapshots.
-        public const int SchemaVersion = 31;
+        // A-owned room skill requests and object snapshots.
+        public const int SchemaVersion = 40;
     }
 
     public enum ProtocolId : short
@@ -41,11 +41,17 @@ namespace Rpg.Networking.Protocol
         FlaskUseRequest = 29,
         FlaskUseResult = 30,
         SwordInput = 31,
-        SwordStates = 32
+        SwordStates = 32,
+        CrystalInput = 33,
+        CrystalStates = 34,
+        CloneStates = 35,
+        BlackholeInput = 36,
+        BlackholeStates = 37,
+        ParryInput = 38
     }
 
-    public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash }
-    public enum MonsterAiState { Idle, Patrol, Chase, Attack }
+    public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash, Parry, ParrySuccess }
+    public enum MonsterAiState { Idle, Patrol, Chase, Attack, Stunned }
 
     [Serializable]
     public sealed class PlayerAttackDto
@@ -254,13 +260,82 @@ namespace Rpg.Networking.Protocol
         public int durationTicks;
     }
     public enum FlaskUseRejection { None, PlayerUnavailable, InputLocked, NoFlask, UnsupportedFlask, Cooldown }
-    public enum SwordAction { Aim, Release, Recall, Cancel, Direction }
-    public enum SwordPhase { Flying, Stuck, Returning }
     [Serializable]
-    public sealed class SwordInputDto
+    public abstract class RoomSkillInputDto
     {
         public string roomSessionId;
         public long actionSeq;
+    }
+    [Serializable]
+    public abstract class RoomSkillObjectDto
+    {
+        public int entityId, sourcePlayerId, sourceEntityId;
+        public long skillInstanceId;
+        public float[] position;
+    }
+    [Serializable]
+    public abstract class RoomSkillStatesDto : AuthorityResultDto
+    {
+        public long stateSeq;
+    }
+    public enum SwordAction { Aim, Release, Recall, Cancel, Direction }
+    [Serializable]
+    public sealed class ParryInputDto : RoomSkillInputDto { }
+    [Serializable]
+    public sealed class CrystalInputDto : RoomSkillInputDto { }
+    [Serializable]
+    public sealed class CrystalObjectDto : RoomSkillObjectDto
+    {
+        public bool exploding;
+        public float scale = 1;
+    }
+    [Serializable]
+    public sealed class CrystalStatesDto : RoomSkillStatesDto
+    {
+        public CrystalObjectDto[] crystals;
+    }
+    [Serializable]
+    public sealed class CloneObjectDto : RoomSkillObjectDto
+    {
+        public bool facingLeft;
+        public float alpha;
+        public int attackNumber;
+    }
+    [Serializable]
+    public sealed class CloneStatesDto : RoomSkillStatesDto
+    {
+        public CloneObjectDto[] clones;
+    }
+    public enum BlackholeAction { Cast, Select, Release }
+    [Serializable]
+    public sealed class BlackholeInputDto : RoomSkillInputDto
+    {
+        public BlackholeAction action;
+        public int targetEntityId;
+        public int keyCode;
+    }
+    [Serializable]
+    public sealed class BlackholePromptDto
+    {
+        public int targetEntityId;
+        public int keyCode;
+        public float[] position;
+    }
+    [Serializable]
+    public sealed class BlackholeObjectDto : RoomSkillObjectDto
+    {
+        public float scale;
+        public BlackholePromptDto[] prompts;
+    }
+    [Serializable]
+    public sealed class BlackholeStatesDto : RoomSkillStatesDto
+    {
+        public BlackholeObjectDto[] blackholes;
+    }
+    public enum SwordPhase { Flying, Stuck, Returning }
+    [Serializable]
+    public sealed class SwordInputDto : RoomSkillInputDto
+    {
         public SwordAction action;
         public float[] direction;
     }
@@ -271,18 +346,15 @@ namespace Rpg.Networking.Protocol
         public bool aiming, catching;
     }
     [Serializable]
-    public sealed class SwordObjectDto
+    public sealed class SwordObjectDto : RoomSkillObjectDto
     {
-        public int entityId, sourcePlayerId, sourceEntityId;
-        public long skillInstanceId;
         public ulong startTick, endTick;
         public SwordPhase phase;
-        public float[] position, direction;
+        public float[] direction;
     }
     [Serializable]
-    public sealed class SwordStatesDto : AuthorityResultDto
+    public sealed class SwordStatesDto : RoomSkillStatesDto
     {
-        public long stateSeq;
         public SwordOwnerDto[] owners;
         public SwordObjectDto[] swords;
     }
@@ -332,6 +404,7 @@ namespace Rpg.Networking.Protocol
         public int facingDir;
         public MonsterAiState aiState;
         public bool moving;
+        public bool counterWindow;
         public bool active;
         public MonsterAttackDto attack;
     }
@@ -482,11 +555,13 @@ namespace Rpg.Networking.Protocol
     public sealed class PlayerPositionDto
     {
         public RoomFlaskStateDto flask = new RoomFlaskStateDto();
+        public float[] skillFills = new float[5];
         public int entityId;
         public float[] position;
         public int facingDir;
         public MovementAnimationState movementState;
         public float yVelocity;
+        public bool parrying, parrySucceeded, invincible;
         public PlayerAttackDto attack;
     }
 

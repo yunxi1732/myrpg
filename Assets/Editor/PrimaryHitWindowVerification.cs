@@ -107,7 +107,7 @@ public static class PrimaryHitWindowVerification
     private static Vector3 EmptyTestOrigin(Scene testScene)
     {
         Vector2 maximum = Vector2.zero;
-        foreach (var collider in UnityEngine.Object.FindObjectsOfType<Collider2D>())
+        foreach (var collider in UnityEngine.Object.FindObjectsByType<Collider2D>(FindObjectsSortMode.None))
             if (collider.enabled && collider.gameObject.scene.IsValid() && collider.gameObject.scene != testScene)
                 maximum = Vector2.Max(maximum, collider.bounds.max);
         return new Vector3(maximum.x + 32, maximum.y + 32, 0);

@@ -13,7 +13,7 @@ public class ShockStrikeController : MonoBehaviour, ITemporaryEffectPlayback
 
     private Animator anim;
     private bool isTriggered = false;
-    private bool networkView, initialized;
+    private bool isNetworkView, initialized;
     private Vector2 networkGoal;
     private Vector3 originalScale, childPosition;
     private Quaternion childRotation;
@@ -30,9 +30,9 @@ public class ShockStrikeController : MonoBehaviour, ITemporaryEffectPlayback
     public void PlayConfirmedChain(Rpg.Networking.Protocol.ChainStrikeDto state)
     {
         Initialize();
-        if (!networkView)
+        if (!isNetworkView)
         {
-            CancelInvoke(); StopAllCoroutines(); networkView = true; targetStats = null; isTriggered = false;
+            CancelInvoke(); StopAllCoroutines(); isNetworkView = true; targetStats = null; isTriggered = false;
             transform.localScale = originalScale;
             transform.position = new Vector3(state.position[0], state.position[1], transform.position.z);
             if (anim != null)
@@ -55,7 +55,7 @@ public class ShockStrikeController : MonoBehaviour, ITemporaryEffectPlayback
     public void ReturnNetworkView() => GetComponent<PooledTemporaryEffect>()?.ReturnToPool();
     public void StopPlayback()
     {
-        Initialize(); CancelInvoke(); StopAllCoroutines(); networkView = false; isTriggered = false; targetStats = null;
+        Initialize(); CancelInvoke(); StopAllCoroutines(); isNetworkView = false; isTriggered = false; targetStats = null;
         transform.localScale = originalScale;
         if (anim != null) { anim.transform.localPosition = childPosition; anim.transform.localRotation = childRotation; anim.fireEvents = originalEvents; anim.applyRootMotion = originalRootMotion; }
     }
@@ -74,7 +74,7 @@ public class ShockStrikeController : MonoBehaviour, ITemporaryEffectPlayback
 
     private void Update()
     {
-        if (networkView)
+        if (isNetworkView)
         {
             if (!isTriggered) transform.position = Vector2.MoveTowards(transform.position, networkGoal, speed * GameSimulationClock.DeltaTime);
             return; // Display goal only. No target search, arrival judgement, damage or local delayed callback.
@@ -101,7 +101,7 @@ public class ShockStrikeController : MonoBehaviour, ITemporaryEffectPlayback
 
     private void DamageAndSelfDestroy()
     {
-        if (networkView || Rpg.Networking.EntityRuntimePermissions.NetworkActive || targetStats == null) return;
+        if (isNetworkView || Rpg.Networking.EntityRuntimePermissions.NetworkActive || targetStats == null) return;
         targetStats.ApplyShock(true);
         targetStats.TakeDamage(damage);
         GameSimulationClock.DestroyAfter(gameObject, 0.4f);

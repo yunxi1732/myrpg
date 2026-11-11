@@ -50,7 +50,7 @@ public class PlayerAimSwordState : PlayerState
         player.SwordAbility.CancelAim();
         if (stateMachine.currentState == this)
         {
-            player.SetVelocity(0, rb.velocity.y);
+            player.SetVelocity(0, rb.linearVelocity.y);
             stateMachine.ChangeState(player.IsGroundDetected() ? (PlayerState)player.idleState : player.airState);
         }
     }

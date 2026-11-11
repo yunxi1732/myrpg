@@ -42,11 +42,11 @@ public class PlayerWallSlideState : PlayerState
         {
             // Leaving a wall is airborne movement; Idle.Enter would erase the falling velocity.
             stateMachine.ChangeState(player.airState);
-            player.SetVelocity(0.8f * xInput * player.moveSpeed, rb.velocity.y);
+            player.SetVelocity(0.8f * xInput * player.moveSpeed, rb.linearVelocity.y);
             return;
         }
-        float velocity = yInput < 0 ? rb.velocity.y : rb.velocity.y * 0.8f;
+        float velocity = yInput < 0 ? rb.linearVelocity.y : rb.linearVelocity.y * 0.8f;
         if (GameSimulationClock.IsNetwork) player.SetVelocity(0, velocity);
-        else rb.velocity = new Vector2(0, velocity);
+        else rb.linearVelocity = new Vector2(0, velocity);
     }
 }

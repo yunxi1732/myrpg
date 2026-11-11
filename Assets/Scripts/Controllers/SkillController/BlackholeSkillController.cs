@@ -4,7 +4,9 @@ using UnityEngine;
 
 public class BlackholeSkillController : MonoBehaviour
 {
+    internal Rpg.Networking.RoomBlackholeNetwork Room;
     [SerializeField] private GameObject hotkeyPrefab;
+    internal GameObject HotkeyPrefab => hotkeyPrefab;
     [SerializeField] private List<KeyCode> keycodeList;
 
     private float maxSize;
@@ -35,7 +37,7 @@ public class BlackholeSkillController : MonoBehaviour
         cloneAttackCooldown = _cloneAttackCooldown;
         blackholeTimer = _blackholeDuration;
 
-        if (SkillManager.instance.clone.crystalInsteadOfClone) playerCanDisappear = false;
+        if (Room == null && SkillManager.instance.clone.crystalInsteadOfClone) playerCanDisappear = false;
     }
 
     private void Update()
@@ -49,7 +51,7 @@ public class BlackholeSkillController : MonoBehaviour
             else FinishBlackholeAbility();
         }
 
-        if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R)) ReleaseCloneAttack();
+        if (Room == null && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R)) ReleaseCloneAttack();
 
         CloneAttackLogic();
 
@@ -75,7 +77,7 @@ public class BlackholeSkillController : MonoBehaviour
         if (playerCanDisappear)
         {
             playerCanDisappear = false;
-            PlayerManager.instance.player.fx.MakeTransparent(true);
+            if (Room == null) PlayerManager.instance.player.fx.MakeTransparent(true);
         }
     }
 
@@ -90,7 +92,8 @@ public class BlackholeSkillController : MonoBehaviour
             if (UnityEngine.Random.Range(0, 100) < 50) xOffset = 2;
             else xOffset = -2;
 
-            if (SkillManager.instance.clone.crystalInsteadOfClone)
+            if (Room != null) Room.SpawnDerived(this, targets[randomIndex], new Vector3(xOffset, 0));
+            else if (SkillManager.instance.clone.crystalInsteadOfClone)
             {
                 SkillManager.instance.crystal.CreateCrystal();
                 SkillManager.instance.crystal.CurrentCrystalChooseRandomEnemy();
@@ -120,9 +123,10 @@ public class BlackholeSkillController : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         Enemy enemy = collision.GetComponent<Enemy>();
-        if (enemy)
+        if (enemy && (Room == null || Room.IsValidTarget(enemy)))
         {
             enemy.FreezeTime(true);
+            Room?.TrackFrozen(this, enemy, true);
             CreateHotkey(collision);
         }
     }
@@ -130,19 +134,21 @@ public class BlackholeSkillController : MonoBehaviour
     private void OnTriggerExit2D(Collider2D collision)
     {
         Enemy enemy = collision.GetComponent<Enemy>();
-        if (enemy) enemy.FreezeTime(false);
+        if (enemy) { enemy.FreezeTime(false); Room?.TrackFrozen(this, enemy, false); Room?.UnregisterHotkey(this, enemy); }
     }
 
     private void CreateHotkey(Collider2D collision)
     {
-        if (keycodeList.Count <= 0 || !canCreateHotkey) return;
+        if (keycodeList.Count <= 0 || !canCreateHotkey || Room != null && Room.HasPrompt(this, collision.transform)) return;
         GameObject newHotkey = Instantiate(hotkeyPrefab, collision.transform.position + new Vector3(0, 2), Quaternion.identity);
         createdHotkey.Add(newHotkey);
         KeyCode chosenKey = keycodeList[UnityEngine.Random.Range(0, keycodeList.Count)];
         keycodeList.Remove(chosenKey);
         BlackholeHotkeyController newHotkeyScript = newHotkey.GetComponent<BlackholeHotkeyController>();
         newHotkeyScript.SetUpHotkey(chosenKey, collision.transform, this);
+        Room?.RegisterHotkey(this, newHotkey, chosenKey, collision.transform);
     }
 
     public void AddEnemyToList(Transform _enemy) => targets.Add(_enemy);
+    internal void ReleaseRoom() => ReleaseCloneAttack();
 }

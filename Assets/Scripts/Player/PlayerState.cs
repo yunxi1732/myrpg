@@ -39,7 +39,7 @@ public class PlayerState
         xInput = player.InputData.CurrentAxis;
         yInput = player.InputData.WallSlideDown ? -1 : 0;
         if (player.NetworkInputLocked || (player.IsLocalInputOwner && GameplayControlLock.IsLocked)) ClearMovementInput();
-        player.anim.SetFloat("yVelocity", rb.velocity.y);
+        player.anim.SetFloat("yVelocity", rb.linearVelocity.y);
         stateTimer -= GameSimulationClock.DeltaTime;
     }
 

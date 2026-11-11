@@ -49,7 +49,7 @@ namespace Rpg.Networking
         {
             MovementHeld = true;
             foreach (Rigidbody2D body in bodies)
-                if (body != null) { body.velocity = Vector2.zero; body.angularVelocity = 0; body.constraints = RigidbodyConstraints2D.FreezeAll; }
+                if (body != null) { body.linearVelocity = Vector2.zero; body.angularVelocity = 0; body.constraints = RigidbodyConstraints2D.FreezeAll; }
         }
 
         internal void ReleaseAuthoritativeMovement()
@@ -124,7 +124,7 @@ namespace Rpg.Networking
             foreach (Rigidbody2D body in bodies)
             {
                 if (body == null) continue;
-                body.velocity = Vector2.zero; body.angularVelocity = 0;
+                body.linearVelocity = Vector2.zero; body.angularVelocity = 0;
                 body.gravityScale = 0; body.interpolation = RigidbodyInterpolation2D.None; body.simulated = false;
             }
             // No presentation-query colliders are retained: displays cannot push, trigger damage/pickups or appear in physics queries.

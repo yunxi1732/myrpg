@@ -12,7 +12,7 @@ public class PlayerJumpState : PlayerState
     {
         base.Enter();
         AudioManager.instance.PlaySFX(15, null);
-        rb.velocity = new Vector2(rb.velocity.x, player.jumpForce);
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, player.jumpForce);
     }
 
     public override void Exit()
@@ -23,6 +23,6 @@ public class PlayerJumpState : PlayerState
     public override void Update()
     {
         base.Update();
-        if (rb.velocity.y < 0) stateMachine.ChangeState(player.airState);
+        if (rb.linearVelocity.y < 0) stateMachine.ChangeState(player.airState);
     }
 }

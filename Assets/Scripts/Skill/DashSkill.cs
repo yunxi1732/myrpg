@@ -58,13 +58,13 @@ public class DashSkill : Skill
 
     public void CloneOnArrival()
     {
-        if (cloneOnDashUnlocked) 
+        if (cloneOnArrivalUnlocked) 
             player.skill.clone.CreateClone(player.transform, Vector3.zero);
     }
 
     public void CloneOnDash()
     {
-        if (cloneOnArrivalUnlocked)
+        if (cloneOnDashUnlocked)
             player.skill.clone.CreateClone(player.transform, Vector3.zero);
     }
 }

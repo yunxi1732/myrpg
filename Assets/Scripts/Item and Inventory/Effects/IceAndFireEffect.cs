@@ -17,7 +17,7 @@ public class IceAndFireEffect : ItemEffect
         if (thirdAttack)
         {
             GameObject newIceAndFire = Instantiate(iceAndFirePrefab, _respawnPosition.position, player.transform.rotation);
-            newIceAndFire.GetComponent<Rigidbody2D>().velocity = new Vector2(xVelocity * player.facingDir, 0);
+            newIceAndFire.GetComponent<Rigidbody2D>().linearVelocity = new Vector2(xVelocity * player.facingDir, 0);
 
             GameSimulationClock.DestroyAfter(newIceAndFire, 10f);
         }

@@ -18,7 +18,10 @@ public class PlayerDashState : PlayerState
         {
             stateTimer = player.dashDuraiton;
             player.SetVelocity(player.dashSpeed * player.dashDir, 0);
-            return; // Movement only: no clones, invincibility, afterimages or skill-manager access.
+            player.stats.MakeInvincible(true);
+            if (player.IsAuthoritative && player.Combat.IsRoomNodeUnlocked("Dash - \"Here I am\""))
+                player.RoomClones.Spawn(player);
+            return;
         }
         AudioManager.instance.PlaySFX(14, null);
         player.skill.dash.CloneOnDash();
@@ -32,11 +35,14 @@ public class PlayerDashState : PlayerState
         base.Exit();
         if (GameSimulationClock.IsNetwork)
         {
-            player.SetVelocity(0, rb.velocity.y);
+            player.SetVelocity(0, rb.linearVelocity.y);
+            player.stats.MakeInvincible(false);
+            if (player.IsAuthoritative && player.Combat.IsRoomNodeUnlocked("Dash - \"Actually here I am\""))
+                player.RoomClones.Spawn(player);
             return;
         }
         player.skill.dash.CloneOnArrival();
-        player.SetVelocity(0, rb.velocity.y);
+        player.SetVelocity(0, rb.linearVelocity.y);
 
         player.stats.MakeInvincible(false);
     }
@@ -57,11 +63,12 @@ public class PlayerDashState : PlayerState
                 return;
             }
             player.SetVelocity(player.dashSpeed * player.dashDir, 0);
+            player.fx.CreateAfterImage();
             return;
         }
         if (GameplayControlLock.IsLocked)
         {
-            player.SetVelocity(0, rb.velocity.y);
+            player.SetVelocity(0, rb.linearVelocity.y);
             stateMachine.ChangeState(player.IsGroundDetected() ? (PlayerState)player.idleState : player.airState);
             return;
         }

@@ -28,7 +28,7 @@ public static class MonsterAttackDamageVerification
         {
             Physics2D.SyncTransforms();
             Vector2 maximum = Vector2.zero;
-            foreach (var collider in UnityEngine.Object.FindObjectsOfType<Collider2D>())
+            foreach (var collider in UnityEngine.Object.FindObjectsByType<Collider2D>(FindObjectsSortMode.None))
                 if (collider.enabled && collider.gameObject.scene != scene) maximum = Vector2.Max(maximum, collider.bounds.max);
             var root = new GameObject("Monster damage verification"); SceneManager.MoveGameObjectToScene(root, scene);
             root.transform.position = new Vector3(maximum.x + 32, maximum.y + 32);

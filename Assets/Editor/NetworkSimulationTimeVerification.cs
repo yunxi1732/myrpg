@@ -54,10 +54,10 @@ public static class NetworkSimulationTimeVerification
                 bodyObject = new GameObject("SimulationTimePhysicsProbe");
                 var body = bodyObject.AddComponent<Rigidbody2D>();
                 body.gravityScale = 0;
-                body.velocity = Vector2.right;
+                body.linearVelocity = Vector2.right;
                 lifetimeObject = new GameObject("SimulationLifetimeProbe");
                 GameSimulationClock.DestroyAfter(lifetimeObject, 0.2f);
-                var driver = UnityEngine.Object.FindObjectOfType<GameSimulationDriver>();
+                var driver = UnityEngine.Object.FindFirstObjectByType<GameSimulationDriver>();
                 GameSimulationClock.Schedule(driver, () => callbacks++, "UnusedNetworkOnlyCallback", 0.2f);
                 simulationStart = GameSimulationClock.Time;
                 timer.Restart();

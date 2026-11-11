@@ -58,7 +58,13 @@ namespace Rpg.Networking.Protocol
             Register<FlaskUseRequestDto>(ProtocolId.FlaskUseRequest),
             Register<FlaskUseResultDto>(ProtocolId.FlaskUseResult),
             Register<SwordInputDto>(ProtocolId.SwordInput),
-            Register<SwordStatesDto>(ProtocolId.SwordStates)
+            Register<SwordStatesDto>(ProtocolId.SwordStates),
+            Register<CrystalInputDto>(ProtocolId.CrystalInput),
+            Register<CrystalStatesDto>(ProtocolId.CrystalStates),
+            Register<CloneStatesDto>(ProtocolId.CloneStates),
+            Register<BlackholeInputDto>(ProtocolId.BlackholeInput),
+            Register<BlackholeStatesDto>(ProtocolId.BlackholeStates),
+            Register<ParryInputDto>(ProtocolId.ParryInput)
         };
 
         private static Entry Register<T>(ProtocolId id, bool allowedBeforeHandshake = false)
@@ -160,6 +166,15 @@ namespace Rpg.Networking.Protocol
 
         private static void Validate(object dto)
         {
+            if (dto is ParryInputDto parryInput && Guid.TryParseExact(parryInput.roomSessionId, "N", out _) && parryInput.actionSeq > 0) return;
+            if (dto is BlackholeInputDto blackholeInput && Guid.TryParseExact(blackholeInput.roomSessionId, "N", out _) &&
+                blackholeInput.actionSeq > 0 && blackholeInput.action >= BlackholeAction.Cast && blackholeInput.action <= BlackholeAction.Release &&
+                (blackholeInput.action == BlackholeAction.Select ? blackholeInput.targetEntityId > 0 && blackholeInput.keyCode > 0 :
+                    blackholeInput.targetEntityId == 0 && blackholeInput.keyCode == 0)) return;
+            if (dto is BlackholeStatesDto blackholes && ValidBlackholeStates(blackholes)) return;
+            if (dto is CloneStatesDto cloneStates && ValidCloneStates(cloneStates)) return;
+            if (dto is CrystalInputDto crystalInput && Guid.TryParseExact(crystalInput.roomSessionId, "N", out _) && crystalInput.actionSeq > 0) return;
+            if (dto is CrystalStatesDto crystalStates && ValidCrystalStates(crystalStates)) return;
             if (dto is SwordInputDto sword && Guid.TryParseExact(sword.roomSessionId, "N", out _) && sword.actionSeq > 0 &&
                 sword.action >= SwordAction.Aim && sword.action <= SwordAction.Direction && ValidSwordDirection(sword.direction)) return;
             if (dto is SwordStatesDto swords && ValidSwordStates(swords)) return;
@@ -255,7 +270,7 @@ namespace Rpg.Networking.Protocol
             return true;
         }
 
-        private static bool ValidMonsterAi(MonsterAiState state) => state >= MonsterAiState.Idle && state <= MonsterAiState.Attack;
+        private static bool ValidMonsterAi(MonsterAiState state) => state >= MonsterAiState.Idle && state <= MonsterAiState.Stunned;
         public static bool IsValidMonsterAttack(MonsterAttackDto attack, ulong tick) => attack != null && attack.actionId > 0 &&
             attack.actionNumber == 1 && attack.startTick > 0 && attack.startTick <= tick && attack.durationTicks > 0 &&
             attack.durationTicks <= 3000 && (attack.facingDir == -1 || attack.facingDir == 1);
@@ -269,6 +284,7 @@ namespace Rpg.Networking.Protocol
             var ids = new System.Collections.Generic.HashSet<int>();
             foreach (var monster in value.monsters)
                 if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) || !ValidMonsterAi(monster.aiState) ||
+                    monster.counterWindow && monster.aiState != MonsterAiState.Attack ||
                     monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;
@@ -287,12 +303,23 @@ namespace Rpg.Networking.Protocol
         }
 
         private static bool ValidPlayerPosition(PlayerPositionDto player) => player != null && player.entityId > 0 &&
+            player.parrying == (player.movementState == MovementAnimationState.Parry || player.movementState == MovementAnimationState.ParrySuccess) &&
+            player.parrySucceeded == (player.movementState == MovementAnimationState.ParrySuccess) &&
             ValidFlaskState(player.flask) &&
+            ValidSkillFills(player.skillFills) &&
             player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
             (player.facingDir == -1 || player.facingDir == 1) && IsValidMovementAnimation(player.movementState, player.yVelocity);
 
+        private static bool ValidSkillFills(float[] fills)
+        {
+            if (fills == null || fills.Length != 5) return false;
+            foreach (float fill in fills)
+                if (float.IsNaN(fill) || float.IsInfinity(fill) || fill < 0 || fill > 1) return false;
+            return true;
+        }
+
         public static bool IsValidMovementAnimation(MovementAnimationState state, float yVelocity) =>
-            state >= MovementAnimationState.Idle && state <= MovementAnimationState.Dash && ValidCoordinate(yVelocity);
+            state >= MovementAnimationState.Idle && state <= MovementAnimationState.ParrySuccess && ValidCoordinate(yVelocity);
 
         public static bool ValidPlayerAttack(PlayerAttackDto attack, int entityId, int facing, ulong tick) => attack == null ||
             attack.attackInstanceId > 0 && entityId > 0 && attack.sourceEntityId == entityId && (facing == -1 || facing == 1) && attack.facingDir == facing &&
@@ -353,6 +380,42 @@ namespace Rpg.Networking.Protocol
             Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.expectedVersion > 0 && ValidConfigurationId(value.nodeId);
         public static bool ValidFlaskRequest(FlaskUseRequestDto value) => value != null &&
             Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0;
+        private static bool ValidRoomSkillObject(RoomSkillObjectDto value, System.Collections.Generic.HashSet<int> ids) =>
+            value != null && value.entityId > 0 && ids.Add(value.entityId) && value.sourcePlayerId > 0 &&
+            value.sourceEntityId > 0 && value.skillInstanceId > 0 && value.position != null &&
+            value.position.Length == 2 && ValidCoordinate(value.position[0]) && ValidCoordinate(value.position[1]);
+        private static bool ValidBlackholeStates(BlackholeStatesDto value)
+        {
+            if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.blackholes == null || value.blackholes.Length > 2) return false;
+            var ids = new System.Collections.Generic.HashSet<int>();
+            foreach (var blackhole in value.blackholes)
+            {
+                if (!ValidRoomSkillObject(blackhole, ids) || !ValidCoordinate(blackhole.scale) || blackhole.scale < 0 ||
+                    blackhole.prompts == null || blackhole.prompts.Length > 16) return false;
+                foreach (var prompt in blackhole.prompts)
+                    if (prompt == null || prompt.targetEntityId <= 0 || prompt.keyCode <= 0 || prompt.position == null ||
+                        prompt.position.Length != 2 || !ValidCoordinate(prompt.position[0]) || !ValidCoordinate(prompt.position[1])) return false;
+            }
+            return true;
+        }
+        private static bool ValidCloneStates(CloneStatesDto value)
+        {
+            if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.clones == null || value.clones.Length > 128) return false;
+            var ids = new System.Collections.Generic.HashSet<int>();
+            foreach (var clone in value.clones)
+                if (!ValidRoomSkillObject(clone, ids) ||
+                    clone.attackNumber < 0 || clone.attackNumber > 3 ||
+                    float.IsNaN(clone.alpha) || clone.alpha < 0 || clone.alpha > 1) return false;
+            return true;
+        }
+        private static bool ValidCrystalStates(CrystalStatesDto value)
+        {
+            if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.crystals == null || value.crystals.Length > 128) return false;
+            var ids = new System.Collections.Generic.HashSet<int>();
+            foreach (var crystal in value.crystals)
+                if (!ValidRoomSkillObject(crystal, ids) || !ValidCoordinate(crystal.scale) || crystal.scale <= 0) return false;
+            return true;
+        }
         private static bool ValidSwordDirection(float[] value) => value != null && value.Length == 2 && ValidCoordinate(value[0]) && ValidCoordinate(value[1]) &&
             Mathf.Abs(value[0] * value[0] + value[1] * value[1] - 1) < .01f;
         private static bool ValidSwordStates(SwordStatesDto value)
@@ -366,11 +429,10 @@ namespace Rpg.Networking.Protocol
                 else owners.Add(owner.playerId, owner.entityId);
             var sources = new System.Collections.Generic.HashSet<int>();
             foreach (var sword in value.swords)
-                if (sword == null || sword.entityId <= 0 || !ids.Add(sword.entityId) || sword.skillInstanceId <= 0 || !instances.Add(sword.skillInstanceId) ||
+                if (!ValidRoomSkillObject(sword, ids) || !instances.Add(sword.skillInstanceId) ||
                     !sources.Add(sword.sourcePlayerId) || !owners.TryGetValue(sword.sourcePlayerId, out int entity) || entity != sword.sourceEntityId ||
                     sword.startTick == 0 || sword.startTick > value.authorityTick || sword.endTick <= sword.startTick ||
-                    sword.phase < SwordPhase.Flying || sword.phase > SwordPhase.Returning || !ValidSwordDirection(sword.direction) ||
-                    sword.position == null || sword.position.Length != 2 || !ValidCoordinate(sword.position[0]) || !ValidCoordinate(sword.position[1])) return false;
+                    sword.phase < SwordPhase.Flying || sword.phase > SwordPhase.Returning || !ValidSwordDirection(sword.direction)) return false;
             return true;
         }
         public static bool ValidFlaskState(RoomFlaskStateDto value) => value != null && value.version > 0 && value.stateSeq > 0 &&

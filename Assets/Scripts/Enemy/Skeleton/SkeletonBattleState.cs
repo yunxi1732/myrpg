@@ -4,14 +4,12 @@ using UnityEngine;
 
 public class SkeletonBattleState : SkeletonGroundedState
 {
-    private EnemySkeleton enemy;
     private Transform player;
     private int moveDir;
     public Transform Target => player;
 
     public SkeletonBattleState(Enemy _enemyBase, EnemyStateMachine _stateMachine, string _animBoolName, EnemySkeleton _enemy) : base(_enemyBase, _stateMachine, _animBoolName, _enemy)
     {
-        this.enemy = _enemy;    
     }
 
     public override void Enter()
@@ -42,7 +40,7 @@ public class SkeletonBattleState : SkeletonGroundedState
         if (player.position.x > enemy.transform.position.x) moveDir = 1;
         else if (player.position.x < enemy.transform.position.x) moveDir = -1;
 
-        enemy.SetVelocity(enemy.moveSpeed * moveDir, rb.velocity.y);
+        enemy.SetVelocity(enemy.moveSpeed * moveDir, rb.linearVelocity.y);
     }
 
     private bool CanAttack()

@@ -39,7 +39,7 @@ public class GameManager : MonoBehaviour, ISaveManager
 
     private void Start()
     {
-        checkpoints = FindObjectsOfType<Checkpoint>();
+        checkpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.InstanceID);
         player = PlayerManager.instance.player.transform;
     }
     public void RestartScene()

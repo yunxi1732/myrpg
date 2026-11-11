@@ -81,7 +81,7 @@ public class Entity : MonoBehaviour
     private IEnumerator HitKnockBack()
     {
         isKnocked = true;
-        rb.velocity = new Vector2(-knockbackDir * knockbackPower.x, knockbackPower.y);
+        rb.linearVelocity = new Vector2(-knockbackDir * knockbackPower.x, knockbackPower.y);
         yield return GameSimulationClock.Wait(knockbackDuration);
         isKnocked = false;
         SetupZeroKnockbackPlayer();
@@ -131,7 +131,7 @@ public class Entity : MonoBehaviour
     public void SetVelocity(float _xVelocity, float _yVelocity)
     {
         if (!IsAuthoritative || isKnocked || GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true) return;
-        rb.velocity = new Vector2(_xVelocity, _yVelocity);
+        rb.linearVelocity = new Vector2(_xVelocity, _yVelocity);
         FlipController(_xVelocity);
     }
     #endregion

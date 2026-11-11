@@ -385,6 +385,7 @@ public class CharaterStats : MonoBehaviour
     }
 
     public void MakeInvincible(bool _i) { if (IsAuthoritative) isInvincible = _i; }
+    internal void ApplyConfirmedInvincibility(bool value) => isInvincible = value;
 
     #region Start calculations
     protected int CheckTargetArmor(CharaterStats _targetStats, int totalDamage)

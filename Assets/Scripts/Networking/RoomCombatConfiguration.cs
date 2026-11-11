@@ -105,5 +105,17 @@ namespace Rpg.Networking
                     if (skill.skillId == order[i]) fills[i] = skill.cooldown > 0 ? skill.remaining / skill.cooldown : 0;
             return fills;
         }
+
+        public static float[] HudFills(PlayerSkillRuntime skills)
+        {
+            RoomSkillId[] order = { RoomSkillId.Dash, RoomSkillId.Parry, RoomSkillId.Crystal, RoomSkillId.Sword, RoomSkillId.Blackhole };
+            var fills = new float[order.Length];
+            for (int i = 0; i < order.Length; i++)
+            {
+                var slot = skills.Get(order[i]);
+                fills[i] = slot.Cooldown > 0 ? Mathf.Clamp01(slot.Remaining / slot.Cooldown) : 0;
+            }
+            return fills;
+        }
     }
 }

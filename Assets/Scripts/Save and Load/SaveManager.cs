@@ -87,7 +87,7 @@ public class SaveManager : MonoBehaviour
 
     private List<ISaveManager> FindAllSaveManagers()
     {
-        IEnumerable<ISaveManager> saveManagers = FindObjectsOfType<MonoBehaviour>(true)
+        IEnumerable<ISaveManager> saveManagers = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID)
             .Where(EntityRuntimePermissions.CanPersist).OfType<ISaveManager>();
 
         return new List<ISaveManager>(saveManagers);

@@ -26,6 +26,9 @@ public sealed partial class PlayerCombatContext
     public SkillManager LegacySkills { get; private set; }
     public Inventory LegacyInventory { get; private set; }
     public string RoomConfigurationId { get; private set; }
+    private int roomDodgeBonus;
+    private bool roomDodgeApplied;
+    internal void ConfigureRoomDodgeBonus(int amount) => roomDodgeBonus = amount;
     private readonly List<ItemData_Equipment> ownedRoomEquipment = new List<ItemData_Equipment>();
     private ulong configurationTick;
     private long configurationSeq;
@@ -91,6 +94,7 @@ public sealed partial class PlayerCombatContext
             else SetEquipment(RoomCombatConfiguration.EquipmentSlot(entry.slot), item);
         }
         RestoreRoomSkillTree(value.skillTree);
+        roomDodgeApplied = display && value.skillTree.unlockedSkills[(int)RoomSkillId.Dodge];
         foreach (var entry in value.skills) Skills.Get(entry.skillId).Restore(entry);
         ProjectRoomSkillUnlocks();
         foreach (var entry in value.inventory)

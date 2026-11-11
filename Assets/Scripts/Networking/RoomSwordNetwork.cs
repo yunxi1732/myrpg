@@ -111,7 +111,7 @@ namespace Rpg.Networking
             });
             return sword;
         }
-        internal bool Hit(NetworkSkillObject sword, Enemy enemy) => damage.OnSwordHit(sword.Attack, enemy);
+        internal bool Hit(NetworkSkillObject sword, Enemy enemy) => damage.OnSkillHit(sword.Attack, enemy);
         public void Publish()
         {
             if (disposed || context.IsGuest || GameSimulationClock.AuthorityTick == 0) return;

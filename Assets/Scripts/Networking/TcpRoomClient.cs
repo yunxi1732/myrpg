@@ -57,6 +57,9 @@ namespace Rpg.Networking
         public event Action<SkillUnlockResultDto> SkillUnlockResultReceived;
         public event Action<FlaskUseResultDto> FlaskUseResultReceived;
         public event Action<SwordStatesDto> SwordStatesReceived;
+        public event Action<CrystalStatesDto> CrystalStatesReceived;
+        public event Action<CloneStatesDto> CloneStatesReceived;
+        public event Action<BlackholeStatesDto> BlackholeStatesReceived;
         public event Action<ElementStatesDto> ElementStatesReceived;
         private long lastMonsterSeq;
         private ulong lastMonsterTick;
@@ -259,12 +262,10 @@ namespace Rpg.Networking
                             lastPlayerInitializationSeq == 0 || result.roomSessionId != RoomSessionId) return;
                         FlaskUseResultReceived?.Invoke(result);
                     });
-                    handshakePeer.Subscribe<SwordStatesDto>(value =>
-                    {
-                        var result = (SwordStatesDto)value;
-                        if (ReferenceEquals(Connection, boundConnection) && State == RoomConnectionState.Connected && CanInitializeEntities &&
-                            lastPlayerInitializationSeq > 0 && result.roomSessionId == RoomSessionId) SwordStatesReceived?.Invoke(result);
-                    });
+                    SubscribeSkillStates<SwordStatesDto>(boundConnection, result => SwordStatesReceived?.Invoke(result));
+                    SubscribeSkillStates<CrystalStatesDto>(boundConnection, result => CrystalStatesReceived?.Invoke(result));
+                    SubscribeSkillStates<CloneStatesDto>(boundConnection, result => CloneStatesReceived?.Invoke(result));
+                    SubscribeSkillStates<BlackholeStatesDto>(boundConnection, result => BlackholeStatesReceived?.Invoke(result));
                     handshakePeer.Subscribe<MonsterStatesDto>(value =>
                     {
                         var states = (MonsterStatesDto)value;
@@ -454,13 +455,23 @@ namespace Rpg.Networking
             catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
-        public bool SendSwordInput(SwordInputDto input)
+        public bool SendSkillInput<T>(T input) where T : RoomSkillInputDto
         {
             if (input.roomSessionId != RoomSessionId || State != RoomConnectionState.Connected || !CanInitializeEntities ||
                 lastPlayerInitializationSeq == 0 || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(input, true); return true; }
             catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
+        private void SubscribeSkillStates<T>(NetConnection boundConnection, Action<T> handler) where T : RoomSkillStatesDto
+        {
+            handshakePeer.Subscribe<T>(value =>
+            {
+                var result = (T)value;
+                if (ReferenceEquals(Connection, boundConnection) && State == RoomConnectionState.Connected && CanInitializeEntities &&
+                    lastPlayerInitializationSeq > 0 && result.roomSessionId == RoomSessionId) handler(result);
+            });
+        }
+
 
         public bool SendJumpRequest(long actionSeq)
         {
@@ -544,6 +555,9 @@ namespace Rpg.Networking
             SkillUnlockResultReceived = null;
             FlaskUseResultReceived = null;
             SwordStatesReceived = null;
+            CrystalStatesReceived = null;
+            CloneStatesReceived = null;
+            BlackholeStatesReceived = null;
         }
     }
 }

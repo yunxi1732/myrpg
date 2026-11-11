@@ -96,7 +96,7 @@ public static class DamageResultVerification
             Require(receiver.ApplyConfirmedResult(copy) && !receiver.ApplyConfirmedResult(copy), "Exactly one acceptance for the same result ID");
             var feedback = first.GetComponent<NetworkHitFeedback>();
             Require(feedback.PresentationCount == 1 && feedback.LastResultId == copy.resultId && !feedback.IsAuthorityKnockbackActive &&
-                !displayBody.simulated && displayBody.velocity == Vector2.zero, "One main feedback batch per result ID; B cannot write or simulate knockback");
+                !displayBody.simulated && displayBody.linearVelocity == Vector2.zero, "One main feedback batch per result ID; B cannot write or simulate knockback");
             Require(copy.impact.knockbackTicks == 4 && copy.impact.reactionTicks == 10 && copy.impact.facingDir == -1 && copy.impact.knockbackVelocity[0] == -2,
                 "A's impact/knockback metadata round-trips through the unique DTO and codec");
             Require(UnityEngine.Random.value == expected, "B never rolls damage/evasion/critical"); UnityEngine.Random.state = saved;
@@ -231,10 +231,10 @@ public static class DamageResultVerification
                         targetStats.isIgnited == shouldBurn && targetStats.isChilled == shouldChill && targetStats.isShocked == shouldShock, "A selects one supported elemental state");
                     var feedback = target.GetComponent<NetworkHitFeedback>();
                     Require(feedback.PresentationCount == 1 && (noImpact ? sent.impact == null && !feedback.IsAuthorityKnockbackActive :
-                        sent.impact != null && feedback.IsAuthorityKnockbackActive && authorityBody.velocity == new Vector2(2, 2)),
+                        sent.impact != null && feedback.IsAuthorityKnockbackActive && authorityBody.linearVelocity == new Vector2(2, 2)),
                         "The real authority damage entry starts exactly one hit feedback and applies original target knockback away from the source");
                     if (!noImpact) Require(feedback.AdvanceAuthorityKnockback(12) && !feedback.AdvanceAuthorityKnockback(12 + (ulong)sent.impact.knockbackTicks) &&
-                        authorityBody.velocity == new Vector2(0, 2), "A's non-scaled tick alone ends knockback; vertical physics velocity is preserved");
+                        authorityBody.linearVelocity == new Vector2(0, 2), "A's non-scaled tick alone ends knockback; vertical physics velocity is preserved");
                     Require(service.RepeatLastResultForVerification() && publications == 2 && feedback.PresentationCount == 1 &&
                         !feedback.IsAuthorityKnockbackActive && targetStats.currentHealth == expectedHealth && sequence.LastAllocated == expectedResults,
                         "The manual replay entry resends the same result without A replaying feedback, knockback, damage or allocating a new ID");

@@ -31,6 +31,7 @@ namespace Rpg.Networking
         }
         public Sprite FlaskIcon { get; private set; }
         public float FlaskFill { get; private set; }
+        public float FlaskCooldownSeconds { get; private set; }
         public string FlaskDefinitionId { get; private set; } = "";
         public bool HasEquippedFlask { get; private set; }
         private long flaskVersion, flaskSeq;
@@ -43,6 +44,7 @@ namespace Rpg.Networking
             HasEquippedFlask = value.equippedItemId.Length > 0; FlaskDefinitionId = value.definitionId; FlaskIcon = null;
             ulong remaining = value.cooldownEndTick > tick ? value.cooldownEndTick - tick : 0;
             FlaskFill = value.durationTicks > 0 ? Mathf.Clamp01((float)remaining / value.durationTicks) : 0;
+            FlaskCooldownSeconds = value.durationTicks * GameSimulationClock.FixedDeltaTime;
             NotifyChanged(); return true;
         }
         private readonly float[] skillFills = new float[5];
@@ -121,6 +123,15 @@ namespace Rpg.Networking
         }
 
         public float SkillFill(int index) => skillFills[index];
+        public bool ApplySkillFills(string room, ulong tick, long stateSeq, float[] fills)
+        {
+            if (!IsValid || PlayerId == 0 || room != RoomSessionId || tick == 0 ||
+                stateSeq <= hudSeq || tick < hudTick || fills == null || fills.Length != skillFills.Length) return false;
+            foreach (float fill in fills) if (!ValidFill(fill)) return false;
+            hudTick = tick; hudSeq = stateSeq;
+            Array.Copy(fills, skillFills, skillFills.Length);
+            NotifyChanged(); return true;
+        }
         public void MarkReady()
         {
             if (!IsValid || IsReady) return;

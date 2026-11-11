@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class BlackholeHotkeyController : MonoBehaviour
 {
+    internal Rpg.Networking.RoomBlackholeNetwork Room;
+    internal int TargetEntityId;
     private SpriteRenderer sr;
     private KeyCode myHotkey;
     private TextMeshProUGUI myText;
@@ -21,14 +23,23 @@ public class BlackholeHotkeyController : MonoBehaviour
         myEnemy = _myEnemy;
         blackhole = _myblackhole;
     }
+    internal void ConfirmSelection()
+    {
+        myText.color = Color.clear;
+        sr.color = Color.clear;
+    }
 
     private void Update()
     {
         if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(myHotkey))
         {
+            if (Room != null)
+            {
+                Room.SendSelection(TargetEntityId, myHotkey);
+                return;
+            }
             blackhole.AddEnemyToList(myEnemy);
-            myText.color = Color.clear;
-            sr.color = Color.clear;
+            ConfirmSelection();
         }
     }
 }

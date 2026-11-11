@@ -26,6 +26,11 @@ public sealed partial class PlayerCombatContext
     {
         if (roomSkillTree == null) return;
         for (int i = 0; i < 7; i++) Skills.Get((RoomSkillId)i).SetRoomUnlocked(roomSkillTree.unlockedSkills[i]);
+        if (Skills.Get<DodgeSkill>().Unlocked && !roomDodgeApplied)
+        {
+            Stats.evasion.AddModifier(roomDodgeBonus);
+            roomDodgeApplied = true;
+        }
     }
     private void RestoreRoomSkillTree(SkillTreeStateDto value)
     {
@@ -70,7 +75,7 @@ public sealed partial class PlayerCombatContext
             long nextVersion = checked(SkillTreeVersion + 1);
             roomSkillTree.currency -= rule.Cost; selected.unlocked = true; roomSkillTree.version = nextVersion; skillTreeTick = tick;
             if (RoomSkillTreeCatalog.BaseSkill(request.nodeId, out var skill)) roomSkillTree.unlockedSkills[(int)skill] = true;
-            ProjectRoomSkillUnlocks(); // Changes permission only; no legacy callbacks, stat effects or successful cooldown.
+            ProjectRoomSkillUnlocks();
         }
         return new SkillUnlockResultDto { roomSessionId = RoomSessionId, authorityTick = tick, resultId = results.Allocate(),
             playerId = PlayerId, entityId = EntityId, requestSeq = request.requestSeq, nodeId = request.nodeId,

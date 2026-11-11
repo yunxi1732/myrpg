@@ -53,7 +53,19 @@ public class UI_InGame : MonoBehaviour
 
     private void Update()
     {
-        if (NetworkMode) return;
+        if (NetworkMode)
+        {
+            if (networkEntity == null || !networkEntity.IsReady || networkEntity.View == null) return;
+            var roomSkills = networkEntity.View.GetComponent<Player>().Combat.Skills;
+            CheckCooldownOf(dashImage, roomSkills.Get<DashSkill>().Cooldown);
+            CheckCooldownOf(parryImage, roomSkills.Get<ParrySkill>().Cooldown);
+            CheckCooldownOf(crystalImage, roomSkills.Get<CrystalSkill>().Cooldown);
+            CheckCooldownOf(swordImage, roomSkills.Get<SwordSkill>().Cooldown);
+            CheckCooldownOf(blackholeImage, roomSkills.Get<BlackholeSkill>().Cooldown);
+            if (flaskImage != null && networkEntity.FlaskCooldownSeconds > 0)
+                CheckCooldownOf(flaskImage, networkEntity.FlaskCooldownSeconds);
+            return;
+        }
         UpdateSoulsUI();
 
         if (!GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.LeftShift) && skills.dash.dashUnlocked)

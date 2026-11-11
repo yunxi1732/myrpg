@@ -5,6 +5,7 @@ using UnityEngine;
 public class EnemySkeleton : Enemy
 {
     private long nextNetworkAttackId;
+    private ulong counterOpenTick, counterCloseTick;
     public Rpg.Networking.Protocol.MonsterAttackDto NetworkAttack { get; private set; }
     public Rpg.Networking.MonsterAttackHitDetection NetworkHits { get; internal set; }
     public static bool TryNetworkAttackTiming(Animator animator, out Rpg.Networking.PrimaryAttackTiming timing)
@@ -53,14 +54,30 @@ public class EnemySkeleton : Enemy
         NetworkAttack = new Rpg.Networking.Protocol.MonsterAttackDto { actionId = ++nextNetworkAttackId, actionNumber = 1,
             startTick = GameSimulationClock.AuthorityTick, facingDir = facingDir,
             durationTicks = Mathf.Max(1, Mathf.CeilToInt(finishTime / GameSimulationClock.FixedDeltaTime)) };
+        foreach (var clip in anim.runtimeAnimatorController.animationClips)
+            if (clip.name == "SkeletonAttack")
+                foreach (var marker in clip.events)
+                {
+                    if (marker.functionName == "OpenCounterWindow")
+                        counterOpenTick = NetworkAttack.startTick + (ulong)Mathf.CeilToInt(marker.time / GameSimulationClock.FixedDeltaTime);
+                    if (marker.functionName == "CloseCounterWindow")
+                        counterCloseTick = NetworkAttack.startTick + (ulong)Mathf.CeilToInt(marker.time / GameSimulationClock.FixedDeltaTime);
+                }
         anim.fireEvents = false;
         anim.speed = 1;
         anim.Play("Base Layer.SkeletonAttack", 0, 0);
     }
+    public void AdvanceNetworkCounterWindow(ulong tick)
+    {
+        bool open = NetworkAiState == Rpg.Networking.Protocol.MonsterAiState.Attack && tick >= counterOpenTick && tick <= counterCloseTick;
+        if (open && !CounterWindowOpen) OpenCounterAttackWindow();
+        else if (!open && CounterWindowOpen) CloseCounterAttackWindow();
+    }
 
     public Rpg.Networking.Protocol.MonsterAiState NetworkAiState => stateMachine?.currentState == null || stats != null && stats.IsRuntimeInitialized && stats.currentHealth <= 0 ?
         Rpg.Networking.Protocol.MonsterAiState.Idle : stateMachine.currentState == attackState ?
-        Rpg.Networking.Protocol.MonsterAiState.Attack : stateMachine.currentState == battleState ?
+        Rpg.Networking.Protocol.MonsterAiState.Attack : stateMachine.currentState == stunnedState ?
+        Rpg.Networking.Protocol.MonsterAiState.Stunned : stateMachine.currentState == battleState ?
         Rpg.Networking.Protocol.MonsterAiState.Chase : stateMachine?.currentState == moveState ?
         Rpg.Networking.Protocol.MonsterAiState.Patrol : Rpg.Networking.Protocol.MonsterAiState.Idle;
     #region States

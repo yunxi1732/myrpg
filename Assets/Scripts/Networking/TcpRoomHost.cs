@@ -33,6 +33,9 @@ namespace Rpg.Networking
         public event Action<RoomPlayerIdentity, SkillUnlockRequestDto> SkillUnlockRequested;
         public event Action<RoomPlayerIdentity, FlaskUseRequestDto> FlaskUseRequested;
         public event Action<RoomPlayerIdentity, SwordInputDto> SwordInputReceived;
+        public event Action<RoomPlayerIdentity, CrystalInputDto> CrystalInputReceived;
+        public event Action<RoomPlayerIdentity, BlackholeInputDto> BlackholeInputReceived;
+        public event Action<RoomPlayerIdentity, ParryInputDto> ParryInputReceived;
         public long LastPrimaryAttackRequestSeq { get; private set; }
         public event Action<RoomPlayerIdentity, LocalInputLockDto> InputLockReceived;
         public long LastInputLockSeq { get; private set; }
@@ -108,12 +111,10 @@ namespace Rpg.Networking
                     guestPeer = new RoomHandshakePeer(Guest);
                     guestPeer.Subscribe<HandshakeHelloDto>(value => AcceptHello((HandshakeHelloDto)value));
                     NetConnection boundGuest = Guest;
-                    guestPeer.Subscribe<SwordInputDto>(value =>
-                    {
-                        var input = (SwordInputDto)value;
-                        if (playerInitializationSent && CanInitializeEntities && input.roomSessionId == RoomSessionId &&
-                            TryResolvePlayer(boundGuest, out var actor)) SwordInputReceived?.Invoke(actor, input);
-                    });
+                    SubscribeSkillInput<SwordInputDto>(boundGuest, (actor, input) => SwordInputReceived?.Invoke(actor, input));
+                    SubscribeSkillInput<CrystalInputDto>(boundGuest, (actor, input) => CrystalInputReceived?.Invoke(actor, input));
+                    SubscribeSkillInput<BlackholeInputDto>(boundGuest, (actor, input) => BlackholeInputReceived?.Invoke(actor, input));
+                    SubscribeSkillInput<ParryInputDto>(boundGuest, (actor, input) => ParryInputReceived?.Invoke(actor, input));
                     guestPeer.Subscribe<FlaskUseRequestDto>(value =>
                     {
                         var request = (FlaskUseRequestDto)value;
@@ -362,7 +363,16 @@ namespace Rpg.Networking
         public bool SendCraftResult(CraftResultDto value) => SendInventoryResult(value);
         public bool SendSkillUnlockResult(SkillUnlockResultDto value) => SendAuthorityInventoryResult(value);
         public bool SendFlaskUseResult(FlaskUseResultDto value) => SendAuthorityInventoryResult(value);
-        public bool SendSwordStates(SwordStatesDto value) => SendAuthorityInventoryResult(value);
+        public bool SendSkillStates<T>(T value) where T : RoomSkillStatesDto => SendAuthorityInventoryResult(value);
+        private void SubscribeSkillInput<T>(NetConnection boundGuest, Action<RoomPlayerIdentity, T> handler) where T : RoomSkillInputDto
+        {
+            guestPeer.Subscribe<T>(value =>
+            {
+                var input = (T)value;
+                if (playerInitializationSent && CanInitializeEntities && input.roomSessionId == RoomSessionId &&
+                    TryResolvePlayer(boundGuest, out var actor)) handler(actor, input);
+            });
+        }
         private bool SendInventoryResult(RoomInventoryResultDto value)
             => SendAuthorityInventoryResult(value);
         private bool SendAuthorityInventoryResult(AuthorityResultDto value)
@@ -462,7 +472,7 @@ namespace Rpg.Networking
         {
             if (disposed) return;
             try { CloseRoom(); }
-            finally { disposed = true; StateChanged = null; Disconnected = null; RoomExited = null; SceneInitializationAllowed = null; MovementInputReceived = null; JumpRequested = null; DashRequested = null; InputLockReceived = null; PrimaryAttackRequested = null; EquipmentChangeRequested = null; CraftRequested = null; SkillUnlockRequested = null; FlaskUseRequested = null; SwordInputReceived = null; }
+            finally { disposed = true; StateChanged = null; Disconnected = null; RoomExited = null; SceneInitializationAllowed = null; MovementInputReceived = null; JumpRequested = null; DashRequested = null; InputLockReceived = null; PrimaryAttackRequested = null; EquipmentChangeRequested = null; CraftRequested = null; SkillUnlockRequested = null; FlaskUseRequested = null; SwordInputReceived = null; CrystalInputReceived = null; BlackholeInputReceived = null; ParryInputReceived = null; }
         }
     }
 }

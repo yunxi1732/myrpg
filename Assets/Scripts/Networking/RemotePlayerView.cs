@@ -25,6 +25,9 @@ namespace Rpg.Networking
         public float TeleportDistance { get => teleportDistance; set => teleportDistance = Mathf.Max(0.01f, value); }
         public int BufferedStateCount => positions.Count;
         public int MonsterTargetEntityId => positions.MonsterTargetEntityId;
+        public bool ParryActive { get; internal set; }
+        public bool ParrySucceeded { get; internal set; }
+        public bool MonsterStunned { get; internal set; }
 
         internal void Bind(NetworkEntityIdentity owner)
         {
@@ -73,6 +76,8 @@ namespace Rpg.Networking
             var entity = GetComponent<Entity>();
             if (entity != null) entity.FlipController(positions.FacingDirection);
             ApplyMovementAnimation();
+            if (positions.MovementState == MovementAnimationState.Dash)
+                GetComponent<PlayerFX>().CreateAfterImage();
         }
 
         private void ApplyMovementAnimation()
@@ -100,9 +105,9 @@ namespace Rpg.Networking
                 var attack = positions.MonsterAttack;
                 double elapsedTicks = attack == null ? 0 : System.Math.Max(0, positions.RenderTick - attack.startTick);
                 bool attacking = attack != null && elapsedTicks < attack.durationTicks;
-                animator.SetBool("Idle", !attacking && state == MovementAnimationState.Idle);
-                animator.SetBool("Move", !attacking && state == MovementAnimationState.Move);
-                animator.SetBool("Attack", attacking); animator.SetBool("Stunned", false);
+                animator.SetBool("Idle", !attacking && !MonsterStunned && state == MovementAnimationState.Idle);
+                animator.SetBool("Move", !attacking && !MonsterStunned && state == MovementAnimationState.Move);
+                animator.SetBool("Attack", attacking); animator.SetBool("Stunned", MonsterStunned);
                 if (attacking)
                 {
                     if (!holdingAttackAnimation) { savedAnimationSpeed = animator.speed; holdingAttackAnimation = true; }
@@ -138,11 +143,13 @@ namespace Rpg.Networking
             bool exitedAttack = holdingPlayerAttack;
             ReleasePlayerAttack();
             animator.SetBool("Attack", false);
-            animator.SetBool("Idle", !SwordActionActive && state == MovementAnimationState.Idle);
+            animator.SetBool("Idle", !SwordActionActive && !ParryActive && state == MovementAnimationState.Idle);
             animator.SetBool("Move", !SwordActionActive && state == MovementAnimationState.Move);
             animator.SetBool("Jump", state == MovementAnimationState.Jump || state == MovementAnimationState.Fall || state == MovementAnimationState.WallJump);
             animator.SetBool("WallSlide", state == MovementAnimationState.WallSlide);
             animator.SetBool("Dash", state == MovementAnimationState.Dash);
+            animator.SetBool("CounterAttack", ParryActive);
+            animator.SetBool("SuccessfulCounterAttack", ParrySucceeded);
             animator.SetFloat("yVelocity", positions.YVelocity);
             if (exitedAttack)
             {

@@ -6,6 +6,13 @@ public class CrystalSkill : Skill
 {
     [SerializeField] private float crystalDuration;
     [SerializeField] private GameObject crystalPrefab;
+    public GameObject CrystalPrefab => crystalPrefab;
+    public float CrystalDuration => crystalDuration;
+    internal float RoomMoveSpeed => moveSpeed;
+    internal int RoomStackCount => amountOfStacks;
+    internal float RoomStackCooldown => multiStackCooldown;
+    internal float RoomStackWindow => useTimeWindow;
+    internal Transform FindRoomTarget(Transform position) => FindClosestEnemy(position);
     private GameObject currentCrystal;
 
     [Header("Crystal Mirage")]

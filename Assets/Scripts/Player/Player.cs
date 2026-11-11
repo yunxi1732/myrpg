@@ -22,6 +22,7 @@ public class Player : Entity
     private bool dashPending;
     private long nextPrimaryAttackRequestSeq, localPrimaryAttackPress;
     private long nextFlaskRequestSeq, localFlaskPress;
+    private long nextCrystalRequestSeq, localCrystalPress;
     [Header("Network Primary Attack (A configuration)")]
     [Min(0.01f)] public float networkPrimaryAttackInterval = 0.8f;
     public float NetworkDashCooldownRemaining => Combat.Skills.Get<DashSkill>().Remaining;
@@ -46,6 +47,7 @@ public class Player : Entity
         pendingJump = NetworkJumpKind.None; dashPending = false;
         localPrimaryAttackPress = 0; combat?.PrimaryAttack?.CancelPending();
         localFlaskPress = 0;
+        localCrystalPress = 0;
         if (locked && IsAuthoritative) ClearLockedMovement();
     }
     public MovementAnimationState MovementAnimation
@@ -60,6 +62,7 @@ public class Player : Entity
             if (state == wallSlideState) return MovementAnimationState.WallSlide;
             if (state == wallJumpState) return MovementAnimationState.WallJump;
             if (state == dashState) return MovementAnimationState.Dash;
+            if (state == counterAttackState) return counterAttackState.Succeeded ? MovementAnimationState.ParrySuccess : MovementAnimationState.Parry;
             return MovementAnimationState.Idle;
         }
     }
@@ -86,6 +89,8 @@ public class Player : Entity
     public PlayerCombatContext Combat => combat ?? (combat = new PlayerCombatContext(this));
     public SkillManager skill => Combat.LegacySkills;
     public SwordSkill RoomSword { get; internal set; }
+    public Rpg.Networking.RoomCloneNetwork RoomClones { get; internal set; }
+    public Rpg.Networking.RoomBlackholeNetwork RoomBlackhole { get; internal set; }
     public SwordSkill SwordAbility => RoomSword != null ? RoomSword : skill.sword;
     public GameObject sword { get; private set; }
     public PlayerFX fx { get; private set; }
@@ -153,6 +158,7 @@ public class Player : Entity
         localDashPress = 0;
         localPrimaryAttackPress = 0;
         localFlaskPress = 0;
+        localCrystalPress = 0;
         var identity = EntityRuntimePermissions.Identity(this);
         if (IsLocalInputOwner)
         {
@@ -174,6 +180,10 @@ public class Player : Entity
         if (GameSimulationClock.IsNetwork && identity != null && identity.CanCollectMovementInput &&
             Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Mouse0))
             localPrimaryAttackPress = checked(++nextPrimaryAttackRequestSeq);
+
+        if (GameSimulationClock.IsNetwork && identity != null && identity.CanCollectMovementInput &&
+            Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.F))
+            localCrystalPress = checked(++nextCrystalRequestSeq);
 
         if (GameSimulationClock.IsNetwork && identity != null && identity.CanCollectMovementInput &&
             Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Space))
@@ -289,6 +299,10 @@ public class Player : Entity
     {
         requestSeq = localFlaskPress; localFlaskPress = 0; return requestSeq > 0;
     }
+    public bool TryConsumeCrystalPress(out long requestSeq)
+    {
+        requestSeq = localCrystalPress; localCrystalPress = 0; return requestSeq > 0;
+    }
 
     internal PrimaryAttackRejection CheckNetworkPrimaryAttack()
     {
@@ -379,7 +393,7 @@ public class Player : Entity
         InputData.Clear(); localJumpPress = 0; pendingJump = NetworkJumpKind.None;
         localDashPress = 0; dashPending = false;
         localPrimaryAttackPress = 0; combat?.PrimaryAttack?.CancelPending();
-        localFlaskPress = 0;
+        localFlaskPress = 0; localCrystalPress = 0;
     }
 
     private void OnDestroy() => combat?.ReleaseRoomEquipment();
@@ -448,7 +462,7 @@ public class Player : Entity
         // A network wall jump is an already-authorized impulse; local UI locks must not cancel its control window.
         if (current == moveState || current == airState || current == jumpState ||
             (current == wallJumpState && !GameSimulationClock.IsNetwork) || current == wallSlideState || current == dashState)
-            SetVelocity(0, rb.velocity.y);
+            SetVelocity(0, rb.linearVelocity.y);
     }
 
     public void CancelSwordAimForControlLock()
@@ -487,11 +501,11 @@ public class Player : Entity
     public void HoldNetworkAtZeroHealth()
     {
         if (!GameSimulationClock.IsNetwork || !IsAuthoritative) return;
-        InputData.Clear(); localJumpPress = 0; localDashPress = 0; localPrimaryAttackPress = 0; localFlaskPress = 0;
+        InputData.Clear(); localJumpPress = 0; localDashPress = 0; localPrimaryAttackPress = 0; localFlaskPress = 0; localCrystalPress = 0;
         pendingJump = NetworkJumpKind.None; dashPending = false;
         combat?.PrimaryAttack?.InterruptCurrent(); combat?.PrimaryAttackHits?.Reset();
         if (rb != null && GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive != true)
-        { rb.velocity = Vector2.zero; rb.angularVelocity = 0; }
+        { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0; }
         if (anim != null)
         {
             anim.SetBool("Attack", false); anim.SetBool("Move", false); anim.SetBool("Jump", false);

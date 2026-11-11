@@ -27,7 +27,7 @@ public class PlayerAirState : PlayerState
             return;
         }
         // Apply input/facing first so moving away from a wall cannot immediately re-enter wall slide.
-        if (xInput != 0) player.SetVelocity(0.8f * xInput * player.moveSpeed, rb.velocity.y);
+        if (xInput != 0) player.SetVelocity(0.8f * xInput * player.moveSpeed, rb.linearVelocity.y);
         if (player.IsWallDetected())
         {
             stateMachine.ChangeState(player.wallSlideState);

@@ -75,6 +75,7 @@ public class Enemy : Entity
     public float stunnedDuration;
     public Vector2 stunnedDir;
     protected bool canBeStunned;
+    public bool CounterWindowOpen => canBeStunned;
     [SerializeField] protected GameObject counterImage;
 
     public EnemyStateMachine stateMachine { get; private set; }
@@ -113,14 +114,18 @@ public class Enemy : Entity
             Rpg.Networking.EntityRuntimePermissions.Identity(this)?.MovementHeld != true)
         {
             stateMachine.currentState?.Update();
-            if (this is EnemySkeleton skeleton) skeleton.NetworkHits?.Step(GameSimulationClock.AuthorityTick);
+            if (this is EnemySkeleton skeleton)
+            {
+                skeleton.AdvanceNetworkCounterWindow(GameSimulationClock.AuthorityTick);
+                skeleton.NetworkHits?.Step(GameSimulationClock.AuthorityTick);
+            }
         }
     }
 
     public void HoldNetworkAtZeroHealth()
     {
         if (!NetworkMovementOnly || !IsAuthoritative) return;
-        if (rb != null) { rb.velocity = Vector2.zero; rb.angularVelocity = 0; }
+        if (rb != null) { rb.linearVelocity = Vector2.zero; rb.angularVelocity = 0; }
         if (anim != null) { anim.SetBool("Attack", false); anim.SetBool("Move", false); anim.SetBool("Idle", true); }
     }
 
@@ -180,6 +185,7 @@ public class Enemy : Entity
         canBeStunned = false;
         counterImage.SetActive(false);
     }
+    public void ShowCounterWindow(bool open) => counterImage.SetActive(open);
     #endregion
     public virtual bool CanBeStunned()
     {

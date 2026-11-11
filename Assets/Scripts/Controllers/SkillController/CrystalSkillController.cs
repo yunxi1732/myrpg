@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class CrystalSkillController : MonoBehaviour
 {
+    internal Rpg.Networking.RoomCrystalNetwork Room;
     private Player player;
     private Animator anim => GetComponent<Animator>();
     private CircleCollider2D cd => GetComponent<CircleCollider2D>();
@@ -15,6 +16,7 @@ public class CrystalSkillController : MonoBehaviour
     private float moveSpeed;
 
     private bool canGrow;
+    private bool finished;
     private float growSpeed = 3.5f;
     private Transform closestTarget;
     [SerializeField] private LayerMask whatIsEnemy;
@@ -27,6 +29,7 @@ public class CrystalSkillController : MonoBehaviour
         moveSpeed = _moveSpeed;
         closestTarget = _closestTarget;
         player = _player;
+        finished = false;
     }
 
     public void ChooseRanodmEnemy()
@@ -39,7 +42,7 @@ public class CrystalSkillController : MonoBehaviour
     private void Update()
     {
         crystalExistTimer -= GameSimulationClock.DeltaTime;
-        if (crystalExistTimer < 0) FinishCrystal();
+        if (crystalExistTimer < 0 && !finished) FinishCrystal();
         if (canMove)
         {
             if (closestTarget == null)
@@ -57,6 +60,7 @@ public class CrystalSkillController : MonoBehaviour
 
     private void AnimationExplodeEvent()
     {
+        if (Room != null) { if (Room.IsAuthoritative) Room.Explode(this, cd.radius); return; }
         Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, cd.radius);
         foreach (var hit in colliders)
         {
@@ -75,13 +79,16 @@ public class CrystalSkillController : MonoBehaviour
 
     public void FinishCrystal()
     {
+        if (finished) return;
+        finished = true;
         if (canExplode)
         {
             canGrow = true;
             anim.SetBool("Explode", true);
         }
         else SelfDestroy();
+        Room?.Publish();
     }
 
-    public void SelfDestroy() => Destroy(gameObject);
+    public void SelfDestroy() { if (Room == null || Room.IsAuthoritative) Destroy(gameObject); }
 }

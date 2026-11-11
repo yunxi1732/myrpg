@@ -9,6 +9,7 @@ namespace Rpg.Networking
     {
         private readonly RoomPresentationContext context;
         private readonly RoomSceneMonsters monsters;
+        private readonly RoomNetworkObjects objects;
         private readonly AuthorityResultSequence sequence;
         private readonly AuthorityResultReceipts receipts;
         private readonly Action<DamageResultDto> publish;
@@ -17,10 +18,12 @@ namespace Rpg.Networking
         public AuthorityResultReceipts Receipts => receipts; // Future result handlers share exact receipts, never a maximum-ID watermark.
 
         public RoomCombatDamage(RoomPresentationContext context, RoomSceneMonsters monsters,
-            AuthorityResultSequence sequence = null, Action<DamageResultDto> publish = null, Action<ElementStatesDto> publishElements = null)
+            AuthorityResultSequence sequence = null, Action<DamageResultDto> publish = null, Action<ElementStatesDto> publishElements = null,
+            RoomNetworkObjects objects = null)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
             this.monsters = monsters;
+            this.objects = objects;
             if (!context.IsGuest && (sequence == null || sequence.RoomSessionId != context.RoomSessionId))
                 throw new ArgumentException("A must use its room's shared result sequence.");
             this.sequence = sequence; this.publish = publish;
@@ -44,7 +47,7 @@ namespace Rpg.Networking
             ResolveDirectHit(source, hit.Target, targetView, hit.Attack, hit.SegmentId, hit.AuthorityTick);
         }
 
-        internal bool OnSwordHit(PrimaryAttackInstance attack, Enemy enemy)
+        internal bool OnSkillHit(PrimaryAttackInstance attack, Enemy enemy, bool parry = false, float multiplier = 0, bool magicOnly = false)
         {
             if (disposed || context.IsGuest || !monsters.IsValidPrimaryAttackTarget(enemy)) return false;
             int targetId = enemy.GetComponent<NetworkEntityIdentity>().EntityId;
@@ -52,7 +55,23 @@ namespace Rpg.Networking
             if (!attack.TryRegisterHit(1, targetId, tick) || !attack.TryConsumeDamageHit(1, targetId)) return false;
             context.TryGetEntity(attack.EntityId, out var source);
             context.TryGetEntity(targetId, out var target);
-            ResolveDirectHit(source.View.GetComponent<Player>(), enemy, target, attack, 1, tick);
+            ResolveDirectHit(source.View.GetComponent<Player>(), enemy, target, attack, 1, tick, parry, multiplier, magicOnly);
+            return true;
+        }
+
+        public bool TryParry(Player player, EnemySkeleton enemy)
+        {
+            if (disposed || context.IsGuest || player.counterAttackState.Succeeded ||
+                player.stateMachine.currentState != player.counterAttackState || !IsValidPlayerTarget(player) ||
+                !monsters.IsValidPrimaryAttackTarget(enemy) || enemy.NetworkAiState != MonsterAiState.Attack ||
+                !enemy.CounterWindowOpen || !enemy.CanBeStunned()) return false;
+            player.counterAttackState.ConfirmNetworkSuccess();
+            ulong tick = GameSimulationClock.AuthorityTick;
+            var attack = new PrimaryAttackInstance(context.RoomSessionId, player.Combat.PlayerId, player.Combat.EntityId,
+                objects.AllocatePrimaryAttackInstanceId(), 0, tick, checked(tick + 1),
+                new PrimaryAttackTiming(0, 1, new PrimaryHitSegmentTiming(0, 1)));
+            OnSkillHit(attack, enemy, true);
+            attack.Close();
             return true;
         }
 
@@ -76,16 +95,19 @@ namespace Rpg.Networking
                 hit.Source.NetworkAiState != MonsterAiState.Attack || !ReferenceEquals(hit.Source.NetworkHits.Current, hit.Attack) ||
                 hit.Attack.SegmentAt(hit.AuthorityTick)?.SegmentId != hit.SegmentId ||
                 !hit.Attack.TryConsumeDamageHit(hit.SegmentId, hit.TargetEntityId)) return;
+            if (TryParry(hit.Target, hit.Source)) return;
             ResolveDirectHit(hit.Source, hit.Target, targetView, hit.Attack, hit.SegmentId, hit.AuthorityTick);
         }
 
-        private void ResolveDirectHit(Entity source, Entity targetEntity, RoomEntityPresentation targetView, PrimaryAttackInstance attack, int segment, ulong tick)
+        private void ResolveDirectHit(Entity source, Entity targetEntity, RoomEntityPresentation targetView, PrimaryAttackInstance attack, int segment, ulong tick,
+            bool parry = false, float multiplier = 0, bool magicOnly = false)
         {
             var stats = source.stats;
             var target = targetEntity.GetComponent<CharaterStats>();
-            var outcome = PhysicalDamageRules.Calculate(new PhysicalDamageInput
+            var outcome = magicOnly ? new PhysicalDamageOutcome(0, target.currentHealth, false, false) : PhysicalDamageRules.Calculate(new PhysicalDamageInput
             {
-                damage = stats.damage.GetValue(), strength = stats.strength.GetValue(), critChance = stats.critChance.GetValue(),
+                damage = multiplier > 0 ? Mathf.RoundToInt((stats.damage.GetValue() + stats.strength.GetValue()) * multiplier) : stats.damage.GetValue(),
+                strength = multiplier > 0 ? 0 : stats.strength.GetValue(), critChance = stats.critChance.GetValue(),
                 critPower = stats.critPower.GetValue(), agility = stats.agility.GetValue(), shocked = stats.isShocked,
                 armor = target.armor.GetValue(), evasion = target.evasion.GetValue(), targetAgility = target.agility.GetValue(),
                 chilled = target.isChilled, vulnerable = target.isVulnerable, invincible = target.isInvincible, health = target.currentHealth
@@ -111,7 +133,7 @@ namespace Rpg.Networking
                 actualDamage = components.physicalDamage + components.magicDamage, components = components,
                 finalHealth = finalHealth, maxHealth = target.GetMaxHealthValue(),
                 critical = outcome.Critical, evaded = outcome.Evaded,
-                impact = outcome.Evaded || target.isInvincible ? null : NetworkHitFeedback.CreateAuthorityImpact(targetEntity, source)
+                impact = parry || outcome.Evaded || target.isInvincible ? null : NetworkHitFeedback.CreateAuthorityImpact(targetEntity, source)
             };
             ConfirmAuthorityResult(result, targetView);
             if (result.finalHealth == 0)

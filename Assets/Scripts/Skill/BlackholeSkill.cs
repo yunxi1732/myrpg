@@ -15,6 +15,13 @@ public class BlackholeSkill : Skill
     [SerializeField] float maxSize;
     [SerializeField] float cloneAttackCooldown;
     [SerializeField] float blackholeDuration;
+    internal GameObject BlackholePrefab => blackholePrefab;
+    internal int AmountOfAttack => amountOfAttack;
+    internal float GrowSpeed => growSpeed;
+    internal float ShrinkSpeed => shrinkSpeed;
+    internal float MaxSize => maxSize;
+    internal float CloneAttackCooldown => cloneAttackCooldown;
+    internal float BlackholeDuration => blackholeDuration;
 
     BlackholeSkillController currentBlackhole;
 

@@ -35,16 +35,18 @@ public class PlayerBlackholeState : PlayerState
     public override void Update()
     {
         base.Update();
-        if (stateTimer > 0) rb.velocity = new Vector2(0, 15);
+        if (stateTimer > 0) rb.linearVelocity = new Vector2(0, 15);
         else
         {
-            rb.velocity = new Vector2(0, -0.1f);
+            rb.linearVelocity = new Vector2(0, -0.1f);
             if (!skillUsed)
             {
-                if (player.skill.blackhole.CanUseSkill()) skillUsed = true;
+                if (GameSimulationClock.IsNetwork) { player.RoomBlackhole.Spawn(player); skillUsed = true; }
+                else if (player.skill.blackhole.CanUseSkill()) skillUsed = true;
             }
         }
 
-        if (player.skill.blackhole.SkillCompleted()) stateMachine.ChangeState(player.airState);
+        if (GameSimulationClock.IsNetwork ? player.RoomBlackhole.Completed(player) : player.skill.blackhole.SkillCompleted())
+            stateMachine.ChangeState(player.airState);
     }
 }

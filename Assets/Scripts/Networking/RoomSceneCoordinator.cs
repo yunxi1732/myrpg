@@ -43,6 +43,17 @@ namespace Rpg.Networking
         private readonly System.Collections.Generic.Queue<FlaskUseResultDto> pendingFlaskResults = new System.Collections.Generic.Queue<FlaskUseResultDto>();
         private float flaskHudTimer;
         private SwordSkill swordTemplate;
+        private CrystalSkill crystalTemplate;
+        private RoomCrystalNetwork crystals;
+        private CrystalStatesDto pendingCrystalStates;
+        private CloneSkill cloneTemplate;
+        private RoomCloneNetwork clones;
+        private CloneStatesDto pendingCloneStates;
+        private BlackholeSkill blackholeTemplate;
+        private RoomBlackholeNetwork blackholes;
+        private BlackholeStatesDto pendingBlackholeStates;
+        private long localParrySeq;
+        private readonly System.Collections.Generic.Dictionary<int, long> parryRequests = new System.Collections.Generic.Dictionary<int, long>();
         private RoomSwordNetwork swords;
         private SwordStatesDto pendingSwordStates;
         private float swordStateTimer;
@@ -75,6 +86,9 @@ namespace Rpg.Networking
             host.SkillUnlockRequested += OnSkillUnlockRequested;
             host.FlaskUseRequested += OnFlaskUseRequested;
             host.SwordInputReceived += OnSwordInput;
+            host.CrystalInputReceived += OnCrystalInput;
+            host.BlackholeInputReceived += OnBlackholeInput;
+            host.ParryInputReceived += OnParryInput;
             host.InputLockReceived += OnGuestInputLock;
             GameplayControlLock.Changed += OnLocalInputLockChanged;
             client.SceneInitializationAllowed += OnBothReady;
@@ -89,6 +103,9 @@ namespace Rpg.Networking
             client.SkillUnlockResultReceived += OnSkillUnlockResult;
             client.FlaskUseResultReceived += OnFlaskUseResult;
             client.SwordStatesReceived += OnSwordStates;
+            client.CrystalStatesReceived += OnCrystalStates;
+            client.CloneStatesReceived += OnCloneStates;
+            client.BlackholeStatesReceived += OnBlackholeStates;
             host.RoomExited += OnExit;
             client.RoomExited += OnExit;
             host.Disconnected += OnDisconnect;
@@ -244,7 +261,7 @@ namespace Rpg.Networking
                 Players.EnsurePlayers(Presentation, authority, guest);
                 Monsters.BindAuthority(Presentation, host.AllocateSceneEntityId);
                 Players.BindPrimaryAttackTargets(Monsters);
-                if (CombatDamage == null) CombatDamage = new RoomCombatDamage(Presentation, Monsters, host.Results, value => host.SendDamageResult(value), value => host.SendElementStates(value));
+                if (CombatDamage == null) CombatDamage = new RoomCombatDamage(Presentation, Monsters, host.Results, value => host.SendDamageResult(value), value => host.SendElementStates(value), NetworkObjects);
                 Players.BindDamageService(CombatDamage);
                 Monsters.BindDamageService(CombatDamage);
                 StartCoroutine(FinishPlayerInitialization(null, token, loadId));
@@ -298,6 +315,9 @@ namespace Rpg.Networking
             try
             {
                 if (activeRoomIsHost) EnsureSwordNetwork();
+                EnsureCrystalNetwork();
+                EnsureCloneNetwork();
+                EnsureBlackholeNetwork();
                 if (initialState == null) initialState = Players.CaptureInitialState(loadId, GameSimulationClock.AuthorityTick);
                 Players.ApplyInitialState(initialState);
                 if (!activeRoomIsHost) EnsureSwordNetwork();
@@ -314,6 +334,12 @@ namespace Rpg.Networking
                 initializedLoadId = loadId;
                 if (activeRoomIsHost) swords.Publish();
                 else if (pendingSwordStates != null) { swords.Apply(pendingSwordStates); pendingSwordStates = null; }
+                if (activeRoomIsHost) crystals.Publish();
+                else if (pendingCrystalStates != null) { crystals.Apply(pendingCrystalStates); pendingCrystalStates = null; }
+                if (activeRoomIsHost) clones.Publish();
+                else if (pendingCloneStates != null) { clones.Apply(pendingCloneStates); pendingCloneStates = null; }
+                if (activeRoomIsHost) blackholes.Publish();
+                else if (pendingBlackholeStates != null) { blackholes.Apply(pendingBlackholeStates); pendingBlackholeStates = null; }
                 if (!activeRoomIsHost)
                     while (pendingInventoryResults.Count > 0) OnInventoryResult(pendingInventoryResults.Dequeue());
                 if (!activeRoomIsHost)
@@ -368,10 +394,16 @@ namespace Rpg.Networking
                     if (hostPlayer != null && hostPlayer.TryConsumeFlaskPress(out long flaskSeq) && hostPlayer.isActiveAndEnabled &&
                         Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
                         OnFlaskUseRequested(host.HostIdentity, new FlaskUseRequestDto { roomSessionId = activeRoomSessionId, requestSeq = flaskSeq });
+                    if (hostPlayer != null && hostPlayer.TryConsumeCrystalPress(out long crystalSeq))
+                        OnCrystalInput(host.HostIdentity, new CrystalInputDto { roomSessionId = activeRoomSessionId, actionSeq = crystalSeq });
+                    if (hostPlayer != null && Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R))
+                        blackholes.SendCastOrRelease(hostPlayer);
+                    if (hostPlayer != null && Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Q))
+                        OnParryInput(host.HostIdentity, new ParryInputDto { roomSessionId = activeRoomSessionId, actionSeq = ++localParrySeq });
                     flaskHudTimer += GameSimulationClock.DeltaTime;
                     if (flaskHudTimer >= PlayerStateSendInterval) { flaskHudTimer = 0; Players?.RefreshAuthorityFlaskHud(); }
                     swordStateTimer += GameSimulationClock.DeltaTime;
-                    if (swordStateTimer >= PlayerStateSendInterval) { swordStateTimer = 0; swords?.Publish(); }
+                    if (swordStateTimer >= PlayerStateSendInterval) { swordStateTimer = 0; swords?.Publish(); crystals?.Publish(); clones?.Publish(); blackholes?.Publish(); }
                 }
                 SendAuthoritativePositions();
                 return;
@@ -395,6 +427,12 @@ namespace Rpg.Networking
                 client.SendPrimaryAttackRequest(attackRequestSeq);
             if (player.TryConsumeFlaskPress(out long flaskRequestSeq) && player.isActiveAndEnabled && Application.isFocused && !GameplayControlLock.IsActionInputBlocked)
                 client.SendFlaskUseRequest(new FlaskUseRequestDto { roomSessionId = activeRoomSessionId, requestSeq = flaskRequestSeq });
+            if (player.TryConsumeCrystalPress(out long crystalRequestSeq))
+                client.SendSkillInput(new CrystalInputDto { roomSessionId = activeRoomSessionId, actionSeq = crystalRequestSeq });
+            if (Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.R))
+                blackholes.SendCastOrRelease(player);
+            if (Application.isFocused && !GameplayControlLock.IsActionInputBlocked && Input.GetKeyDown(KeyCode.Q))
+                client.SendSkillInput(new ParryInputDto { roomSessionId = activeRoomSessionId, actionSeq = ++localParrySeq });
         }
 
         private void SendAuthoritativePositions()
@@ -423,28 +461,72 @@ namespace Rpg.Networking
         {
             if (IsSceneSession && !returning && activeRoomIsHost) CombatDamage?.AdvanceElements(GameSimulationClock.AuthorityTick);
             if (IsSceneSession && !returning && activeRoomIsHost) swords?.Advance();
+            if (IsSceneSession && !returning && activeRoomIsHost) crystals?.Advance();
         }
 
         private void EnsureSwordNetwork()
         {
             if (swords == null) swords = new RoomSwordNetwork(Presentation, Players, NetworkObjects, CombatDamage, swordTemplate,
-                (player, input) => { if (activeRoomIsHost) OnSwordInput(host.HostIdentity, input); else client.SendSwordInput(input); },
+                (player, input) => { if (activeRoomIsHost) OnSwordInput(host.HostIdentity, input); else client.SendSkillInput(input); },
                 activeRoomIsHost ? host.Results : null, activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
-                activeRoomIsHost ? (Action<SwordStatesDto>)(value => host.SendSwordStates(value)) : null);
+                activeRoomIsHost ? (Action<SwordStatesDto>)(value => host.SendSkillStates(value)) : null);
             swords.EnsurePlayers();
         }
         private void OnSwordInput(RoomPlayerIdentity actor, SwordInputDto input) => swords?.Request(actor, input);
-        private void OnSwordStates(SwordStatesDto value)
+        private void EnsureCrystalNetwork()
+        {
+            if (crystals == null) crystals = new RoomCrystalNetwork(Presentation, Players, NetworkObjects, crystalTemplate, CombatDamage,
+                activeRoomIsHost ? host.Results : null, activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
+                activeRoomIsHost ? (Action<CrystalStatesDto>)(value => host.SendSkillStates(value)) : null);
+        }
+        private void OnCrystalInput(RoomPlayerIdentity actor, CrystalInputDto input) => crystals?.Request(actor, input);
+        private void EnsureCloneNetwork()
+        {
+            if (clones == null) clones = new RoomCloneNetwork(Presentation, Players, NetworkObjects, cloneTemplate, crystals, CombatDamage,
+                activeRoomIsHost ? host.Results : null, activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
+                activeRoomIsHost ? (Action<CloneStatesDto>)(value => host.SendSkillStates(value)) : null);
+            clones.EnsurePlayers();
+            crystals.Clones = clones;
+        }
+        private void EnsureBlackholeNetwork()
+        {
+            if (blackholes == null) blackholes = new RoomBlackholeNetwork(Presentation, Players, Monsters, NetworkObjects,
+                blackholeTemplate, clones, activeRoomIsHost ? host.Results : null,
+                activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
+                activeRoomIsHost ? (Action<BlackholeStatesDto>)(value => host.SendSkillStates(value)) : null,
+                input => { if (activeRoomIsHost) OnBlackholeInput(host.HostIdentity, input); else client.SendSkillInput(input); });
+            blackholes.EnsurePlayers();
+        }
+        private void OnBlackholeInput(RoomPlayerIdentity actor, BlackholeInputDto input) => blackholes?.Request(actor, input);
+        private void OnParryInput(RoomPlayerIdentity actor, ParryInputDto input)
+        {
+            if (!activeRoomIsHost || !IsSceneSession || returning || initializedLoadId == 0 ||
+                initializedLoadId != initializationLoadId || input.roomSessionId != activeRoomSessionId ||
+                parryRequests.TryGetValue(actor.PlayerId, out long last) && input.actionSeq <= last) return;
+            parryRequests[actor.PlayerId] = input.actionSeq;
+            var player = Players.Entities[actor.EntityId];
+            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked ||
+                player.stats.currentHealth <= 0 || !player.Combat.Skills.Get<ParrySkill>().Unlocked ||
+                player.Combat.Skills.Get<ParrySkill>().Remaining > 0 ||
+                !player.IsGroundDetected() || player.stateMachine.currentState != player.idleState &&
+                player.stateMachine.currentState != player.moveState) return;
+            if (player.Combat.Skills.Commit<ParrySkill>()) player.stateMachine.ChangeState(player.counterAttackState);
+        }
+        private void ReceiveSkillStates<T>(T value, ref T pending, object channel, Action<T> apply) where T : RoomSkillStatesDto
         {
             if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId) return;
-            if (swords == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
+            if (channel == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
             {
-                if (pendingSwordStates == null || value.stateSeq > pendingSwordStates.stateSeq && value.authorityTick >= pendingSwordStates.authorityTick)
-                    pendingSwordStates = value;
+                if (pending == null || value.stateSeq > pending.stateSeq && value.authorityTick >= pending.authorityTick)
+                    pending = value;
                 return;
             }
-            swords.Apply(value);
+            apply(value);
         }
+        private void OnBlackholeStates(BlackholeStatesDto value) => ReceiveSkillStates(value, ref pendingBlackholeStates, blackholes, state => blackholes.Apply(state));
+        private void OnCloneStates(CloneStatesDto value) => ReceiveSkillStates(value, ref pendingCloneStates, clones, state => clones.Apply(state));
+        private void OnCrystalStates(CrystalStatesDto value) => ReceiveSkillStates(value, ref pendingCrystalStates, crystals, state => crystals.Apply(state));
+        private void OnSwordStates(SwordStatesDto value) => ReceiveSkillStates(value, ref pendingSwordStates, swords, state => swords.Apply(state));
 
         private void OnElementStates(ElementStatesDto value)
         {
@@ -729,8 +811,11 @@ namespace Rpg.Networking
         {
             foreach (var root in scene.GetRootGameObjects())
             {
-                swordTemplate = root.GetComponentInChildren<SwordSkill>(true);
-                if (swordTemplate != null) break;
+                if (swordTemplate == null) swordTemplate = root.GetComponentInChildren<SwordSkill>(true);
+                if (crystalTemplate == null) crystalTemplate = root.GetComponentInChildren<CrystalSkill>(true);
+                if (cloneTemplate == null) cloneTemplate = root.GetComponentInChildren<CloneSkill>(true);
+                if (blackholeTemplate == null) blackholeTemplate = root.GetComponentInChildren<BlackholeSkill>(true);
+                if (swordTemplate != null && crystalTemplate != null && cloneTemplate != null && blackholeTemplate != null) break;
             }
             NetworkObjects = new RoomNetworkObjects(activeRoomSessionId, scene, () =>
             {
@@ -750,12 +835,17 @@ namespace Rpg.Networking
             InvalidateEntityInitialization();
             if (departingPlayerId > 0)
             {
+                parryRequests.Remove(departingPlayerId);
                 CombatDamage?.RemovePlayerElements(departingPlayerId, GameSimulationClock.AuthorityTick);
                 NetworkObjects?.CleanupPlayer(activeRoomSessionId, departingPlayerId);
                 Presentation?.RemovePlayer(departingPlayerId);
                 return;
             }
             swords?.Dispose(); swords = null; pendingSwordStates = null; swordStateTimer = 0;
+            crystals?.Dispose(); crystals = null; pendingCrystalStates = null;
+            clones?.Dispose(); clones = null; pendingCloneStates = null;
+            blackholes?.Dispose(); blackholes = null; pendingBlackholeStates = null;
+            parryRequests.Clear(); localParrySeq = 0;
             CombatDamage?.Dispose(); CombatDamage = null;
             pendingDamageResults.Clear();
             pendingInventoryResults.Clear(); localEquipmentRequestSeq = localCraftRequestSeq = 0;
@@ -859,6 +949,9 @@ namespace Rpg.Networking
                 host.SkillUnlockRequested -= OnSkillUnlockRequested;
                 host.FlaskUseRequested -= OnFlaskUseRequested;
                 host.SwordInputReceived -= OnSwordInput;
+                host.CrystalInputReceived -= OnCrystalInput;
+                host.BlackholeInputReceived -= OnBlackholeInput;
+                host.ParryInputReceived -= OnParryInput;
                 host.InputLockReceived -= OnGuestInputLock;
                 host.RoomExited -= OnExit; host.Disconnected -= OnDisconnect;
             }
@@ -876,6 +969,9 @@ namespace Rpg.Networking
                 client.SkillUnlockResultReceived -= OnSkillUnlockResult;
                 client.FlaskUseResultReceived -= OnFlaskUseResult;
                 client.SwordStatesReceived -= OnSwordStates;
+                client.CrystalStatesReceived -= OnCrystalStates;
+                client.CloneStatesReceived -= OnCloneStates;
+                client.BlackholeStatesReceived -= OnBlackholeStates;
                 client.RoomExited -= OnExit; client.Disconnected -= OnDisconnect;
             }
             if (ReferenceEquals(Active, this)) Active = null;

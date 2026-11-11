@@ -50,7 +50,7 @@ namespace Rpg.Networking
             body = GetComponent<Rigidbody2D>();
             knockbackEndTick = startTick + (ulong)impact.knockbackTicks;
             knockbackActive = body != null;
-            if (body != null) body.velocity = new Vector2(impact.knockbackVelocity[0], impact.knockbackVelocity[1]);
+            if (body != null) body.linearVelocity = new Vector2(impact.knockbackVelocity[0], impact.knockbackVelocity[1]);
         }
 
         public bool AdvanceAuthorityKnockback(ulong tick)
@@ -58,7 +58,7 @@ namespace Rpg.Networking
             if (!IsAuthorityKnockbackActive) return false;
             if (tick < knockbackEndTick) return true;
             knockbackActive = false;
-            if (body != null) body.velocity = new Vector2(0, body.velocity.y);
+            if (body != null) body.linearVelocity = new Vector2(0, body.linearVelocity.y);
             return false;
         }
 

@@ -14,7 +14,7 @@ public class SkeletonStunnedState : EnemyState
     {
         base.Enter();
         stateTimer = enemy.stunnedDuration;
-        rb.velocity = new Vector2(-enemy.facingDir * enemy.stunnedDir.x, enemy.stunnedDir.y);
+        rb.linearVelocity = new Vector2(-enemy.facingDir * enemy.stunnedDir.x, enemy.stunnedDir.y);
         enemy.fx.BeginStunBlink();
     }
 

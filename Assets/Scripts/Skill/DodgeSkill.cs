@@ -8,6 +8,7 @@ public class DodgeSkill : Skill
     [Header("Dodge")]
     [SerializeField] private UI_SkillTreeSlot unlockDodgeButton;
     [SerializeField] private int evasionAmount;
+    internal int EvasionAmount => evasionAmount;
     public bool dodgeUnlocked;
 
     [Header("Mirage dodge")]

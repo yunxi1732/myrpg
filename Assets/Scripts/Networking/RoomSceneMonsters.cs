@@ -245,6 +245,7 @@ namespace Rpg.Networking
             Vector2 position = initial ? (Vector2)enemy.transform.position : enemy.rb != null ? enemy.rb.position : entry.Position;
             return new MonsterStateDto { entityId = id, position = new[] { position.x, position.y }, facingDir = enemy.facingDir,
                 targetEntityId = targetId, aiState = aiState, moving = enemy.anim != null && enemy.anim.GetBool("Move"),
+                counterWindow = enemy.CounterWindowOpen,
                 attack = aiState == MonsterAiState.Attack ? skeleton.NetworkAttack : new MonsterAttackDto(),
                 active = entry.Active && enemy.gameObject.activeInHierarchy };
         }
@@ -275,6 +276,8 @@ namespace Rpg.Networking
                     state.moving ? MovementAnimationState.Move : MovementAnimationState.Idle,
                     monsterAttack: state.aiState == MonsterAiState.Attack ? state.attack : null,
                     monsterTargetEntityId: state.targetEntityId)) continue;
+                entry.Enemy.GetComponent<RemotePlayerView>().MonsterStunned = state.aiState == MonsterAiState.Stunned;
+                entry.Enemy.ShowCounterWindow(state.counterWindow);
                 entry.Enemy.gameObject.SetActive(state.active);
             }
         }

@@ -232,7 +232,7 @@ public static class NetworkPresentationVerification
         var body = view.gameObject.AddComponent<Rigidbody2D>();
         body.gravityScale = 3;
         body.interpolation = RigidbodyInterpolation2D.Interpolate;
-        body.velocity = Vector2.one;
+        body.linearVelocity = Vector2.one;
         view.gameObject.AddComponent<CapsuleCollider2D>();
         var trigger = new GameObject("Child gameplay trigger");
         trigger.transform.SetParent(view, false);
@@ -261,7 +261,7 @@ public static class NetworkPresentationVerification
         var player = view.GetComponent<Player>();
         var stats = view.GetComponent<PlayerStats>();
         var body = view.GetComponent<Rigidbody2D>();
-        Require(identity.Role == NetworkEntityRole.Display && !player.IsAuthoritative && !body.simulated && body.velocity == Vector2.zero &&
+        Require(identity.Role == NetworkEntityRole.Display && !player.IsAuthoritative && !body.simulated && body.linearVelocity == Vector2.zero &&
             body.gravityScale == 0 && body.interpolation == RigidbodyInterpolation2D.None && !view.GetComponent<Collider2D>().enabled &&
             !view.GetComponentInChildren<Animator>().applyRootMotion && !view.GetComponentInChildren<Animator>().fireEvents,
             "Display has animation but no local physics, gravity, colliders, root motion or animation events");
@@ -275,7 +275,7 @@ public static class NetworkPresentationVerification
         Require(!player.TryQueueNetworkJump(1), "B display cannot execute a jump request or run local jump physics");
         Require(!player.TryQueueNetworkDash(2, 1), "B display cannot execute a dash or start an authority cooldown");
         player.Die(); player.DamageImpact(); player.AnimationTrigger();
-        Require(!player.BusyFor(1).MoveNext() && player.stateMachine?.currentState == null && body.velocity == Vector2.zero,
+        Require(!player.BusyFor(1).MoveNext() && player.stateMachine?.currentState == null && body.linearVelocity == Vector2.zero,
             "Display never enters or advances the legacy player state machine");
         var machine = new PlayerStateMachine();
         var forbiddenState = new PlayerState(player, machine, "Idle");
@@ -330,7 +330,7 @@ public static class NetworkPresentationVerification
         bodySetter.Invoke(localPlayer, new object[] { a.GetComponent<Rigidbody2D>() });
         bodySetter.Invoke(guestPlayer, new object[] { aGuest.GetComponent<Rigidbody2D>() });
         localPlayer.SetVelocity(3, 2); guestPlayer.SetVelocity(5, -2);
-        Require(localPlayer.rb.velocity == new Vector2(3, 2) && guestPlayer.rb.velocity == new Vector2(5, -2),
+        Require(localPlayer.rb.linearVelocity == new Vector2(3, 2) && guestPlayer.rb.linearVelocity == new Vector2(5, -2),
             "Authoritative movement is permitted for A guest independently of local input ownership");
         var source = a.GetComponent<PlayerStats>();
         var target = aGuest.GetComponent<PlayerStats>();

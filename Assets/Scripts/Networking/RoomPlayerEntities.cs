@@ -23,6 +23,7 @@ namespace Rpg.Networking
         private RoomFlaskCatalog flaskCatalog;
         private readonly List<UI_SkillTreeSlot> skillTreeSlots = new List<UI_SkillTreeSlot>();
         private readonly int startingCurrency;
+        private readonly int dodgeBonus;
         private readonly Inventory roomInventorySource;
         private readonly HashSet<ItemData_Equipment> roomRecipes = new HashSet<ItemData_Equipment>();
         private readonly GameObject root;
@@ -66,6 +67,8 @@ namespace Rpg.Networking
                 skillTreeSlots.AddRange(sceneRoot.GetComponentsInChildren<UI_SkillTreeSlot>(true));
                 var manager = sceneRoot.GetComponentInChildren<PlayerManager>(true);
                 if (manager != null) startingCurrency = Mathf.Max(0, manager.currency);
+                var dodge = sceneRoot.GetComponentInChildren<DodgeSkill>(true);
+                if (dodge != null) dodgeBonus = dodge.EvasionAmount;
                 foreach (var list in sceneRoot.GetComponentsInChildren<UI_CraftList>(true))
                     foreach (var product in list.CraftEquipment) if (product != null) roomRecipes.Add(product);
             }
@@ -145,6 +148,7 @@ namespace Rpg.Networking
                 clone.transform.SetParent(playersRoot, false);
                 clone.transform.position = position;
                 player = clone.GetComponent<Player>();
+                player.Combat.ConfigureRoomDodgeBonus(dodgeBonus);
                 player.enabled = true;
                 clone.GetComponent<PlayerStats>().enabled = true;
                 context.RegisterEntity(identity.EntityId, identity.PlayerId, clone.transform);
@@ -210,7 +214,7 @@ namespace Rpg.Networking
                 playerId = identity.PlayerId, entityId = identity.EntityId,
                 position = new[] { player.transform.position.x, player.transform.position.y },
                 facingDir = player.facingDir,
-                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y,
+                movementState = player.MovementAnimation, yVelocity = player.rb.linearVelocity.y,
                 health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = player.Combat.RoomCurrency,
                 combat = player.Combat.CaptureRoomConfiguration(), attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState()
             };
@@ -279,10 +283,14 @@ namespace Rpg.Networking
         {
             Player player = entities[identity.EntityId];
             Vector2 position = player.rb.position;
+            var movement = player.MovementAnimation;
             return new PlayerPositionDto
             {
                 entityId = identity.EntityId, position = new[] { position.x, position.y }, facingDir = player.facingDir,
-                movementState = player.MovementAnimation, yVelocity = player.rb.velocity.y, attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState()
+                movementState = movement, yVelocity = player.rb.linearVelocity.y, attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState(),
+                skillFills = RoomCombatConfiguration.HudFills(player.Combat.Skills),
+                parrying = movement == MovementAnimationState.Parry || movement == MovementAnimationState.ParrySuccess,
+                parrySucceeded = movement == MovementAnimationState.ParrySuccess, invincible = player.stats.isInvincible
             };
         }
 
@@ -308,9 +316,17 @@ namespace Rpg.Networking
                 if (!entities.TryGetValue(state.entityId, out Player player) || player == null || player.IsAuthoritative ||
                     !context.TryGetEntity(state.entityId, out var presentation)) continue;
                 // Each entity's position stream decides freshness independently of health/HUD and other entities.
-                presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
+                bool applied = presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
                     new Vector2(state.position[0], state.position[1]), false, state.facingDir, state.movementState, state.yVelocity, playerAttack: state.attack);
+                if (applied)
+                {
+                    var display = player.GetComponent<RemotePlayerView>();
+                    display.ParryActive = state.parrying;
+                    display.ParrySucceeded = state.parrySucceeded;
+                    player.stats.ApplyConfirmedInvincibility(state.invincible);
+                }
                 presentation.ApplyFlaskState(value.roomSessionId, value.authorityTick, state.flask);
+                presentation.ApplySkillFills(value.roomSessionId, value.authorityTick, value.stateSeq, state.skillFills);
             }
         }
 
@@ -343,6 +359,7 @@ namespace Rpg.Networking
             if (disposed || context == null || context.IsGuest || damage == null) return;
             foreach (var player in entities.Values)
             {
+                player.counterAttackState.RoomDamage = damage;
                 player.Combat.PrimaryAttackHits.HitConfirmed -= damage.OnPrimaryHit;
                 player.Combat.PrimaryAttackHits.HitConfirmed += damage.OnPrimaryHit;
             }
@@ -393,7 +410,11 @@ namespace Rpg.Networking
             if (disposed || context == null || context.IsGuest || appliedStateSeq == 0 || GameSimulationClock.AuthorityTick == 0) return;
             foreach (var pair in entities)
                 if (pair.Value != null && context.TryGetEntity(pair.Key, out var view))
+                {
                     view.ApplyFlaskState(context.RoomSessionId, GameSimulationClock.AuthorityTick, pair.Value.Combat.CaptureRoomFlaskState());
+                    view.ApplySkillFills(context.RoomSessionId, GameSimulationClock.AuthorityTick, ++nextStateSeq,
+                        RoomCombatConfiguration.HudFills(pair.Value.Combat.Skills));
+                }
         }
 
         public bool RequestGuestDash(RoomPlayerIdentity source, DashRequestDto request)
