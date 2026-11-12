@@ -11,9 +11,8 @@ public class UI : MonoBehaviour, ISaveManager
     [SerializeField] private GameObject endText;
     public UI_FadeScreen fadeScreen;
     [SerializeField] private GameObject restartButton;
-    private string networkEndTextOriginal;
-    private bool networkEndTextRaycastOriginal;
-    private bool networkDeathWaiting;
+    private bool networkRoomDeathShowing;
+    private Coroutine endScreenRoutine;
     [Space]
 
     [SerializeField] private GameObject characterUI;
@@ -237,35 +236,33 @@ public class UI : MonoBehaviour, ISaveManager
     public void SwitchOnEndScreen()
     { 
         fadeScreen.FadeOut();
-        StartCoroutine(EndScreenCorutione());
+        endScreenRoutine = StartCoroutine(EndScreenCorutione());
     }
 
-    public void ShowNetworkDeathWaiting()
+    public void ShowNetworkRoomDeath()
     {
-        if (!networkDeathWaiting)
-        {
-            var label = endText.GetComponent<TMP_Text>();
-            networkEndTextOriginal = label.text;
-            networkEndTextRaycastOriginal = label.raycastTarget;
-            label.text = "You died. Waiting in room.\nPress Esc to leave.";
-            label.raycastTarget = false;
-            networkDeathWaiting = true;
-        }
-        endText.SetActive(true);
-        restartButton.SetActive(false);
+        if (networkRoomDeathShowing) return;
+        networkRoomDeathShowing = true;
+        for (Transform path = fadeScreen.transform; path != null; path = path.parent) path.gameObject.SetActive(true);
+        var label = endText.GetComponent<TMP_Text>();
+        label.text = "You Died"; label.raycastTarget = false;
+        restartButton.GetComponent<UnityEngine.UI.Button>().interactable = true;
+        endText.SetActive(false); restartButton.SetActive(false);
+        SwitchOnEndScreen();
     }
 
-    public void HideNetworkDeathWaiting()
+    public void ShowNetworkRetryWaiting()
     {
-        if (networkDeathWaiting)
-        {
-            var label = endText.GetComponent<TMP_Text>();
-            label.text = networkEndTextOriginal;
-            label.raycastTarget = networkEndTextRaycastOriginal;
-            networkDeathWaiting = false;
-        }
-        endText.SetActive(false);
-        restartButton.SetActive(false);
+        endText.GetComponent<TMP_Text>().text = "You Died\nWaiting for other player...";
+        restartButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
+    }
+
+    public void HideNetworkRoomDeath()
+    {
+        if (!networkRoomDeathShowing) return;
+        networkRoomDeathShowing = false;
+        if (endScreenRoutine != null) { StopCoroutine(endScreenRoutine); endScreenRoutine = null; }
+        endText.SetActive(false); restartButton.SetActive(false);
     }
 
     IEnumerator EndScreenCorutione()
@@ -278,6 +275,11 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void RestartGameButton()
     {
+        if (Rpg.Networking.RoomSceneCoordinator.Active?.IsSceneSession == true)
+        {
+            Rpg.Networking.RoomSceneCoordinator.Active.RequestLocalRetry();
+            return;
+        }
         AudioManager.instance.PlaySFX(4, null);
         GameManager.instance.RestartScene();
     }

@@ -5,8 +5,8 @@ namespace Rpg.Networking.Protocol
     public static class ProtocolSchema
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
-        // A-owned item drop movement states.
-        public const int SchemaVersion = 45;
+        // Event-driven local item drop motion after A confirms the spawn.
+        public const int SchemaVersion = 49;
     }
 
     public enum ProtocolId : short
@@ -51,7 +51,9 @@ namespace Rpg.Networking.Protocol
         MonsterDeath = 39,
         PlayerDeath = 40,
         DropSpawn = 41,
-        DropStates = 42
+        PickupRequest = 42,
+        PickupResult = 43,
+        RoomRetryReady = 44
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash, Parry, ParrySuccess }
@@ -81,6 +83,8 @@ namespace Rpg.Networking.Protocol
         public int entityId;
         public long healthVersion;
         public int maxHealth;
+        public int rewardPlayerId, rewardEntityId, rewardAmount;
+        public SkillTreeStateDto rewardState;
     }
     [Serializable]
     public sealed class PlayerDeathDto : AuthorityResultDto
@@ -93,6 +97,12 @@ namespace Rpg.Networking.Protocol
     }
     public enum PlayerDeathCause { None, Combat, DeadZone }
     [Serializable]
+    public sealed class RoomRetryReadyDto
+    {
+        public string roomSessionId;
+        public long loadId;
+    }
+    [Serializable]
     public sealed class DropSpawnDto : AuthorityResultDto
     {
         public int dropId;
@@ -101,22 +111,6 @@ namespace Rpg.Networking.Protocol
         public int quantity;
         public float[] position;
         public float[] velocity;
-    }
-    [Serializable]
-    public sealed class DropStatesDto
-    {
-        public string roomSessionId;
-        public long loadId;
-        public ulong authorityTick;
-        public long stateSeq;
-        public DropStateDto[] drops;
-    }
-    [Serializable]
-    public sealed class DropStateDto
-    {
-        public int dropId;
-        public float[] position;
-        public bool grounded;
     }
     [Serializable]
     public sealed class DamageResultDto : AuthorityResultDto
@@ -136,6 +130,7 @@ namespace Rpg.Networking.Protocol
         public long targetStateVersion;
         public bool critical;
         public bool evaded;
+        public bool counterAttack;
         public DirectDamageDto components;
         public DamageImpactDto impact; // Null for evasion/invincibility. Never runs a second damage calculation.
     }
@@ -237,6 +232,21 @@ namespace Rpg.Networking.Protocol
     {
         public bool accepted;
         public EquipmentChangeRejection rejection;
+    }
+    [Serializable]
+    public sealed class PickupRequestDto
+    {
+        public string roomSessionId;
+        public long requestSeq;
+        public int dropId;
+    }
+    public enum PickupRejection { None, MissingDrop, InventoryFull, PlayerUnavailable }
+    [Serializable]
+    public sealed class PickupResultDto : RoomInventoryResultDto
+    {
+        public int dropId;
+        public bool accepted;
+        public PickupRejection rejection;
     }
     [Serializable]
     public sealed class RoomMaterialDto

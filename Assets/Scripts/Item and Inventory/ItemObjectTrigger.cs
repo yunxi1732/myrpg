@@ -10,6 +10,11 @@ public class ItemObjectTrigger : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         Player player = collision.GetComponentInParent<Player>();
+        if (player != null && RoomSceneCoordinator.Active?.IsSceneSession == true)
+        {
+            RoomSceneCoordinator.Active.RequestLocalPickup(player, myItem);
+            return;
+        }
         if (player != null && EntityRuntimePermissions.CanUseLegacyActions(player))
         {
             if (player.GetComponent<CharaterStats>().isDead)

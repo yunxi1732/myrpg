@@ -78,7 +78,7 @@ public class EnemyStats : CharaterStats
         base.Die();
         enemy.Die();
 
-        if (EntityRuntimePermissions.CanUseLegacyWorld(this)) PlayerManager.instance.currency += soulsDropAmount.GetValue();
+        if (EntityRuntimePermissions.CanUseLegacyWorld(this)) PlayerManager.instance.GrantMonsterCurrency(soulsDropAmount.GetValue());
         myDropSystem.GenerateDrop();
 
         GameSimulationClock.DestroyAfter(gameObject, 5f);

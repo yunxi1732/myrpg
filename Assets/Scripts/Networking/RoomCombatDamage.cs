@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Rpg.Networking.Protocol;
 using UnityEngine;
 
@@ -14,8 +15,20 @@ namespace Rpg.Networking
         private readonly AuthorityResultReceipts receipts;
         private readonly Action<DamageResultDto> publish;
         private DamageResultDto lastAuthorityResult;
+        private readonly Dictionary<int, int> lastMonsterDamager = new Dictionary<int, int>();
         private bool disposed;
         public AuthorityResultReceipts Receipts => receipts; // Future result handlers share exact receipts, never a maximum-ID watermark.
+        public int ConsumeLastMonsterDamager(int entityId)
+        {
+            if (!lastMonsterDamager.TryGetValue(entityId, out int playerId)) return 0;
+            lastMonsterDamager.Remove(entityId);
+            return playerId;
+        }
+        public void ForgetDepartedPlayer(int playerId)
+        {
+            foreach (var pair in new List<KeyValuePair<int, int>>(lastMonsterDamager))
+                if (pair.Value == playerId) lastMonsterDamager.Remove(pair.Key);
+        }
 
         public RoomCombatDamage(RoomPresentationContext context, RoomSceneMonsters monsters,
             AuthorityResultSequence sequence = null, Action<DamageResultDto> publish = null, Action<ElementStatesDto> publishElements = null,
@@ -133,7 +146,7 @@ namespace Rpg.Networking
                 attackInstanceId = attack.AttackInstanceId, hitSegmentId = segment, targetStateVersion = version,
                 actualDamage = components.physicalDamage + components.magicDamage, components = components,
                 finalHealth = finalHealth, maxHealth = target.GetMaxHealthValue(),
-                critical = outcome.Critical, evaded = outcome.Evaded,
+                critical = outcome.Critical, evaded = outcome.Evaded, counterAttack = parry,
                 impact = parry || outcome.Evaded || target.isInvincible ? null : NetworkHitFeedback.CreateAuthorityImpact(targetEntity, source)
             };
             ConfirmAuthorityResult(result, targetView);
@@ -170,6 +183,8 @@ namespace Rpg.Networking
         private void ConfirmAuthorityResult(DamageResultDto result, RoomEntityPresentation target)
         {
             ProtocolCodec.ValidateMessage(result, true);
+            if (target.PlayerId == 0 && result.actualDamage > 0 && result.sourcePlayerId > 0)
+                lastMonsterDamager[target.EntityId] = result.sourcePlayerId;
             lastAuthorityResult = result;
             target.ApplyVersionedHealth(result.roomSessionId, result.authorityTick, result.targetStateVersion, result.finalHealth, result.maxHealth);
             PresentOnce(result, target.View);
@@ -189,6 +204,6 @@ namespace Rpg.Networking
             return true;
         }
 
-        public void Dispose() { ClearElements(); disposed = true; receipts.Clear(); lastAuthorityResult = null; }
+        public void Dispose() { ClearElements(); disposed = true; receipts.Clear(); lastMonsterDamager.Clear(); lastAuthorityResult = null; }
     }
 }

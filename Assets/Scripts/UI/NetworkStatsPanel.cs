@@ -13,6 +13,7 @@ public sealed class NetworkStatsPanel : MonoBehaviour
     private RoomEntityPresentation local;
     private MenuControlLock controlLock;
     private NetworkInventoryView inventoryView;
+    public NetworkInventoryView InventoryView => inventoryView;
     private readonly System.Collections.Generic.Dictionary<GameObject, bool> characterVisibility = new System.Collections.Generic.Dictionary<GameObject, bool>();
     public int BoundPlayerId => local != null && local.IsValid ? local.PlayerId : 0;
     public bool IsOpen => characterRoot != null && characterRoot.activeInHierarchy;

@@ -44,6 +44,8 @@ public sealed partial class PlayerCombatContext
         if (Stats == null) throw new InvalidOperationException("Player combat requires this actor's PlayerStats.");
         Stats.EnsureIndependentStats();
         Skills = new PlayerSkillRuntime(this);
+        roomInventorySystem = new InventorySystem(roomInventoryModel);
+        roomInventorySystem.BindOwner(this);
     }
 
     public ItemData_Equipment GetEquipment(EquipmentType slot) =>
@@ -60,9 +62,21 @@ public sealed partial class PlayerCombatContext
         if (item != null && item.equipmentType != slot) throw new ArgumentException("Equipment slot mismatch.");
         equipment.TryGetValue(slot, out var previous);
         if (previous == item) return;
-        if (previous != null) previous.RemoveModifiers(Stats);
+        if (previous != null)
+        {
+            previous.RemoveModifiers(Stats);
+            var old = roomInventoryModel.EquipmentDictionary[previous];
+            roomInventoryModel.Equipment.Remove(old);
+            roomInventoryModel.EquipmentDictionary.Remove(previous);
+        }
         if (item == null) equipment.Remove(slot);
-        else { equipment[slot] = item; item.AddModifiers(Stats); }
+        else
+        {
+            equipment[slot] = item; item.AddModifiers(Stats);
+            var equipped = new InventoryItem(item);
+            roomInventoryModel.Equipment.Add(equipped);
+            roomInventoryModel.EquipmentDictionary.Add(item, equipped);
+        }
         if (slot == EquipmentType.Flask) RoomFlaskEquipmentChanged();
     }
 
@@ -73,9 +87,19 @@ public sealed partial class PlayerCombatContext
         if (identity == null || !identity.IsBound || display != (identity.Role == NetworkEntityRole.Display) ||
             !display && !Owner.IsAuthoritative || LegacyInventory != null || LegacySkills != null)
             throw new InvalidOperationException("Room combat configuration requires the assigned entity role.");
-        ReleaseRoomEquipment(); equipment.Clear(); roomInventory.Clear(); roomMaterials.Clear();
-        foreach (var material in value.materials) roomMaterials.Add(material.materialId, new RoomMaterialDto {
-            materialId = material.materialId, displayName = material.displayName, count = material.count });
+        ReleaseRoomEquipment(); equipment.Clear();
+        roomInventoryModel.Items.Clear(); roomInventoryModel.ItemDictionary.Clear();
+        roomInventoryModel.Stash.Clear(); roomInventoryModel.StashDictionary.Clear();
+        roomInventoryModel.Equipment.Clear(); roomInventoryModel.EquipmentDictionary.Clear();
+        foreach (var material in value.materials)
+        {
+            var data = UnityEngine.ScriptableObject.CreateInstance<ItemData>();
+            data.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
+            data.name = material.materialId; data.itemId = material.materialId;
+            data.itemName = material.displayName; data.itemType = ItemType.Material;
+            ownedRoomMaterials.Add(data); roomMaterialData.Add(material.materialId, data);
+            for (int count = 0; count < material.count; count++) roomInventorySystem.AddItem(data, value.inventoryCapacity);
+        }
         EquipmentVersion = value.equipmentVersion; RoomInventoryCapacity = value.inventoryCapacity;
         for (int i = 0; i < value.stats.Length; i++)
         {
@@ -90,7 +114,13 @@ public sealed partial class PlayerCombatContext
             var item = RoomCombatConfiguration.CreateEquipment(entry);
             if (item == null) continue;
             ownedRoomEquipment.Add(item);
-            if (display) equipment.Add(RoomCombatConfiguration.EquipmentSlot(entry.slot), item);
+            if (display)
+            {
+                equipment.Add(RoomCombatConfiguration.EquipmentSlot(entry.slot), item);
+                var equipped = new InventoryItem(item);
+                roomInventoryModel.Equipment.Add(equipped);
+                roomInventoryModel.EquipmentDictionary.Add(item, equipped);
+            }
             else SetEquipment(RoomCombatConfiguration.EquipmentSlot(entry.slot), item);
         }
         RestoreRoomSkillTree(value.skillTree);
@@ -100,7 +130,8 @@ public sealed partial class PlayerCombatContext
         foreach (var entry in value.inventory)
         {
             var item = RoomCombatConfiguration.CreateEquipment(entry);
-            ownedRoomEquipment.Add(item); roomInventory.Add(item);
+            ownedRoomEquipment.Add(item);
+            roomInventorySystem.AddItem(item, RoomInventoryCapacity);
         }
         RoomConfigurationId = value.configurationId;
         Owner.ConfigureNetworkDash(Skills.Get(RoomSkillId.Dash).Cooldown);
@@ -129,10 +160,13 @@ public sealed partial class PlayerCombatContext
         if (RoomConfigurationId == null) throw new InvalidOperationException("Room combat configuration is not initialized.");
         var value = new PlayerCombatDto { configurationId = RoomConfigurationId, stats = new int[14],
             equipment = new RoomEquipmentDto[4], skills = new RoomSkillDto[7], equipmentVersion = EquipmentVersion,
-            inventoryCapacity = RoomInventoryCapacity, inventory = new RoomEquipmentDto[roomInventory.Count], materials = CaptureRoomMaterials(),
+            inventoryCapacity = RoomInventoryCapacity, inventory = new RoomEquipmentDto[roomInventoryModel.Items.Count], materials = CaptureRoomMaterials(),
             skillTree = CaptureRoomSkillTree() };
-        for (int i = 0; i < roomInventory.Count; i++) value.inventory[i] = RoomCombatConfiguration.CaptureEquipment(
-            (RoomEquipmentSlot)roomInventory[i].equipmentType, roomInventory[i]);
+        for (int i = 0; i < roomInventoryModel.Items.Count; i++)
+        {
+            var item = (ItemData_Equipment)roomInventoryModel.Items[i].data;
+            value.inventory[i] = RoomCombatConfiguration.CaptureEquipment((RoomEquipmentSlot)item.equipmentType, item);
+        }
         for (int i = 0; i < 14; i++) value.stats[i] = RoomCombatConfiguration.StatAt(Stats, i).GetValue();
         for (int i = 0; i < 4; i++) value.equipment[i] = RoomCombatConfiguration.CaptureEquipment((RoomEquipmentSlot)i,
             GetEquipment(RoomCombatConfiguration.EquipmentSlot((RoomEquipmentSlot)i)));
@@ -154,6 +188,10 @@ public sealed partial class PlayerCombatContext
                 else UnityEngine.Object.DestroyImmediate(item);
             }
         ownedRoomEquipment.Clear();
+        foreach (var item in ownedRoomMaterials)
+            if (UnityEngine.Application.isPlaying) UnityEngine.Object.Destroy(item);
+            else UnityEngine.Object.DestroyImmediate(item);
+        ownedRoomMaterials.Clear(); roomMaterialData.Clear();
     }
 
     internal void BindLegacySkills(SkillManager manager)

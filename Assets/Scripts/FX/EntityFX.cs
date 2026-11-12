@@ -121,11 +121,12 @@ public class EntityFX : MonoBehaviour
         if (popUpTextPrefab != null && (result.evaded || result.actualDamage > 0 || impact != null))
             pool.Take(popUpTextPrefab, position + new Vector3(offset, 3.5f), Quaternion.identity)
                 .GetComponent<PopUpTextFX>().Play(result.evaded ? "Miss" : result.actualDamage.ToString());
-        if (impact == null) return;
+        if (impact == null && !result.counterAttack) return;
         var prefab = result.critical ? criticalHitFx : hitFx;
         if (prefab != null)
         {
-            Quaternion rotation = Quaternion.Euler(0, impact.facingDir < 0 ? 180 : 0, offset * 40);
+            int direction = impact != null ? impact.facingDir : GetComponentInParent<Entity>().facingDir;
+            Quaternion rotation = Quaternion.Euler(0, direction < 0 ? 180 : 0, offset * 40);
             pool.Take(prefab, position, rotation).GetComponent<HitEffectFX>().Play(position, rotation);
         }
         if (sr == null) sr = GetComponentInChildren<SpriteRenderer>(true);

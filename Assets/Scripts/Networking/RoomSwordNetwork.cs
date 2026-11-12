@@ -162,5 +162,13 @@ namespace Rpg.Networking
             disposed = true;
             foreach (var sword in new List<NetworkSkillObject>(swords.Values)) sword.Lifetime.Dispose();
         }
+        public void RemovePlayer(int playerId)
+        {
+            requests.Remove(playerId);
+            foreach (var player in players.Entities.Values)
+                if (player.Combat.PlayerId == playerId) { Cancel(player); break; }
+            foreach (var sword in new List<NetworkSkillObject>(swords.Values))
+                if (sword.SourcePlayerId == playerId) sword.Lifetime.Dispose();
+        }
     }
 }

@@ -68,7 +68,9 @@ namespace Rpg.Networking.Protocol
             Register<MonsterDeathDto>(ProtocolId.MonsterDeath),
             Register<PlayerDeathDto>(ProtocolId.PlayerDeath),
             Register<DropSpawnDto>(ProtocolId.DropSpawn),
-            Register<DropStatesDto>(ProtocolId.DropStates)
+            Register<PickupRequestDto>(ProtocolId.PickupRequest),
+            Register<PickupResultDto>(ProtocolId.PickupResult),
+            Register<RoomRetryReadyDto>(ProtocolId.RoomRetryReady)
         };
 
         private static Entry Register<T>(ProtocolId id, bool allowedBeforeHandshake = false)
@@ -170,13 +172,20 @@ namespace Rpg.Networking.Protocol
 
         private static void Validate(object dto)
         {
-            if (dto is DropStatesDto dropStates && ValidDropStates(dropStates)) return;
+            if (dto is RoomRetryReadyDto retry && ValidRetryReady(retry)) return;
+            if (dto is PickupRequestDto pickupRequest && ValidPickupRequest(pickupRequest)) return;
+            if (dto is PickupResultDto pickup && ValidInventoryResult(pickup) && pickup.dropId > 0 &&
+                pickup.rejection >= PickupRejection.None && pickup.rejection <= PickupRejection.PlayerUnavailable &&
+                pickup.accepted == (pickup.rejection == PickupRejection.None)) return;
             if (dto is DropSpawnDto drop && ValidAuthorityResult(drop) && drop.dropId > 0 &&
                 drop.sourceMonsterEntityId > 0 && ValidConfigurationId(drop.configurationId) && drop.quantity == 1 &&
                 drop.position != null && drop.position.Length == 2 && ValidCoordinate(drop.position[0]) && ValidCoordinate(drop.position[1]) &&
                 drop.velocity != null && drop.velocity.Length == 2 && ValidCoordinate(drop.velocity[0]) && ValidCoordinate(drop.velocity[1])) return;
             if (dto is MonsterDeathDto death && ValidAuthorityResult(death) && death.entityId > 0 &&
-                ValidHealth(0, death.maxHealth, death.healthVersion)) return;
+                ValidHealth(0, death.maxHealth, death.healthVersion) &&
+                (death.rewardPlayerId == 0 && death.rewardEntityId == 0 && death.rewardAmount == 0 ||
+                 death.rewardPlayerId > 0 && death.rewardEntityId > 0 && death.rewardAmount >= 0 &&
+                 ValidSkillTree(death.rewardState))) return;
             if (dto is PlayerDeathDto playerDeath && ValidAuthorityResult(playerDeath) && playerDeath.playerId > 0 &&
                 playerDeath.entityId > 0 && ValidPlayerDeathCause(playerDeath.cause, true) &&
                 ValidHealth(0, playerDeath.maxHealth, playerDeath.healthVersion)) return;
@@ -220,6 +229,7 @@ namespace Rpg.Networking.Protocol
                 ValidHealth(damage.finalHealth, damage.maxHealth, damage.targetStateVersion) &&
                 (long)damage.actualDamage + damage.finalHealth <= damage.maxHealth &&
                 (!damage.evaded || damage.actualDamage == 0 && !damage.critical && damage.impact == null) &&
+                (!damage.counterAttack || damage.kind == DamageResultKind.Direct && damage.sourcePlayerId > 0 && damage.impact == null) &&
                 ValidDamageImpact(damage.impact)) return;
             if (dto is PrimaryAttackRequestDto attack && attack.requestSeq > 0) return;
             if (dto is MonsterStatesDto states && ValidMonsterStates(states)) return;
@@ -303,17 +313,6 @@ namespace Rpg.Networking.Protocol
                     monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;
-            return true;
-        }
-
-        private static bool ValidDropStates(DropStatesDto value)
-        {
-            if (!Guid.TryParseExact(value.roomSessionId, "N", out _) || value.loadId <= 0 || value.authorityTick == 0 ||
-                value.stateSeq <= 0 || value.drops == null || value.drops.Length > 1024) return false;
-            var ids = new System.Collections.Generic.HashSet<int>();
-            foreach (var drop in value.drops)
-                if (drop == null || drop.dropId <= 0 || !ids.Add(drop.dropId) || drop.position == null ||
-                    drop.position.Length != 2 || !ValidCoordinate(drop.position[0]) || !ValidCoordinate(drop.position[1])) return false;
             return true;
         }
 
@@ -408,6 +407,10 @@ namespace Rpg.Networking.Protocol
             Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.expectedVersion > 0 &&
             value.kind >= EquipmentChangeKind.Equip && value.kind <= EquipmentChangeKind.Unequip &&
             value.slot >= RoomEquipmentSlot.Weapon && value.slot <= RoomEquipmentSlot.Flask && ValidConfigurationId(value.configurationId);
+        public static bool ValidPickupRequest(PickupRequestDto value) => value != null &&
+            Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.dropId > 0;
+        public static bool ValidRetryReady(RoomRetryReadyDto value) => value != null &&
+            Guid.TryParseExact(value.roomSessionId, "N", out _) && value.loadId > 0;
         public static bool ValidCraftRequest(CraftRequestDto value) => value != null &&
             Guid.TryParseExact(value.roomSessionId, "N", out _) && value.requestSeq > 0 && value.expectedVersion > 0 && ValidConfigurationId(value.recipeId);
         public static bool ValidSkillUnlockRequest(SkillUnlockRequestDto value) => value != null &&

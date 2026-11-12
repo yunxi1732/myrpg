@@ -9,6 +9,14 @@ public sealed partial class PlayerCombatContext
     private long skillUnlockRequestSeq;
     public long SkillTreeVersion => roomSkillTree?.version ?? 1;
     public int RoomCurrency => roomSkillTree?.currency ?? 0;
+    internal SkillTreeStateDto GrantRoomMonsterCurrency(int amount, ulong tick)
+    {
+        if (!Owner.IsAuthoritative || roomSkillTree == null || amount < 0) throw new InvalidOperationException("Only A grants room monster currency.");
+        roomSkillTree.currency = checked(roomSkillTree.currency + amount);
+        roomSkillTree.version = checked(roomSkillTree.version + 1);
+        skillTreeTick = tick;
+        return CaptureRoomSkillTree();
+    }
     public bool IsRoomNodeUnlocked(string id) => FindNode(roomSkillTree, id)?.unlocked == true;
     public int RoomNodeCost(string id) => FindNode(roomSkillTree, id)?.cost ?? -1;
     private static SkillTreeNodeDto FindNode(SkillTreeStateDto value, string id)

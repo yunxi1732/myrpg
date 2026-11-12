@@ -229,5 +229,10 @@ namespace Rpg.Networking
             disposed = true;
             foreach (var hole in new List<Hole>(holes.Values)) hole.Lifetime.Dispose();
         }
+        public void RemovePlayer(int playerId)
+        {
+            requests.Remove(playerId);
+            if (holes.TryGetValue(playerId, out var hole)) hole.Lifetime.Dispose();
+        }
     }
 }

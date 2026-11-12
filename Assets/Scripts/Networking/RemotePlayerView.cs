@@ -73,6 +73,8 @@ namespace Rpg.Networking
         private void Place(Vector2 position)
         {
             transform.position = new Vector3(position.x, position.y, transform.position.z);
+            var monster = GetComponent<EnemyStats>();
+            if (monster != null && monster.NetworkHealthVersion > 0 && monster.currentHealth == 0) return;
             var entity = GetComponent<Entity>();
             if (entity != null) entity.FlipController(positions.FacingDirection);
             ApplyMovementAnimation();

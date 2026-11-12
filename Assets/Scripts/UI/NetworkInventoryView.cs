@@ -48,8 +48,9 @@ public sealed class NetworkInventoryView : IDisposable
         ClearMaterialViews();
         if (combat?.RoomConfigurationId == null) return;
         displayedVersion = combat.EquipmentVersion;
-        for (int i = 0; i < combat.RoomInventory.Count && i < bag.Length; i++)
-            if (bag[i] != null) bag[i].UpdateSlot(Item(combat.RoomInventory[i]));
+        var items = combat.RoomInventory;
+        for (int i = 0; i < items.Count && i < bag.Length; i++)
+            if (bag[i] != null) bag[i].UpdateSlot(Item(items[i]));
         foreach (var slot in equipment)
         {
             if (slot == null) continue;

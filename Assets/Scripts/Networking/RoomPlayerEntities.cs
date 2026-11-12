@@ -470,6 +470,28 @@ namespace Rpg.Networking
             if (!TryGetAuthorityCombatPlayer(source, out Player player)) return null;
             return player.Combat.CraftRoomItem(request, craftCatalog, GameSimulationClock.AuthorityTick, results);
         }
+        public SkillTreeStateDto GrantMonsterCurrency(int playerId, int amount, ulong tick, out int entityId)
+        {
+            var identity = hostIdentity.PlayerId == playerId ? hostIdentity : guestIdentity.PlayerId == playerId ? guestIdentity : null;
+            if (!TryGetAuthorityCombatPlayer(identity, out var player)) { entityId = 0; return null; }
+            entityId = identity.EntityId;
+            return player.Combat.GrantRoomMonsterCurrency(amount, tick);
+        }
+        public PickupResultDto RequestPickup(RoomPlayerIdentity source, PickupRequestDto request, ItemData item, AuthorityResultSequence results)
+        {
+            if (!TryGetAuthorityCombatPlayer(source, out Player player)) return null;
+            var combat = player.Combat;
+            ulong tick = GameSimulationClock.AuthorityTick;
+            var rejection = !player.IsRuntimeInitialized || !combat.Stats.IsRuntimeInitialized || combat.Stats.isDead ||
+                combat.Stats.currentHealth <= 0 ? PickupRejection.PlayerUnavailable :
+                item == null ? PickupRejection.MissingDrop :
+                !combat.TryReceiveRoomDrop(item, request.dropId, tick) ? PickupRejection.InventoryFull : PickupRejection.None;
+            return new PickupResultDto { roomSessionId = context.RoomSessionId, authorityTick = tick, resultId = results.Allocate(),
+                playerId = source.PlayerId, entityId = source.EntityId, requestSeq = request.requestSeq, dropId = request.dropId,
+                accepted = rejection == PickupRejection.None, rejection = rejection, combat = combat.CaptureRoomConfiguration(),
+                flask = combat.CaptureRoomFlaskState(), health = combat.Stats.currentHealth,
+                maxHealth = combat.Stats.GetMaxHealthValue(), healthVersion = combat.Stats.NetworkHealthVersion };
+        }
         public SkillUnlockResultDto RequestSkillUnlock(RoomPlayerIdentity source, SkillUnlockRequestDto request, AuthorityResultSequence results)
         {
             if (!TryGetAuthorityCombatPlayer(source, out Player player)) return null;

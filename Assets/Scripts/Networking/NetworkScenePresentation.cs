@@ -23,6 +23,7 @@ namespace Rpg.Networking
         private RoomEntityPresentation bound;
         private CinemachineBrain.UpdateMethod originalUpdate;
         private bool originalIgnoreTimeScale;
+        private bool roomDeathShowing;
 
         public void Prepare(Scene scene)
         {
@@ -49,7 +50,8 @@ namespace Rpg.Networking
                 originalIgnoreTimeScale = brain.m_IgnoreTimeScale;
             }
             if (hud != null) { hud.ConfigureRoomFlaskIcons(flaskVisuals); hud.BindNetwork(null); }
-            ui.HideNetworkDeathWaiting();
+            roomDeathShowing = false;
+            ui.HideNetworkRoomDeath();
             optionsRoot = ui.OptionsPanel;
             optionsRoot.SetActive(false);
             optionsLock = optionsRoot.GetComponent<MenuControlLock>();
@@ -58,7 +60,7 @@ namespace Rpg.Networking
             if (statsPanel == null) statsPanel = gameObject.AddComponent<NetworkStatsPanel>();
             statsPanel.Prepare(scene);
             if (craftPanel == null) craftPanel = gameObject.AddComponent<NetworkCraftPanel>();
-            craftPanel.Prepare(scene);
+            craftPanel.Prepare(scene, statsPanel.InventoryView);
             if (skillTreePanel == null) skillTreePanel = gameObject.AddComponent<NetworkSkillTreePanel>();
             skillTreePanel.Prepare(scene);
             if (cameraRig != null) { cameraRig.Follow = null; cameraRig.LookAt = null; }
@@ -70,6 +72,16 @@ namespace Rpg.Networking
             Unbind();
             context = value;
         }
+
+        public void ShowRoomDeath()
+        {
+            if (roomDeathShowing) return;
+            roomDeathShowing = true;
+            CloseOptions();
+            ui.ShowNetworkRoomDeath();
+        }
+
+        public void ShowRetryWaiting() => ui.ShowNetworkRetryWaiting();
 
         private void Update()
         {
@@ -136,10 +148,8 @@ namespace Rpg.Networking
                 {
                     if (hud.gameObject.activeSelf) hud.gameObject.SetActive(false);
                 }
-                else if (!hud.gameObject.activeInHierarchy) ActivateHudPath();
+                else if (!roomDeathShowing && !hud.gameObject.activeInHierarchy) ActivateHudPath();
             }
-            if (bound != null && bound.HasHealth && bound.Health == 0) ui.ShowNetworkDeathWaiting();
-            else ui.HideNetworkDeathWaiting();
             // RemotePlayerView.LateUpdate (9000) finishes before this callback (10000).
             // Manually update B's camera now, preserving the scene's lens/body/damping.
             if (bound != null && context.IsGuest && brain != null) brain.ManualUpdate();
@@ -160,7 +170,8 @@ namespace Rpg.Networking
 
         public void Unbind()
         {
-            if (ui != null) ui.HideNetworkDeathWaiting();
+            if (ui != null) ui.HideNetworkRoomDeath();
+            roomDeathShowing = false;
             if (optionsRoot != null) CloseOptions();
             if (statsPanel != null) statsPanel.Unbind();
             if (craftPanel != null) craftPanel.Unbind();

@@ -24,6 +24,7 @@ namespace Rpg.Networking
         private UI_MainMenu menu;
         private long guestConnection, operation;
         private bool returning;
+        private bool roomDeathActive, hostRetryReady, guestRetryReady, restarting;
         private bool quitting;
         private int preparedSceneHandle = -1;
         private AsyncOperation inFlightLoad;
@@ -36,12 +37,13 @@ namespace Rpg.Networking
         private readonly System.Collections.Generic.Queue<DamageResultDto> pendingDamageResults = new System.Collections.Generic.Queue<DamageResultDto>();
         private readonly System.Collections.Generic.Queue<MonsterDeathDto> pendingMonsterDeaths = new System.Collections.Generic.Queue<MonsterDeathDto>();
         private readonly System.Collections.Generic.Queue<DropSpawnDto> pendingDropSpawns = new System.Collections.Generic.Queue<DropSpawnDto>();
-        private DropStatesDto pendingDropStates;
         private readonly System.Collections.Generic.Queue<PlayerDeathDto> pendingPlayerDeaths = new System.Collections.Generic.Queue<PlayerDeathDto>();
         private ElementStatesDto pendingElementStates;
         private readonly System.Collections.Generic.Queue<RoomInventoryResultDto> pendingInventoryResults = new System.Collections.Generic.Queue<RoomInventoryResultDto>();
         private long localEquipmentRequestSeq;
         private long localCraftRequestSeq;
+        private long localPickupRequestSeq;
+        private readonly System.Collections.Generic.Dictionary<int, long> pickupRequests = new System.Collections.Generic.Dictionary<int, long>();
         private long localSkillUnlockRequestSeq;
         private readonly System.Collections.Generic.Queue<SkillUnlockResultDto> pendingSkillUnlockResults = new System.Collections.Generic.Queue<SkillUnlockResultDto>();
         private readonly System.Collections.Generic.Queue<FlaskUseResultDto> pendingFlaskResults = new System.Collections.Generic.Queue<FlaskUseResultDto>();
@@ -87,6 +89,8 @@ namespace Rpg.Networking
             host.PrimaryAttackRequested += OnPrimaryAttackRequested;
             host.EquipmentChangeRequested += OnEquipmentChangeRequested;
             host.CraftRequested += OnCraftRequested;
+            host.PickupRequested += OnPickupRequested;
+            host.RetryReadyReceived += OnGuestRetryReady;
             host.SkillUnlockRequested += OnSkillUnlockRequested;
             host.FlaskUseRequested += OnFlaskUseRequested;
             host.SwordInputReceived += OnSwordInput;
@@ -103,11 +107,11 @@ namespace Rpg.Networking
             client.DamageResultReceived += OnDamageResult;
             client.MonsterDeathReceived += OnMonsterDeath;
             client.DropSpawnReceived += OnDropSpawn;
-            client.DropStatesReceived += OnDropStates;
             client.PlayerDeathReceived += OnPlayerDeath;
             client.ElementStatesReceived += OnElementStates;
             client.EquipmentChangeResultReceived += OnEquipmentChangeResult;
             client.CraftResultReceived += OnCraftResult;
+            client.PickupResultReceived += OnPickupResult;
             client.SkillUnlockResultReceived += OnSkillUnlockResult;
             client.FlaskUseResultReceived += OnFlaskUseResult;
             client.SwordStatesReceived += OnSwordStates;
@@ -128,9 +132,10 @@ namespace Rpg.Networking
             guestConnection = host.Guest.SessionId;
             try
             {
+                restarting = roomDeathActive;
                 ActivateSession();
                 host.BeginSceneLoad();
-                StartCoroutine(LoadAndPrepare(true, host.SceneLoadId, ++operation));
+                StartCoroutine(LoadAndPrepare(true, host.SceneLoadId, ++operation, restarting));
             }
             catch (Exception error) { Fail(true, error.Message); }
         }
@@ -138,8 +143,9 @@ namespace Rpg.Networking
         private void OnSceneLoad(SceneLoadDto load)
         {
             if (returning) return;
+            restarting = roomDeathActive;
             ActivateSession();
-            StartCoroutine(LoadAndPrepare(false, load.loadId, ++operation));
+            StartCoroutine(LoadAndPrepare(false, load.loadId, ++operation, restarting));
         }
 
         private void ActivateSession()
@@ -154,12 +160,12 @@ namespace Rpg.Networking
             menu.ShowSceneProgress("Loading MainScene...", true);
         }
 
-        private IEnumerator LoadAndPrepare(bool authority, long loadId, long token)
+        private IEnumerator LoadAndPrepare(bool authority, long loadId, long token, bool reload = false)
         {
             AsyncOperation load = null;
             string failure = null;
             if (!Application.CanStreamedLevelBeLoaded(RoomScene.Name)) failure = "MainScene is missing from Build Settings";
-            else if (SceneManager.GetActiveScene().name != RoomScene.Name)
+            else if (reload || SceneManager.GetActiveScene().name != RoomScene.Name)
             {
                 try
                 {
@@ -233,6 +239,8 @@ namespace Rpg.Networking
                 if (presentationBinding == null) presentationBinding = gameObject.AddComponent<NetworkScenePresentation>();
                 presentationBinding.Prepare(scene);
                 menu.ShowNetworkSceneView();
+                roomDeathActive = hostRetryReady = guestRetryReady = restarting = false;
+                GameplayControlLock.Release(this);
             }
             catch (Exception error) { Fail(host.IsListening, error.Message); return; }
             Debug.Log($"[RoomScene] ACTIVE SCENE={SceneManager.GetActiveScene().name}, loaded={scene.isLoaded}, static scene view prepared");
@@ -358,21 +366,19 @@ namespace Rpg.Networking
                 if (activeRoomIsHost) blackholes.Publish();
                 else if (pendingBlackholeStates != null) { blackholes.Apply(pendingBlackholeStates); pendingBlackholeStates = null; }
                 if (!activeRoomIsHost)
-                    while (pendingInventoryResults.Count > 0) OnInventoryResult(pendingInventoryResults.Dequeue());
-                if (!activeRoomIsHost)
                     while (pendingSkillUnlockResults.Count > 0) OnSkillUnlockResult(pendingSkillUnlockResults.Dequeue());
                 if (!activeRoomIsHost)
                     while (pendingFlaskResults.Count > 0) OnFlaskUseResult(pendingFlaskResults.Dequeue());
                 if (!activeRoomIsHost)
                     while (pendingDamageResults.Count > 0) CombatDamage.ApplyConfirmedResult(pendingDamageResults.Dequeue());
                 if (!activeRoomIsHost)
-                    while (pendingMonsterDeaths.Count > 0) Monsters.ApplyDeath(pendingMonsterDeaths.Dequeue(), CombatDamage.Receipts);
+                    while (pendingMonsterDeaths.Count > 0) OnMonsterDeath(pendingMonsterDeaths.Dequeue());
                 if (!activeRoomIsHost)
                     while (pendingDropSpawns.Count > 0) Monsters.ApplyDropSpawn(pendingDropSpawns.Dequeue(), CombatDamage.Receipts);
-                if (!activeRoomIsHost && pendingDropStates != null)
-                { Monsters.ApplyDropStates(pendingDropStates); pendingDropStates = null; }
                 if (!activeRoomIsHost)
-                    while (pendingPlayerDeaths.Count > 0) Players.ApplyDeath(pendingPlayerDeaths.Dequeue(), CombatDamage.Receipts);
+                    while (pendingInventoryResults.Count > 0) OnInventoryResult(pendingInventoryResults.Dequeue());
+                if (!activeRoomIsHost)
+                    while (pendingPlayerDeaths.Count > 0) OnPlayerDeath(pendingPlayerDeaths.Dequeue());
                 if (!activeRoomIsHost && pendingElementStates != null) { CombatDamage.ApplyElementStates(pendingElementStates); pendingElementStates = null; }
                 if (!activeRoomIsHost) client.SendLocalInputLock(GameplayControlLock.IsLocked);
                 if (!activeRoomIsHost && pendingPositions != null)
@@ -486,8 +492,6 @@ namespace Rpg.Networking
             lastHostAnimation = hostAnimation; lastGuestAnimation = guestAnimation;
             host.SendPlayerPositions(Players.CapturePositions(initializedLoadId));
             if (periodic) host.SendMonsterStates(Monsters.CaptureStates(initializedLoadId, GameSimulationClock.AuthorityTick));
-            if (periodic && Monsters.HasDrops)
-                host.SendDropStates(Monsters.CaptureDropStates(initializedLoadId, GameSimulationClock.AuthorityTick));
         }
 
         private void FixedUpdate()
@@ -497,12 +501,27 @@ namespace Rpg.Networking
                 {
                     host.SendPlayerDeath(value);
                     CombatDamage?.RemovePlayerElements(value.playerId, value.authorityTick);
+                    ShowRoomDeath();
                 });
+            if (roomDeathActive) return;
             if (IsSceneSession && !returning && activeRoomIsHost) CombatDamage?.AdvanceElements(GameSimulationClock.AuthorityTick);
             if (IsSceneSession && !returning && activeRoomIsHost && host?.Results != null)
                 Monsters?.AdvanceDeaths(GameSimulationClock.AuthorityTick, host.Results, value =>
                 {
+                    int winner = CombatDamage.ConsumeLastMonsterDamager(value.entityId);
+                    if (winner > 0)
+                    {
+                        int amount = Monsters.MonsterCurrency(value.entityId);
+                        value.rewardState = Players.GrantMonsterCurrency(winner, amount, value.authorityTick, out int entityId);
+                        if (value.rewardState != null)
+                        {
+                            value.rewardPlayerId = winner; value.rewardEntityId = entityId; value.rewardAmount = amount;
+                            if (Presentation.TryGetEntity(entityId, out var rewarded))
+                                rewarded.ApplySkillTreePresentation(value.rewardState, value.authorityTick);
+                        }
+                    }
                     host.SendMonsterDeath(value);
+                    Debug.Log($"[RoomReward] monster={value.entityId} player={value.rewardPlayerId} amount={value.rewardAmount} currency={value.rewardState?.currency} version={value.rewardState?.version} resultId={value.resultId}");
                     Monsters.GenerateDrops(value.entityId, value.authorityTick, host.AllocateSceneEntityId, host.Results,
                         drop => host.SendDropSpawn(drop));
                 });
@@ -606,7 +625,13 @@ namespace Rpg.Networking
                 pendingMonsterDeaths.Enqueue(value);
                 return;
             }
-            Monsters.ApplyDeath(value, CombatDamage.Receipts);
+            if (!Monsters.ApplyDeath(value, CombatDamage.Receipts)) return;
+            if (value.rewardPlayerId > 0 && Presentation.TryGetEntity(value.rewardEntityId, out var rewarded) &&
+                rewarded.PlayerId == value.rewardPlayerId)
+            {
+                rewarded.View.GetComponent<Player>().Combat.ApplyRoomSkillTreeSnapshot(value.rewardState, value.authorityTick);
+                rewarded.ApplySkillTreePresentation(value.rewardState, value.authorityTick);
+            }
         }
 
         private void OnDropSpawn(DropSpawnDto value)
@@ -621,19 +646,6 @@ namespace Rpg.Networking
             Monsters.ApplyDropSpawn(value, CombatDamage.Receipts);
         }
 
-        private void OnDropStates(DropStatesDto value)
-        {
-            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId ||
-                value.loadId != initializationLoadId || monsterInitializationLoadId != value.loadId) return;
-            if (Monsters == null || initializedLoadId == 0 || initializedLoadId != initializationLoadId)
-            {
-                if (pendingDropStates == null || value.stateSeq > pendingDropStates.stateSeq &&
-                    value.authorityTick >= pendingDropStates.authorityTick) pendingDropStates = value;
-                return;
-            }
-            Monsters.ApplyDropStates(value);
-        }
-
         private void OnPlayerDeath(PlayerDeathDto value)
         {
             if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId || Presentation == null) return;
@@ -643,7 +655,56 @@ namespace Rpg.Networking
                 pendingPlayerDeaths.Enqueue(value);
                 return;
             }
-            Players.ApplyDeath(value, CombatDamage.Receipts);
+            if (Players.ApplyDeath(value, CombatDamage.Receipts)) ShowRoomDeath();
+        }
+
+        private void ShowRoomDeath()
+        {
+            if (roomDeathActive) return;
+            roomDeathActive = true;
+            GameplayControlLock.Acquire(this);
+            if (activeRoomIsHost)
+            {
+                foreach (var player in Players.Entities.Values)
+                    player.GetComponent<NetworkEntityIdentity>().HoldMovement();
+                Monsters.HoldForRoomRetry();
+            }
+            presentationBinding.ShowRoomDeath();
+        }
+
+        public bool RequestLocalRetry()
+        {
+            if (!IsSceneSession || returning || !roomDeathActive || restarting || initializedLoadId == 0 ||
+                (activeRoomIsHost ? hostRetryReady : guestRetryReady)) return false;
+            if (activeRoomIsHost) hostRetryReady = true;
+            else
+            {
+                if (!client.SendRetryReady(new RoomRetryReadyDto { roomSessionId = activeRoomSessionId, loadId = initializedLoadId })) return false;
+                guestRetryReady = true;
+            }
+            presentationBinding.ShowRetryWaiting();
+            Debug.Log($"[RoomRetry] local ready player={(activeRoomIsHost ? host.HostIdentity.PlayerId : client.LocalIdentity.PlayerId)} load={initializedLoadId}");
+            if (activeRoomIsHost) TryBeginRoomRetry();
+            return true;
+        }
+
+        private void OnGuestRetryReady(RoomPlayerIdentity actor, RoomRetryReadyDto ready)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || !roomDeathActive || restarting ||
+                !ReferenceEquals(actor, host.GuestIdentity) || ready.roomSessionId != activeRoomSessionId ||
+                ready.loadId != initializedLoadId || guestRetryReady) return;
+            guestRetryReady = true;
+            Debug.Log($"[RoomRetry] guest ready player={actor.PlayerId} load={ready.loadId}");
+            TryBeginRoomRetry();
+        }
+
+        private void TryBeginRoomRetry()
+        {
+            if (!hostRetryReady || !guestRetryReady) return;
+            restarting = true;
+            host.BeginSceneLoad(true);
+            Debug.Log($"[RoomRetry] both ready; reloading MainScene load={host.SceneLoadId}");
+            StartCoroutine(LoadAndPrepare(true, host.SceneLoadId, ++operation, true));
         }
 
         public bool TryKillFromDeadZone(DeadZone zone, Collider2D collision)
@@ -690,6 +751,7 @@ namespace Rpg.Networking
 
         private void OnEquipmentChangeResult(EquipmentChangeResultDto result) => OnInventoryResult(result);
         private void OnCraftResult(CraftResultDto result) => OnInventoryResult(result);
+        private void OnPickupResult(PickupResultDto result) => OnInventoryResult(result);
         private void OnInventoryResult(RoomInventoryResultDto result)
         {
             if (!IsSceneSession || returning || activeRoomIsHost || result.roomSessionId != activeRoomSessionId || Presentation == null) return;
@@ -701,6 +763,7 @@ namespace Rpg.Networking
             ProtocolCodec.ValidateMessage(result, true);
             if (!Presentation.TryGetEntity(result.entityId, out var view) || view.PlayerId != result.playerId ||
                 !CombatDamage.Receipts.TryAccept(result)) return;
+            if (result is PickupResultDto pickup && pickup.accepted) Monsters.RemoveDrop(pickup.dropId);
             view.View.GetComponent<Player>().Combat.ApplyInventoryConfirmation(result);
             view.ApplyFlaskState(result.roomSessionId, result.authorityTick, result.flask);
             view.ApplySkillTreePresentation(result.combat.skillTree, result.authorityTick);
@@ -708,6 +771,40 @@ namespace Rpg.Networking
             view.NotifyEquipmentChanged();
             if (result is CraftResultDto crafted)
                 Debug.Log($"[RoomCraft] CONFIRMED player={crafted.playerId} request={crafted.requestSeq} accepted={crafted.accepted} reason={crafted.rejection} version={crafted.combat.equipmentVersion} resultId={crafted.resultId}");
+            if (result is PickupResultDto confirmedPickup)
+                Debug.Log($"[RoomPickup] CONFIRMED player={confirmedPickup.playerId} dropId={confirmedPickup.dropId} accepted={confirmedPickup.accepted} reason={confirmedPickup.rejection} version={confirmedPickup.combat.equipmentVersion} resultId={confirmedPickup.resultId}");
+        }
+
+        public bool RequestLocalPickup(Player player, ItemObject item)
+        {
+            if (!IsSceneSession || returning || Presentation == null || Monsters == null ||
+                player == null || item == null || !ReferenceEquals(Presentation.LocalEntity?.View, player.transform) ||
+                !Presentation.LocalEntity.IsReady || initializedLoadId == 0 || initializedLoadId != initializationLoadId ||
+                !Monsters.TryGetDropId(item, out int dropId)) return false;
+            var request = new PickupRequestDto { roomSessionId = activeRoomSessionId,
+                requestSeq = ++localPickupRequestSeq, dropId = dropId };
+            if (!activeRoomIsHost) return client.SendPickupRequest(request);
+            OnPickupRequested(host.HostIdentity, request);
+            return true;
+        }
+
+        private void OnPickupRequested(RoomPlayerIdentity actor, PickupRequestDto request)
+        {
+            if (!IsSceneSession || returning || !activeRoomIsHost || Presentation == null || actor == null ||
+                actor.RoomSessionId != activeRoomSessionId || !ProtocolCodec.ValidPickupRequest(request) ||
+                initializedLoadId == 0 || initializedLoadId != initializationLoadId || Monsters == null || Players == null ||
+                pickupRequests.TryGetValue(actor.PlayerId, out long lastSeq) && request.requestSeq <= lastSeq) return;
+            pickupRequests[actor.PlayerId] = request.requestSeq;
+            Monsters.TryGetDropItem(request.dropId, out var item);
+            var result = Players.RequestPickup(actor, request, item, host.Results);
+            if (result == null) return;
+            if (result.accepted)
+            {
+                Monsters.RemoveDrop(result.dropId);
+                if (Presentation.TryGetEntity(result.entityId, out var view)) view.NotifyEquipmentChanged();
+            }
+            host.SendPickupResult(result);
+            Debug.Log($"[RoomPickup] player={result.playerId} dropId={result.dropId} accepted={result.accepted} reason={result.rejection} version={result.combat.equipmentVersion} resultId={result.resultId}");
         }
 
         public bool RequestLocalCraft(RoomEntityPresentation local, ItemData_Equipment recipe)
@@ -942,12 +1039,30 @@ namespace Rpg.Networking
             InvalidateEntityInitialization();
             if (departingPlayerId > 0)
             {
+                guestRetryReady = false;
+                int departingEntityId = 0;
+                if (Players != null)
+                    foreach (var player in Players.Entities.Values)
+                        if (player.Combat.PlayerId == departingPlayerId)
+                        {
+                            departingEntityId = player.Combat.EntityId;
+                            player.GetComponent<NetworkEntityIdentity>().HoldMovement();
+                            break;
+                        }
                 parryRequests.Remove(departingPlayerId);
+                pickupRequests.Remove(departingPlayerId);
                 CombatDamage?.RemovePlayerElements(departingPlayerId, GameSimulationClock.AuthorityTick);
+                CombatDamage?.ForgetDepartedPlayer(departingPlayerId);
+                if (departingEntityId > 0) Monsters?.ForgetPlayerTarget(departingEntityId);
+                swords?.RemovePlayer(departingPlayerId);
+                blackholes?.RemovePlayer(departingPlayerId);
+                crystals?.RemovePlayer(departingPlayerId);
+                clones?.RemovePlayer(departingPlayerId);
                 NetworkObjects?.CleanupPlayer(activeRoomSessionId, departingPlayerId);
                 Presentation?.RemovePlayer(departingPlayerId);
                 return;
             }
+            GameplayControlLock.Release(this);
             swords?.Dispose(); swords = null; pendingSwordStates = null; swordStateTimer = 0;
             crystals?.Dispose(); crystals = null; pendingCrystalStates = null;
             clones?.Dispose(); clones = null; pendingCloneStates = null;
@@ -957,9 +1072,9 @@ namespace Rpg.Networking
             pendingDamageResults.Clear();
             pendingMonsterDeaths.Clear();
             pendingDropSpawns.Clear();
-            pendingDropStates = null;
             pendingPlayerDeaths.Clear();
-            pendingInventoryResults.Clear(); localEquipmentRequestSeq = localCraftRequestSeq = 0;
+            pendingInventoryResults.Clear(); localEquipmentRequestSeq = localCraftRequestSeq = localPickupRequestSeq = 0;
+            pickupRequests.Clear();
             pendingSkillUnlockResults.Clear(); localSkillUnlockRequestSeq = 0;
             pendingFlaskResults.Clear(); flaskHudTimer = 0;
             pendingElementStates = null;
@@ -986,7 +1101,7 @@ namespace Rpg.Networking
             if (!IsSceneSession || scene.handle != preparedSceneHandle) return;
             preparedSceneHandle = -1;
             ClearPresentation();
-            if (returning || quitting) return;
+            if (returning || quitting || restarting) return;
             if (activeRoomIsHost) host.CloseRoom();
             else client.LeaveRoom();
             ReturnToEntry("Room scene unloaded");
@@ -1057,6 +1172,8 @@ namespace Rpg.Networking
                 host.PrimaryAttackRequested -= OnPrimaryAttackRequested;
                 host.EquipmentChangeRequested -= OnEquipmentChangeRequested;
                 host.CraftRequested -= OnCraftRequested;
+                host.PickupRequested -= OnPickupRequested;
+                host.RetryReadyReceived -= OnGuestRetryReady;
                 host.SkillUnlockRequested -= OnSkillUnlockRequested;
                 host.FlaskUseRequested -= OnFlaskUseRequested;
                 host.SwordInputReceived -= OnSwordInput;
@@ -1076,11 +1193,11 @@ namespace Rpg.Networking
                 client.DamageResultReceived -= OnDamageResult;
                 client.MonsterDeathReceived -= OnMonsterDeath;
                 client.DropSpawnReceived -= OnDropSpawn;
-                client.DropStatesReceived -= OnDropStates;
                 client.PlayerDeathReceived -= OnPlayerDeath;
                 client.ElementStatesReceived -= OnElementStates;
                 client.EquipmentChangeResultReceived -= OnEquipmentChangeResult;
                 client.CraftResultReceived -= OnCraftResult;
+                client.PickupResultReceived -= OnPickupResult;
                 client.SkillUnlockResultReceived -= OnSkillUnlockResult;
                 client.FlaskUseResultReceived -= OnFlaskUseResult;
                 client.SwordStatesReceived -= OnSwordStates;

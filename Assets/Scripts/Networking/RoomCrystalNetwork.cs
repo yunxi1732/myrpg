@@ -198,5 +198,11 @@ namespace Rpg.Networking
             disposed = true;
             foreach (var crystal in new List<Crystal>(crystals.Values)) crystal.Lifetime.Dispose();
         }
+        public void RemovePlayer(int playerId)
+        {
+            requests.Remove(playerId); stacks.Remove(playerId);
+            foreach (var crystal in new List<Crystal>(crystals.Values))
+                if (crystal.State.sourcePlayerId == playerId) crystal.Lifetime.Dispose();
+        }
     }
 }

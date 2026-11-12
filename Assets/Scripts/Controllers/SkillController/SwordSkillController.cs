@@ -60,7 +60,6 @@ public class SwordSkillController : MonoBehaviour
             transform.position = Vector2.MoveTowards(rb.transform.position, player.transform.position, returnSpeed * GameSimulationClock.FixedDeltaTime);
             if (Vector2.Distance(transform.position, player.transform.position) < 1) player.CatchTheSword();
         }
-        if (Network != null) return;
         BounceLogic();
         SpinLogic();
     }
@@ -80,7 +79,8 @@ public class SwordSkillController : MonoBehaviour
                 if (spinTimer < 0)
                 {
                     isSpinning = false;
-                    isReturning = true;
+                    if (Network != null) ReturnSword();
+                    else isReturning = true;
                 }
 
                 hitTimer -= GameSimulationClock.FixedDeltaTime;
@@ -91,7 +91,11 @@ public class SwordSkillController : MonoBehaviour
                     foreach (var hit in colliders)
                     {
                         Enemy enemy = hit.GetComponent<Enemy>();
-                        if (enemy) SwordSkillDamage(enemy);
+                        if (enemy)
+                        {
+                            if (Network != null) Network.Room.Hit(Network, enemy);
+                            else SwordSkillDamage(enemy);
+                        }
                     }
                 }
             }
@@ -112,13 +116,16 @@ public class SwordSkillController : MonoBehaviour
             transform.position = Vector2.MoveTowards(transform.position, enemyTarget[targetIndex].position, bounceSpeed * GameSimulationClock.FixedDeltaTime);
             if (Vector2.Distance(transform.position, enemyTarget[targetIndex].position) < 0.1f)
             {
-                SwordSkillDamage(enemyTarget[targetIndex].GetComponent<Enemy>());
+                var enemy = enemyTarget[targetIndex].GetComponent<Enemy>();
+                if (Network != null) Network.Room.Hit(Network, enemy);
+                else SwordSkillDamage(enemy);
                 targetIndex++;
                 bounceAmount--;
                 if (bounceAmount <= 0)
                 {
                     isBouncing = false;
-                    isReturning = true;
+                    if (Network != null) ReturnSword();
+                    else isReturning = true;
                 }
                 if (targetIndex >= enemyTarget.Count) targetIndex = 0;
             }
@@ -174,6 +181,8 @@ public class SwordSkillController : MonoBehaviour
             if (!Network.IsAuthoritative || Network.Phase != SwordPhase.Flying || collision.GetComponentInParent<Player>() != null) return;
             var target = collision.GetComponentInParent<Enemy>();
             if (target != null && !Network.Room.Hit(Network, target)) return;
+            SetUpTargetForBounce(collision);
+            if (pierceAmount > 0 && target != null) { pierceAmount--; return; }
             StuckInto(collision);
             Network.Phase = SwordPhase.Stuck; Network.Room.Publish();
             return;

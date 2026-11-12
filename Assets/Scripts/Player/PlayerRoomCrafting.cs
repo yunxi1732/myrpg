@@ -4,13 +4,14 @@ using Rpg.Networking.Protocol;
 
 public sealed partial class PlayerCombatContext
 {
-    private readonly Dictionary<string, RoomMaterialDto> roomMaterials = new Dictionary<string, RoomMaterialDto>();
+    private readonly Dictionary<string, ItemData> roomMaterialData = new Dictionary<string, ItemData>();
+    private readonly List<ItemData> ownedRoomMaterials = new List<ItemData>();
     private long craftRequestSeq;
     public RoomMaterialDto[] CaptureRoomMaterials()
     {
         var result = new List<RoomMaterialDto>();
-        foreach (var value in roomMaterials.Values)
-            result.Add(new RoomMaterialDto { materialId = value.materialId, displayName = value.displayName, count = value.count });
+        foreach (var value in roomInventoryModel.Stash)
+            result.Add(new RoomMaterialDto { materialId = value.data.name, displayName = value.data.itemName, count = value.stackSize });
         result.Sort((a, b) => string.CompareOrdinal(a.materialId, b.materialId));
         return result.ToArray();
     }
@@ -24,9 +25,10 @@ public sealed partial class PlayerCombatContext
         if (!Owner.IsRuntimeInitialized || !Stats.IsRuntimeInitialized || Stats.isDead || Stats.currentHealth <= 0) rejection = CraftRejection.PlayerUnavailable;
         else if (request.expectedVersion != EquipmentVersion) rejection = CraftRejection.StaleInventory;
         else if (!catalog.TryGet(request.recipeId, out recipe)) rejection = CraftRejection.UnknownRecipe;
-        else if (roomInventory.Count >= RoomInventoryCapacity) rejection = CraftRejection.InventoryFull;
+        else if (!roomInventorySystem.CanAddItem(RoomInventoryCapacity)) rejection = CraftRejection.InventoryFull;
         else foreach (var cost in recipe.Costs)
-            if (!roomMaterials.TryGetValue(cost.Key, out var available) || available.count < cost.Value)
+            if (!roomMaterialData.TryGetValue(cost.Key, out var material) ||
+                !roomInventoryModel.StashDictionary.TryGetValue(material, out var available) || available.stackSize < cost.Value)
             { rejection = CraftRejection.MissingMaterials; break; }
         string productId = "";
         if (rejection == CraftRejection.None)
@@ -38,12 +40,11 @@ public sealed partial class PlayerCombatContext
             var product = RoomCombatConfiguration.CreateEquipment(new RoomEquipmentDto { configurationId = productId,
                 definitionId = definition.definitionId, displayName = definition.displayName, slot = definition.slot, modifiers = definition.modifiers });
             ownedRoomEquipment.Add(product);
+            var required = new List<InventoryItem>();
             foreach (var cost in recipe.Costs)
-            {
-                var available = roomMaterials[cost.Key]; available.count -= cost.Value;
-                if (available.count == 0) roomMaterials.Remove(cost.Key);
-            }
-            roomInventory.Add(product);
+                required.Add(new InventoryItem(roomMaterialData[cost.Key]) { stackSize = cost.Value });
+            if (!roomInventorySystem.CanCraft(product, required, RoomInventoryCapacity, out bool productAdded) || !productAdded)
+                throw new System.InvalidOperationException("Validated room craft did not complete.");
             EquipmentVersion = nextVersion; equipmentTick = tick;
         }
         return new CraftResultDto { roomSessionId = RoomSessionId, authorityTick = tick, resultId = results.Allocate(),

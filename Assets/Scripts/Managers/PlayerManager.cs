@@ -31,6 +31,8 @@ public class PlayerManager : MonoBehaviour, ISaveManager
 
     public int GetCurrency() => currency;
 
+    public void GrantMonsterCurrency(int amount) => currency = checked(currency + amount);
+
     public void LoadData(GameData _data)
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanPersist(this)) return;

@@ -7,6 +7,7 @@ public class ItemObject : MonoBehaviour
 {
     [SerializeField] private Rigidbody2D rb;
     [SerializeField] private ItemData itemData;
+    internal ItemData ItemData => itemData;
 
     private void SetUpVisuals()
     {

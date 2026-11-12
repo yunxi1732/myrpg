@@ -40,6 +40,7 @@ public class SwordSkill : Skill
     [SerializeField] private GameObject swordPrefab;
     [SerializeField] private Vector2 launchingForce;
     [SerializeField] private float swordGravity;
+    private float regularGravity;
     [SerializeField] private float freezeDuration = 0.7f;
     [SerializeField] private float returnSpeed;
 
@@ -76,6 +77,11 @@ public class SwordSkill : Skill
         adapter.transform.SetParent(owner.transform, false);
         adapter.RoomNetwork = room; adapter.BindRoomOwner(owner.Combat);
         adapter.swordPrefab = swordPrefab; adapter.launchingForce = launchingForce; adapter.swordGravity = swordGravity;
+        adapter.regularGravity = swordGravity;
+        adapter.bounceAmount = bounceAmount; adapter.bounceGravity = bounceGravity; adapter.bounceSpeed = bounceSpeed;
+        adapter.pierceAmount = pierceAmount; adapter.pierceGravity = pierceGravity;
+        adapter.maxTravelDistance = maxTravelDistance; adapter.spinDuration = spinDuration;
+        adapter.spinGravity = spinGravity; adapter.hitCooldown = hitCooldown;
         adapter.returnSpeed = returnSpeed; adapter.freezeDuration = freezeDuration; adapter.cooldown = cooldown;
         adapter.dotPrefab = dotPrefab; adapter.numberOfDots = numberOfDots; adapter.spaceBetweenDots = spaceBetweenDots; adapter.dotsParent = adapter.transform;
         adapter.RoomDirection = Vector2.right; adapter.swordType = SwordType.Regular;
@@ -103,6 +109,14 @@ public class SwordSkill : Skill
         if (swordType == SwordType.Bounce) swordGravity = bounceGravity;
         else if (swordType == SwordType.Pierce) swordGravity = pierceGravity;
         else if (swordType == SwordType.Spin) swordGravity = spinGravity;
+    }
+    private void SelectRoomSwordType()
+    {
+        swordType = Combat.IsRoomNodeUnlocked("Bullet sword") ? SwordType.Pierce :
+            Combat.IsRoomNodeUnlocked("Chain saw sword") ? SwordType.Spin :
+            Combat.IsRoomNodeUnlocked("Bouncy sword") ? SwordType.Bounce : SwordType.Regular;
+        swordGravity = regularGravity;
+        SetUpGravity();
     }
     protected override void Update()
     {
@@ -157,14 +171,15 @@ public class SwordSkill : Skill
     public void CreateSword()
     {
         if (RoomNetwork != null && !player.IsAuthoritative) return;
+        if (RoomNetwork != null) SelectRoomSwordType();
         GameObject newSword = Instantiate(swordPrefab, player.transform.position, transform.rotation);
         SwordSkillController newSwordController = newSword.GetComponent<SwordSkillController>();
 
-        if (RoomNetwork != null) RoomNetwork.RegisterSword(player, newSword);
-        else if (swordType == SwordType.Bounce) newSwordController.SetUpBounce(true, bounceAmount, bounceSpeed);
+        if (swordType == SwordType.Bounce) newSwordController.SetUpBounce(true, bounceAmount, bounceSpeed);
         else if (swordType == SwordType.Pierce) newSwordController.SetUpPierce(pierceAmount);
         else if (swordType == SwordType.Spin) newSwordController.SetUpSpin(true, maxTravelDistance, spinDuration, hitCooldown);
 
+        if (RoomNetwork != null) RoomNetwork.RegisterSword(player, newSword);
         newSwordController.SetUpSword(finalDir, swordGravity, player, freezeDuration, returnSpeed);
         if (RoomNetwork == null) AudioManager.instance.PlaySFX(12, null);
         player.AssignNewSword(newSword);
@@ -189,7 +204,7 @@ public class SwordSkill : Skill
         if (Input.GetKeyDown(KeyCode.Mouse1))
         {
             if (RoomNetwork.HasSword(Combat.PlayerId)) SendRoomInput(SwordAction.Recall, direction);
-            else if (Combat.Skills.Get<SwordSkill>().Unlocked) { localAim = true; SendRoomInput(SwordAction.Aim, direction); }
+            else if (Combat.Skills.Get<SwordSkill>().Unlocked) { SelectRoomSwordType(); localAim = true; SendRoomInput(SwordAction.Aim, direction); }
         }
         if (localAim && Input.GetKeyUp(KeyCode.Mouse1)) { localAim = false; SendRoomInput(SwordAction.Release, direction); }
         else if (localAim && MonotonicClock.Now - lastAimSend >= .04 &&

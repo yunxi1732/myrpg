@@ -4,11 +4,49 @@ using Rpg.Networking.Protocol;
 
 public sealed partial class PlayerCombatContext
 {
-    private readonly List<ItemData_Equipment> roomInventory = new List<ItemData_Equipment>();
-    public IReadOnlyList<ItemData_Equipment> RoomInventory => roomInventory;
+    private readonly InventoryModel roomInventoryModel = new InventoryModel();
+    private readonly InventorySystem roomInventorySystem;
+    public IReadOnlyList<ItemData_Equipment> RoomInventory
+    {
+        get
+        {
+            var items = new ItemData_Equipment[roomInventoryModel.Items.Count];
+            for (int i = 0; i < items.Length; i++) items[i] = (ItemData_Equipment)roomInventoryModel.Items[i].data;
+            return items;
+        }
+    }
     public int RoomInventoryCapacity { get; private set; } = 24;
     public long EquipmentVersion { get; private set; } = 1;
     private long equipmentRequestSeq;
+    internal bool TryReceiveRoomDrop(ItemData item, int dropId, ulong tick)
+    {
+        if (item.itemType == ItemType.Equipment)
+        {
+            if (!roomInventorySystem.CanAddItem(RoomInventoryCapacity)) return false;
+            var source = (ItemData_Equipment)item;
+            var value = RoomCombatConfiguration.CaptureEquipment((RoomEquipmentSlot)source.equipmentType, source);
+            value.configurationId = "drop/" + dropId;
+            var owned = RoomCombatConfiguration.CreateEquipment(value);
+            ownedRoomEquipment.Add(owned);
+            roomInventorySystem.AddItem(owned, RoomInventoryCapacity);
+        }
+        else
+        {
+            string materialId = RoomCraftCatalog.MaterialId(item);
+            if (!roomMaterialData.TryGetValue(materialId, out var owned))
+            {
+                owned = UnityEngine.ScriptableObject.CreateInstance<ItemData>();
+                owned.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
+                owned.name = materialId; owned.itemId = materialId;
+                owned.itemName = string.IsNullOrEmpty(item.itemName) ? item.name : item.itemName;
+                owned.itemType = ItemType.Material;
+                ownedRoomMaterials.Add(owned); roomMaterialData.Add(materialId, owned);
+            }
+            roomInventorySystem.AddItem(owned, RoomInventoryCapacity);
+        }
+        EquipmentVersion = checked(EquipmentVersion + 1); equipmentTick = tick;
+        return true;
+    }
     private ulong equipmentTick;
 
     // Called on A's main thread only, after resolving the actor from the admitted connection/local identity.
@@ -27,18 +65,20 @@ public sealed partial class PlayerCombatContext
         else if (request.kind == EquipmentChangeKind.Unequip)
         {
             if (previous == null || previous.name != request.configurationId) rejection = EquipmentChangeRejection.MissingItem;
-            else if (roomInventory.Count >= RoomInventoryCapacity) rejection = EquipmentChangeRejection.InventoryFull;
+            else if (!roomInventorySystem.CanAddItem(RoomInventoryCapacity)) rejection = EquipmentChangeRejection.InventoryFull;
         }
         else
         {
-            next = roomInventory.Find(item => item.name == request.configurationId && item.equipmentType == slot);
+            foreach (var entry in roomInventoryModel.Items)
+                if (entry.data is ItemData_Equipment item && item.name == request.configurationId && item.equipmentType == slot)
+                { next = item; break; }
             if (next == null) rejection = EquipmentChangeRejection.MissingItem;
         }
         if (rejection == EquipmentChangeRejection.None)
         {
             // Remove incoming item first: swapping in a full bag retains the outgoing item without loss.
-            if (next != null) roomInventory.Remove(next);
-            if (previous != null) roomInventory.Add(previous);
+            if (next != null) roomInventorySystem.RemoveItem(next);
+            if (previous != null) roomInventorySystem.AddItem(previous, RoomInventoryCapacity);
             SetEquipment(slot, next);
             EquipmentVersion = checked(EquipmentVersion + 1); equipmentTick = tick;
             // Changing max HP never heals; lowering it clamps HP and advances the common health version.

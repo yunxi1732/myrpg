@@ -164,5 +164,10 @@ namespace Rpg.Networking
             disposed = true;
             foreach (var clone in new List<Clone>(clones.Values)) clone.Lifetime.Dispose();
         }
+        public void RemovePlayer(int playerId)
+        {
+            foreach (var clone in new List<Clone>(clones.Values))
+                if (clone.State.sourcePlayerId == playerId) clone.Lifetime.Dispose();
+        }
     }
 }

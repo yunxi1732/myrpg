@@ -8,6 +8,14 @@ public class SkeletonBattleState : SkeletonGroundedState
     private int moveDir;
     public Transform Target => player;
 
+    public void ForgetRoomPlayer(int entityId)
+    {
+        if (player == null || player.GetComponent<Rpg.Networking.NetworkEntityIdentity>()?.EntityId != entityId) return;
+        player = null;
+        if (stateMachine.currentState == this || stateMachine.currentState == enemy.attackState)
+            stateMachine.ChangeState(enemy.idleState);
+    }
+
     public SkeletonBattleState(Enemy _enemyBase, EnemyStateMachine _stateMachine, string _animBoolName, EnemySkeleton _enemy) : base(_enemyBase, _stateMachine, _animBoolName, _enemy)
     {
     }

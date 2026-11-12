@@ -9,12 +9,14 @@ public sealed class NetworkCraftPanel : MonoBehaviour
 {
     private GameObject root;
     private UI_CraftWindow window;
+    private NetworkInventoryView inventoryView;
     private RoomEntityPresentation local;
     private MenuControlLock controlLock;
     public bool IsOpen => root != null && root.activeInHierarchy;
-    public void Prepare(Scene scene)
+    public void Prepare(Scene scene, NetworkInventoryView inventoryView)
     {
         Unbind(); root = null; window = null; controlLock = null;
+        this.inventoryView = inventoryView;
         foreach (var sceneRoot in scene.GetRootGameObjects())
         {
             var ui = sceneRoot.GetComponentInChildren<UI>(true);
@@ -49,10 +51,12 @@ public sealed class NetworkCraftPanel : MonoBehaviour
         if (root == null || window == null || local == null || !local.IsValid || !local.IsReady || local.View == null ||
             local.View.GetComponent<NetworkEntityIdentity>()?.IsLocalInputOwner != true || controlLock == null || !controlLock.PrepareOpen()) return;
         window.BindNetwork(local); root.SetActive(true);
+        inventoryView?.Bind(local);
     }
     public void Close()
     {
         if (window != null) window.BindNetwork(null);
+        inventoryView?.Dispose();
         if (root != null) root.SetActive(false);
         if (controlLock != null) controlLock.Release();
     }

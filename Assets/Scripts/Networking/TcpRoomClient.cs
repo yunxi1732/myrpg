@@ -55,7 +55,7 @@ namespace Rpg.Networking
         public event Action<MonsterDeathDto> MonsterDeathReceived;
         public event Action<PlayerDeathDto> PlayerDeathReceived;
         public event Action<DropSpawnDto> DropSpawnReceived;
-        public event Action<DropStatesDto> DropStatesReceived;
+        public event Action<PickupResultDto> PickupResultReceived;
         public event Action<EquipmentChangeResultDto> EquipmentChangeResultReceived;
         public event Action<CraftResultDto> CraftResultReceived;
         public event Action<SkillUnlockResultDto> SkillUnlockResultReceived;
@@ -174,6 +174,9 @@ namespace Rpg.Networking
                         lastPlayerInitializationTick = 0;
                         lastMonsterSeq = 0; lastMonsterTick = 0;
                         LocalSceneReady = CanInitializeEntities = false;
+                        movementSender.Reset();
+                        LastSentActionSeq = LastSentPrimaryAttackRequestSeq = 0;
+                        inputLockSeq = 0; sentInputLock = null;
                         SceneLoadRequested?.Invoke(load);
                     });
                     handshakePeer.Subscribe<SceneStartDto>(value =>
@@ -259,12 +262,12 @@ namespace Rpg.Networking
                             lastMonsterSeq == 0 || drop.roomSessionId != RoomSessionId) return;
                         DropSpawnReceived?.Invoke(drop);
                     });
-                    handshakePeer.Subscribe<DropStatesDto>(value =>
+                    handshakePeer.Subscribe<PickupResultDto>(value =>
                     {
-                        var states = (DropStatesDto)value;
+                        var result = (PickupResultDto)value;
                         if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected || !CanInitializeEntities ||
-                            lastMonsterSeq == 0 || states.roomSessionId != RoomSessionId || states.loadId != SceneLoadId) return;
-                        DropStatesReceived?.Invoke(states);
+                            lastPlayerInitializationSeq == 0 || result.roomSessionId != RoomSessionId) return;
+                        PickupResultReceived?.Invoke(result);
                     });
                     handshakePeer.Subscribe<EquipmentChangeResultDto>(value =>
                     {
@@ -470,6 +473,22 @@ namespace Rpg.Networking
             try { Connection.Send(request, true); return true; }
             catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
+        public bool SendPickupRequest(PickupRequestDto request)
+        {
+            if (!ProtocolCodec.ValidPickupRequest(request) || request.roomSessionId != RoomSessionId ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(request, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
+        public bool SendRetryReady(RoomRetryReadyDto ready)
+        {
+            if (!ProtocolCodec.ValidRetryReady(ready) || ready.roomSessionId != RoomSessionId || ready.loadId != SceneLoadId ||
+                State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
+            try { Connection.Send(ready, true); return true; }
+            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+        }
         public bool SendSkillUnlockRequest(SkillUnlockRequestDto request)
         {
             if (!ProtocolCodec.ValidSkillUnlockRequest(request) || request.roomSessionId != RoomSessionId ||
@@ -585,7 +604,7 @@ namespace Rpg.Networking
             MonsterDeathReceived = null;
             PlayerDeathReceived = null;
             DropSpawnReceived = null;
-            DropStatesReceived = null;
+            PickupResultReceived = null;
             EquipmentChangeResultReceived = null;
             CraftResultReceived = null;
             SkillUnlockResultReceived = null;
