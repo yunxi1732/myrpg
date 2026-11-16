@@ -14,6 +14,9 @@ namespace Rpg.Networking
             public RoomNetworkObjects.Registration Lifetime;
             public bool Derived;
             public PrimaryAttackInstance Attack;
+            public long RequestSeq;
+            public ulong StartTick;
+            public bool Published, PublishedExploding;
         }
 
         private readonly RoomPresentationContext context;
@@ -26,7 +29,9 @@ namespace Rpg.Networking
         private readonly AuthorityResultSequence results;
         private readonly Func<int> allocateEntity;
         private readonly Action<CrystalStatesDto> publish;
-        private readonly Dictionary<int, Crystal> crystals = new Dictionary<int, Crystal>();
+        private readonly Action<CrystalInstanceEventDto> publishEvent;
+        private readonly Func<long> currentLoadId;
+        private readonly Dictionary<long, Crystal> crystals = new Dictionary<long, Crystal>();
         private readonly Dictionary<int, long> requests = new Dictionary<int, long>();
         private readonly Dictionary<int, (int remaining, ulong deadline)> stacks = new Dictionary<int, (int, ulong)>();
         private long stateSeq, appliedSeq;
@@ -34,11 +39,13 @@ namespace Rpg.Networking
         private bool disposed;
 
         public RoomCrystalNetwork(RoomPresentationContext context, RoomPlayerEntities players, RoomNetworkObjects objects,
-            CrystalSkill template, RoomCombatDamage damage, AuthorityResultSequence results, Func<int> allocateEntity, Action<CrystalStatesDto> publish)
+            CrystalSkill template, RoomCombatDamage damage, AuthorityResultSequence results, Func<int> allocateEntity,
+            Action<CrystalStatesDto> publish, Action<CrystalInstanceEventDto> publishEvent, Func<long> currentLoadId)
         {
             this.context = context; this.players = players; this.objects = objects; this.template = template;
             this.damage = damage;
             this.results = results; this.allocateEntity = allocateEntity; this.publish = publish;
+            this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
         }
 
         public void Request(RoomPlayerIdentity actor, CrystalInputDto input)
@@ -62,7 +69,7 @@ namespace Rpg.Networking
                     stack = (template.RoomStackCount, checked(GameSimulationClock.AuthorityTick +
                         (ulong)Mathf.CeilToInt(template.RoomStackWindow / GameSimulationClock.FixedDeltaTime)));
                 }
-                Spawn(player, player.transform.position, exploding, moving, false);
+                Spawn(player, player.transform.position, exploding, moving, false, input.actionSeq);
                 stack.remaining--;
                 if (stack.remaining == 0) { stacks.Remove(actor.PlayerId); player.Combat.Skills.Commit<CrystalSkill>(); }
                 else stacks[actor.PlayerId] = stack;
@@ -84,7 +91,7 @@ namespace Rpg.Networking
                 return;
             }
             if (!player.Combat.Skills.Commit<CrystalSkill>()) return;
-            Spawn(player, player.transform.position, exploding, moving, false);
+            Spawn(player, player.transform.position, exploding, moving, false, input.actionSeq);
         }
 
         public void Advance()
@@ -99,7 +106,7 @@ namespace Rpg.Networking
                 }
         }
 
-        private void Spawn(Player owner, Vector3 position, bool exploding, bool moving, bool derived)
+        private void Spawn(Player owner, Vector3 position, bool exploding, bool moving, bool derived, long requestSeq)
         {
             var crystal = UnityEngine.Object.Instantiate(template.CrystalPrefab, position, Quaternion.identity);
             var target = moving ? template.FindRoomTarget(crystal.transform) : null;
@@ -108,8 +115,10 @@ namespace Rpg.Networking
             var state = new CrystalObjectDto { entityId = allocateEntity(), sourcePlayerId = owner.Combat.PlayerId,
                 sourceEntityId = owner.Combat.EntityId, skillInstanceId = objects.AllocatePrimaryAttackInstanceId() };
             Register(crystal, state);
-            var registered = crystals[state.entityId];
+            var registered = crystals[state.skillInstanceId];
             registered.Derived = derived;
+            registered.RequestSeq = requestSeq;
+            registered.StartTick = GameSimulationClock.AuthorityTick;
             if (exploding)
             {
                 ulong tick = GameSimulationClock.AuthorityTick;
@@ -123,7 +132,7 @@ namespace Rpg.Networking
 
         public void SpawnFromClone(Player owner, Transform origin, Vector3 offset)
         {
-            Spawn(owner, origin.position + offset, owner.Combat.IsRoomNodeUnlocked("Explosion"), true, true);
+            Spawn(owner, origin.position + offset, owner.Combat.IsRoomNodeUnlocked("Explosion"), true, true, 0);
         }
 
         public void Explode(CrystalSkillController controller, float radius)
@@ -140,7 +149,7 @@ namespace Rpg.Networking
         private void Register(GameObject value, CrystalObjectDto state)
         {
             var crystal = new Crystal { State = state, Object = value };
-            crystals.Add(state.entityId, crystal);
+            crystals.Add(state.skillInstanceId, crystal);
             value.GetComponent<CrystalSkillController>().Room = this;
             if (context.IsGuest)
             {
@@ -148,7 +157,12 @@ namespace Rpg.Networking
                 value.GetComponent<Collider2D>().enabled = false;
             }
             crystal.Lifetime = objects.Register(context.RoomSessionId, state.sourcePlayerId, value,
-                () => { crystal.Attack?.Close(); crystals.Remove(state.entityId); });
+                () =>
+                {
+                    crystals.Remove(state.skillInstanceId);
+                    if (!context.IsGuest && !disposed && crystal.Published) PublishInstanceEvent(crystal, CrystalInstanceEventKind.End);
+                    crystal.Attack?.Close();
+                });
         }
 
         public void Publish()
@@ -156,18 +170,77 @@ namespace Rpg.Networking
             if (disposed || context.IsGuest || GameSimulationClock.AuthorityTick == 0) return;
             foreach (var value in new List<Crystal>(crystals.Values))
                 if (value.Object == null) value.Lifetime.Dispose();
-            var states = new List<CrystalObjectDto>();
+            var states = new List<CrystalTrajectoryDto>();
             foreach (var value in crystals.Values)
             {
                 Vector2 position = value.Object.transform.position;
                 value.State.position = new[] { position.x, position.y };
                 value.State.scale = value.Object.transform.localScale.x;
-                value.State.exploding = value.Object.GetComponent<Animator>().GetBool("Explode");
-                states.Add(value.State);
+                bool exploding = value.Object.GetComponent<Animator>().GetBool("Explode");
+                if (!value.Published) { PublishInstanceEvent(value, CrystalInstanceEventKind.Spawn); value.Published = true; }
+                if (exploding && !value.PublishedExploding)
+                    PublishInstanceEvent(value, CrystalInstanceEventKind.Explode);
+                value.PublishedExploding = exploding;
+                states.Add(new CrystalTrajectoryDto { skillInstanceId = value.State.skillInstanceId,
+                    position = new[] { position.x, position.y }, scale = value.Object.transform.localScale.x });
             }
             publish(new CrystalStatesDto { roomSessionId = context.RoomSessionId,
                 authorityTick = GameSimulationClock.AuthorityTick, resultId = results.Allocate(),
                 stateSeq = ++stateSeq, crystals = states.ToArray() });
+        }
+
+        public void ReplayActiveInstances()
+        {
+            foreach (var crystal in crystals.Values)
+            {
+                PublishInstanceEvent(crystal, CrystalInstanceEventKind.Spawn);
+                if (crystal.PublishedExploding) PublishInstanceEvent(crystal, CrystalInstanceEventKind.Explode);
+            }
+        }
+
+        private void PublishInstanceEvent(Crystal crystal, CrystalInstanceEventKind kind)
+        {
+            var state = crystal.State;
+            Vector2 position = crystal.Object != null ? crystal.Object.transform.position :
+                new Vector2(state.position[0], state.position[1]);
+            var value = new CrystalInstanceEventDto { roomSessionId = context.RoomSessionId, loadId = currentLoadId(),
+                authorityTick = GameSimulationClock.AuthorityTick, resultId = results.Allocate(),
+                requestSeq = crystal.RequestSeq, skillInstanceId = state.skillInstanceId, entityId = state.entityId,
+                sourcePlayerId = state.sourcePlayerId, sourceEntityId = state.sourceEntityId,
+                startTick = crystal.StartTick, kind = kind, derived = crystal.Derived,
+                position = new[] { position.x, position.y },
+                scale = crystal.Object != null ? crystal.Object.transform.localScale.x : state.scale };
+            publishEvent(value);
+            Debug.Log($"[RoomCrystal] A {kind} instance={value.skillInstanceId} derived={value.derived} resultId={value.resultId}");
+        }
+
+        public void ApplyEvent(CrystalInstanceEventDto value)
+        {
+            if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
+            if (!crystals.TryGetValue(value.skillInstanceId, out var crystal))
+            {
+                if (value.kind != CrystalInstanceEventKind.Spawn)
+                    throw new InvalidOperationException("Crystal event arrived before its spawn event.");
+                var state = new CrystalObjectDto { entityId = value.entityId, sourcePlayerId = value.sourcePlayerId,
+                    sourceEntityId = value.sourceEntityId, skillInstanceId = value.skillInstanceId };
+                Register(UnityEngine.Object.Instantiate(template.CrystalPrefab), state);
+                crystal = crystals[value.skillInstanceId];
+                crystal.StartTick = value.startTick; crystal.RequestSeq = value.requestSeq; crystal.Derived = value.derived;
+            }
+            if (crystal.State.entityId != value.entityId || crystal.State.sourcePlayerId != value.sourcePlayerId ||
+                crystal.State.sourceEntityId != value.sourceEntityId || crystal.StartTick != value.startTick ||
+                crystal.RequestSeq != value.requestSeq || crystal.Derived != value.derived)
+                throw new InvalidOperationException("Crystal metadata changed within an instance.");
+            if (value.kind == CrystalInstanceEventKind.End)
+                crystal.Lifetime.Dispose();
+            else
+            {
+                crystal.Object.transform.position = new Vector2(value.position[0], value.position[1]);
+                crystal.Object.transform.localScale = Vector3.one * value.scale;
+                if (value.kind == CrystalInstanceEventKind.Explode)
+                    crystal.Object.GetComponent<Animator>().SetBool("Explode", true);
+            }
+            Debug.Log($"[RoomCrystal] B {value.kind} instance={value.skillInstanceId} derived={value.derived} resultId={value.resultId}");
         }
 
         public void Apply(CrystalStatesDto value)
@@ -175,22 +248,12 @@ namespace Rpg.Networking
             if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId ||
                 value.stateSeq <= appliedSeq || value.authorityTick < appliedTick) return;
             appliedSeq = value.stateSeq; appliedTick = value.authorityTick;
-            var live = new HashSet<int>();
             foreach (var state in value.crystals)
             {
-                live.Add(state.entityId);
-                if (!crystals.TryGetValue(state.entityId, out var crystal))
-                {
-                    var instance = UnityEngine.Object.Instantiate(template.CrystalPrefab);
-                    Register(instance, state);
-                    crystal = crystals[state.entityId];
-                }
+                if (!crystals.TryGetValue(state.skillInstanceId, out var crystal)) continue;
                 crystal.Object.transform.position = new Vector2(state.position[0], state.position[1]);
                 crystal.Object.transform.localScale = Vector3.one * state.scale;
-                crystal.Object.GetComponent<Animator>().SetBool("Explode", state.exploding);
             }
-            foreach (var crystal in new List<Crystal>(crystals.Values))
-                if (!live.Contains(crystal.State.entityId)) crystal.Lifetime.Dispose();
         }
 
         public void Dispose()

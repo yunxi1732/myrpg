@@ -5,6 +5,9 @@ using UnityEngine;
 
 namespace Rpg.Networking.Protocol
 {
+    public enum RoomMessageKind { State, ActionRequest, ExecutionConfirmation, AuthorityResult, Scene, Probe }
+    public enum RoomDeliveryHint { Reliable, Unreliable }
+
     /// <summary>Single DTO registry and JSON gateway. Invoke on the Unity main thread.</summary>
     public static class ProtocolCodec
     {
@@ -15,76 +18,97 @@ namespace Rpg.Networking.Protocol
             public readonly ProtocolId Id;
             public readonly Type Type;
             public readonly bool AllowedBeforeHandshake;
+            public readonly RoomMessageKind Kind;
+            public readonly RoomDeliveryHint FutureDelivery;
             public readonly Action<IArchitecture, object> Dispatch;
-            public Entry(ProtocolId id, Type type, bool allowedBeforeHandshake, Action<IArchitecture, object> dispatch)
+            public Entry(ProtocolId id, Type type, bool allowedBeforeHandshake, RoomMessageKind kind,
+                RoomDeliveryHint futureDelivery, Action<IArchitecture, object> dispatch)
             {
                 Id = id;
                 Type = type;
                 AllowedBeforeHandshake = allowedBeforeHandshake;
+                Kind = kind;
+                FutureDelivery = futureDelivery;
                 Dispatch = dispatch;
             }
         }
 
-        // Extend this sole mapping with ProtocolId + DTO. Gameplay entries default to handshake-only.
+        // Sole ID/DTO/semantic/delivery registry. FutureDelivery is metadata; TCP behavior stays unchanged.
         private static readonly Entry[] Entries =
         {
-            Register<HandshakeHelloDto>(ProtocolId.HandshakeHello, true),
-            Register<VerificationEchoDto>(ProtocolId.VerificationEcho, true),
-            Register<HandshakeResultDto>(ProtocolId.HandshakeResult, true),
-            Register<HeartbeatDto>(ProtocolId.Heartbeat),
-            Register<GuestLeaveDto>(ProtocolId.GuestLeave),
-            Register<RoomClosedDto>(ProtocolId.RoomClosed, true),
-            Register<SceneLoadDto>(ProtocolId.SceneLoad),
-            Register<SceneReadyDto>(ProtocolId.SceneReady),
-            Register<SceneStartDto>(ProtocolId.SceneStart),
-            Register<SceneFailedDto>(ProtocolId.SceneFailed),
-            Register<PlayerInitializationDto>(ProtocolId.PlayerInitialization),
-            Register<MovementInputDto>(ProtocolId.MovementInput),
-            Register<PlayerPositionsDto>(ProtocolId.PlayerPositions),
-            Register<JumpRequestDto>(ProtocolId.JumpRequest),
-            Register<DashRequestDto>(ProtocolId.DashRequest),
-            Register<LocalInputLockDto>(ProtocolId.LocalInputLock),
-            Register<MonsterInitializationDto>(ProtocolId.MonsterInitialization),
-            Register<MonsterStatesDto>(ProtocolId.MonsterStates),
-            Register<PrimaryAttackRequestDto>(ProtocolId.PrimaryAttackRequest),
-            Register<DamageResultDto>(ProtocolId.DamageResult),
-            Register<ElementStatesDto>(ProtocolId.ElementStates),
-            Register<EquipmentChangeRequestDto>(ProtocolId.EquipmentChangeRequest),
-            Register<EquipmentChangeResultDto>(ProtocolId.EquipmentChangeResult),
-            Register<CraftRequestDto>(ProtocolId.CraftRequest),
-            Register<CraftResultDto>(ProtocolId.CraftResult),
-            Register<SkillUnlockRequestDto>(ProtocolId.SkillUnlockRequest),
-            Register<SkillUnlockResultDto>(ProtocolId.SkillUnlockResult),
-            Register<FlaskUseRequestDto>(ProtocolId.FlaskUseRequest),
-            Register<FlaskUseResultDto>(ProtocolId.FlaskUseResult),
-            Register<SwordInputDto>(ProtocolId.SwordInput),
-            Register<SwordStatesDto>(ProtocolId.SwordStates),
-            Register<CrystalInputDto>(ProtocolId.CrystalInput),
-            Register<CrystalStatesDto>(ProtocolId.CrystalStates),
-            Register<CloneStatesDto>(ProtocolId.CloneStates),
-            Register<BlackholeInputDto>(ProtocolId.BlackholeInput),
-            Register<BlackholeStatesDto>(ProtocolId.BlackholeStates),
-            Register<ParryInputDto>(ProtocolId.ParryInput),
-            Register<MonsterDeathDto>(ProtocolId.MonsterDeath),
-            Register<PlayerDeathDto>(ProtocolId.PlayerDeath),
-            Register<DropSpawnDto>(ProtocolId.DropSpawn),
-            Register<PickupRequestDto>(ProtocolId.PickupRequest),
-            Register<PickupResultDto>(ProtocolId.PickupResult),
-            Register<RoomRetryReadyDto>(ProtocolId.RoomRetryReady)
+            Register<HandshakeHelloDto>(ProtocolId.HandshakeHello, RoomMessageKind.Scene, RoomDeliveryHint.Reliable, true),
+            Register<VerificationEchoDto>(ProtocolId.VerificationEcho, RoomMessageKind.Probe, RoomDeliveryHint.Unreliable, true),
+            Register<HandshakeResultDto>(ProtocolId.HandshakeResult, RoomMessageKind.Scene, RoomDeliveryHint.Reliable, true),
+            Register<HeartbeatDto>(ProtocolId.Heartbeat, RoomMessageKind.Probe, RoomDeliveryHint.Unreliable),
+            Register<GuestLeaveDto>(ProtocolId.GuestLeave, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<RoomClosedDto>(ProtocolId.RoomClosed, RoomMessageKind.Scene, RoomDeliveryHint.Reliable, true),
+            Register<SceneLoadDto>(ProtocolId.SceneLoad, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<SceneReadyDto>(ProtocolId.SceneReady, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<SceneStartDto>(ProtocolId.SceneStart, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<SceneFailedDto>(ProtocolId.SceneFailed, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<PlayerInitializationDto>(ProtocolId.PlayerInitialization, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<MovementInputDto>(ProtocolId.MovementInput, RoomMessageKind.State, RoomDeliveryHint.Unreliable),
+            Register<PlayerPositionsDto>(ProtocolId.PlayerPositions, RoomMessageKind.State, RoomDeliveryHint.Unreliable),
+            Register<JumpRequestDto>(ProtocolId.JumpRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<JumpExecutionDto>(ProtocolId.JumpExecution, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<DashRequestDto>(ProtocolId.DashRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<DashExecutionDto>(ProtocolId.DashExecution, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<LocalInputLockDto>(ProtocolId.LocalInputLock, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<MonsterInitializationDto>(ProtocolId.MonsterInitialization, RoomMessageKind.Scene, RoomDeliveryHint.Reliable),
+            Register<MonsterStatesDto>(ProtocolId.MonsterStates, RoomMessageKind.State, RoomDeliveryHint.Unreliable),
+            Register<PrimaryAttackRequestDto>(ProtocolId.PrimaryAttackRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<PrimaryAttackExecutionDto>(ProtocolId.PrimaryAttackExecution, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<DamageResultDto>(ProtocolId.DamageResult, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<ElementStatesDto>(ProtocolId.ElementStates, RoomMessageKind.State, RoomDeliveryHint.Reliable),
+            Register<EquipmentChangeRequestDto>(ProtocolId.EquipmentChangeRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<EquipmentChangeResultDto>(ProtocolId.EquipmentChangeResult, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<CraftRequestDto>(ProtocolId.CraftRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<CraftResultDto>(ProtocolId.CraftResult, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<SkillUnlockRequestDto>(ProtocolId.SkillUnlockRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<SkillUnlockResultDto>(ProtocolId.SkillUnlockResult, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<FlaskUseRequestDto>(ProtocolId.FlaskUseRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<FlaskUseResultDto>(ProtocolId.FlaskUseResult, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<SwordInputDto>(ProtocolId.SwordInput, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<SwordStatesDto>(ProtocolId.SwordStates, RoomMessageKind.State, RoomDeliveryHint.Reliable),
+            Register<SwordInstanceEventDto>(ProtocolId.SwordInstanceEvent, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<CrystalInputDto>(ProtocolId.CrystalInput, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<CrystalStatesDto>(ProtocolId.CrystalStates, RoomMessageKind.State, RoomDeliveryHint.Reliable),
+            Register<CrystalInstanceEventDto>(ProtocolId.CrystalInstanceEvent, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<CloneStatesDto>(ProtocolId.CloneStates, RoomMessageKind.State, RoomDeliveryHint.Reliable),
+            Register<CloneInstanceEventDto>(ProtocolId.CloneInstanceEvent, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<BlackholeInputDto>(ProtocolId.BlackholeInput, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<BlackholeStatesDto>(ProtocolId.BlackholeStates, RoomMessageKind.State, RoomDeliveryHint.Reliable),
+            Register<BlackholeInstanceEventDto>(ProtocolId.BlackholeInstanceEvent, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<ParryInputDto>(ProtocolId.ParryInput, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<MonsterDeathDto>(ProtocolId.MonsterDeath, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<PlayerDeathDto>(ProtocolId.PlayerDeath, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<DropSpawnDto>(ProtocolId.DropSpawn, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<PickupRequestDto>(ProtocolId.PickupRequest, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
+            Register<PickupResultDto>(ProtocolId.PickupResult, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
+            Register<RoomRetryReadyDto>(ProtocolId.RoomRetryReady, RoomMessageKind.Scene, RoomDeliveryHint.Reliable)
         };
 
-        private static Entry Register<T>(ProtocolId id, bool allowedBeforeHandshake = false)
+        private static Entry Register<T>(ProtocolId id, RoomMessageKind kind, RoomDeliveryHint futureDelivery,
+            bool allowedBeforeHandshake = false)
         {
-            return new Entry(id, typeof(T), allowedBeforeHandshake, (architecture, dto) => architecture.SendEvent<T>(dto));
+            return new Entry(id, typeof(T), allowedBeforeHandshake, kind, futureDelivery,
+                (architecture, dto) => architecture.SendEvent<T>(dto));
         }
 
+        public static RoomMessageKind MessageKind(short protocolId) => Find((ProtocolId)protocolId).Kind;
+        public static RoomMessageKind MessageKind(Type dtoType) => Find(dtoType).Kind;
+        public static RoomDeliveryHint FutureDelivery(short protocolId) => Find((ProtocolId)protocolId).FutureDelivery;
+        public static RoomDeliveryHint FutureDelivery(Type dtoType) => Find(dtoType).FutureDelivery;
+        public static short MessageId(Type dtoType) => (short)Find(dtoType).Id;
+
         // Decode, validate and route through the same registry; no second message-handler table.
-        public static void DecodeAndDispatch(short protocolId, byte[] payload, IArchitecture architecture,
+        public static object DecodeAndDispatch(short protocolId, byte[] payload, IArchitecture architecture,
             bool handshakeCompleted = false)
         {
             if (architecture == null) throw new ArgumentNullException(nameof(architecture));
             object dto = Decode(protocolId, payload, handshakeCompleted);
             Find((ProtocolId)protocolId).Dispatch(architecture, dto);
+            return dto;
         }
 
         // handshakeCompleted must come from local connection state, never from a received DTO.
@@ -195,12 +219,37 @@ namespace Rpg.Networking.Protocol
                 (blackholeInput.action == BlackholeAction.Select ? blackholeInput.targetEntityId > 0 && blackholeInput.keyCode > 0 :
                     blackholeInput.targetEntityId == 0 && blackholeInput.keyCode == 0)) return;
             if (dto is BlackholeStatesDto blackholes && ValidBlackholeStates(blackholes)) return;
+            if (dto is BlackholeInstanceEventDto blackholeEvent && ValidSkillInstanceEventHeader(blackholeEvent) &&
+                blackholeEvent.kind >= BlackholeInstanceEventKind.Spawn && blackholeEvent.kind <= BlackholeInstanceEventKind.End &&
+                (blackholeEvent.kind == BlackholeInstanceEventKind.Select ?
+                    blackholeEvent.targetEntityId > 0 && blackholeEvent.requestSeq > 0 : blackholeEvent.targetEntityId == 0) &&
+                (blackholeEvent.kind != BlackholeInstanceEventKind.Spawn || blackholeEvent.requestSeq > 0) &&
+                blackholeEvent.position != null && blackholeEvent.position.Length == 2 &&
+                ValidCoordinate(blackholeEvent.position[0]) && ValidCoordinate(blackholeEvent.position[1]) &&
+                ValidCoordinate(blackholeEvent.scale) && blackholeEvent.scale >= 0) return;
             if (dto is CloneStatesDto cloneStates && ValidCloneStates(cloneStates)) return;
+            if (dto is CloneInstanceEventDto cloneEvent && ValidSkillInstanceEventHeader(cloneEvent) &&
+                cloneEvent.kind >= CloneInstanceEventKind.Spawn && cloneEvent.kind <= CloneInstanceEventKind.End &&
+                cloneEvent.position != null && cloneEvent.position.Length == 2 &&
+                ValidCoordinate(cloneEvent.position[0]) && ValidCoordinate(cloneEvent.position[1]) &&
+                cloneEvent.attackNumber >= 0 && cloneEvent.attackNumber <= 3) return;
             if (dto is CrystalInputDto crystalInput && Guid.TryParseExact(crystalInput.roomSessionId, "N", out _) && crystalInput.actionSeq > 0) return;
             if (dto is CrystalStatesDto crystalStates && ValidCrystalStates(crystalStates)) return;
+            if (dto is CrystalInstanceEventDto crystalEvent && ValidSkillInstanceEventHeader(crystalEvent) &&
+                crystalEvent.kind >= CrystalInstanceEventKind.Spawn && crystalEvent.kind <= CrystalInstanceEventKind.End &&
+                crystalEvent.position != null && crystalEvent.position.Length == 2 &&
+                ValidCoordinate(crystalEvent.position[0]) && ValidCoordinate(crystalEvent.position[1]) &&
+                ValidCoordinate(crystalEvent.scale) && crystalEvent.scale > 0) return;
             if (dto is SwordInputDto sword && Guid.TryParseExact(sword.roomSessionId, "N", out _) && sword.actionSeq > 0 &&
                 sword.action >= SwordAction.Aim && sword.action <= SwordAction.Direction && ValidSwordDirection(sword.direction)) return;
             if (dto is SwordStatesDto swords && ValidSwordStates(swords)) return;
+            if (dto is SwordInstanceEventDto swordEvent && ValidSkillInstanceEventHeader(swordEvent) && swordEvent.requestSeq > 0 &&
+                swordEvent.endTick > swordEvent.startTick &&
+                swordEvent.kind >= SwordInstanceEventKind.Spawn && swordEvent.kind <= SwordInstanceEventKind.End &&
+                swordEvent.phase >= SwordPhase.Flying && swordEvent.phase <= SwordPhase.Returning &&
+                swordEvent.position != null && swordEvent.position.Length == 2 &&
+                ValidCoordinate(swordEvent.position[0]) && ValidCoordinate(swordEvent.position[1]) &&
+                ValidSwordDirection(swordEvent.direction)) return;
             if (dto is FlaskUseRequestDto flaskRequest && ValidFlaskRequest(flaskRequest)) return;
             if (dto is FlaskUseResultDto flask && ValidAuthorityResult(flask) && flask.playerId > 0 && flask.entityId > 0 &&
                 flask.requestSeq > 0 && flask.rejection >= FlaskUseRejection.None && flask.rejection <= FlaskUseRejection.Cooldown &&
@@ -232,16 +281,32 @@ namespace Rpg.Networking.Protocol
                 (!damage.counterAttack || damage.kind == DamageResultKind.Direct && damage.sourcePlayerId > 0 && damage.impact == null) &&
                 ValidDamageImpact(damage.impact)) return;
             if (dto is PrimaryAttackRequestDto attack && attack.requestSeq > 0) return;
+            if (dto is PrimaryAttackExecutionDto attackExecution && Guid.TryParseExact(attackExecution.roomSessionId, "N", out _) &&
+                attackExecution.loadId > 0 && attackExecution.requestSeq > 0 && attackExecution.authorityTick > 0 &&
+                (attackExecution.accepted
+                    ? attackExecution.rejection == PrimaryAttackRejection.None && attackExecution.attackInstanceId > 0 &&
+                      attackExecution.startTick > 0 && attackExecution.startTick <= attackExecution.authorityTick &&
+                      (attackExecution.facingDir == -1 || attackExecution.facingDir == 1) &&
+                      attackExecution.comboIndex >= 0 && attackExecution.comboIndex <= 2 && attackExecution.durationTicks > 0
+                    : attackExecution.rejection > PrimaryAttackRejection.None && attackExecution.rejection <= PrimaryAttackRejection.Configuration &&
+                      attackExecution.attackInstanceId == 0 && attackExecution.startTick == 0 && attackExecution.facingDir == 0 &&
+                      attackExecution.comboIndex == 0 && attackExecution.durationTicks == 0)) return;
             if (dto is MonsterStatesDto states && ValidMonsterStates(states)) return;
             if (dto is MonsterInitializationDto monsters && ValidMonsterInitialization(monsters)) return;
             if (dto is LocalInputLockDto inputLock && inputLock.lockSeq > 0) return;
             if (dto is DashRequestDto dash && dash.actionSeq > 0 && IsValidMovementAxis(dash.currentAxis)) return;
+            if (dto is DashExecutionDto dashExecution && Guid.TryParseExact(dashExecution.roomSessionId, "N", out _) &&
+                dashExecution.loadId > 0 && dashExecution.actionSeq > 0 && dashExecution.authorityTick > 0 &&
+                (dashExecution.accepted ? dashExecution.facingDir == -1 || dashExecution.facingDir == 1 : dashExecution.facingDir == 0)) return;
             if (dto is JumpRequestDto jump && jump.actionSeq > 0) return;
+            if (dto is JumpExecutionDto jumpExecution && Guid.TryParseExact(jumpExecution.roomSessionId, "N", out _) &&
+                jumpExecution.loadId > 0 && jumpExecution.actionSeq > 0 && jumpExecution.authorityTick > 0 &&
+                (jumpExecution.accepted ? jumpExecution.facingDir == -1 || jumpExecution.facingDir == 1 :
+                    !jumpExecution.wallJump && jumpExecution.facingDir == 0)) return;
             if (dto is PlayerPositionsDto positions && Guid.TryParseExact(positions.roomSessionId, "N", out _) &&
                 positions.loadId > 0 && positions.authorityTick > 0 && positions.stateSeq > 0 &&
                 positions.players != null && positions.players.Length == 2 &&
                 ValidPlayerPosition(positions.players[0]) && ValidPlayerPosition(positions.players[1]) &&
-                positions.players[0].flask.cooldownStartTick <= positions.authorityTick && positions.players[1].flask.cooldownStartTick <= positions.authorityTick &&
                 ValidPlayerAttack(positions.players[0].attack, positions.players[0].entityId, positions.players[0].facingDir, positions.authorityTick) &&
                 ValidPlayerAttack(positions.players[1].attack, positions.players[1].entityId, positions.players[1].facingDir, positions.authorityTick) &&
                 positions.players[0].entityId != positions.players[1].entityId) return;
@@ -304,7 +369,12 @@ namespace Rpg.Networking.Protocol
         private static bool ValidMonsterStates(MonsterStatesDto value)
         {
             if (!Guid.TryParseExact(value.roomSessionId, "N", out _) || value.loadId <= 0 || value.authorityTick == 0 || value.stateSeq <= 0 ||
-                value.monsters == null || value.monsters.Length > 1024) return false;
+                value.monsters == null || value.monsters.Length > 1024 || value.attacks == null || value.attacks.Length > value.monsters.Length) return false;
+            var attacks = new System.Collections.Generic.Dictionary<int, MonsterAttackDto>();
+            foreach (var action in value.attacks)
+                if (action == null || action.entityId <= 0 || !IsValidMonsterAttack(action.attack, value.authorityTick) ||
+                    attacks.ContainsKey(action.entityId)) return false;
+                else attacks.Add(action.entityId, action.attack);
             var ids = new System.Collections.Generic.HashSet<int>();
             foreach (var monster in value.monsters)
                 if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) || !ValidMonsterAi(monster.aiState) ||
@@ -312,7 +382,9 @@ namespace Rpg.Networking.Protocol
                     monster.dead && (monster.aiState != MonsterAiState.Idle || monster.moving || monster.counterWindow || monster.targetEntityId != 0) ||
                     monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) ||
-                    !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;
+                    !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir,
+                        attacks.TryGetValue(monster.entityId, out var attack) ? attack : null, value.authorityTick)) return false;
+            foreach (int entityId in attacks.Keys) if (!ids.Contains(entityId)) return false;
             return true;
         }
 
@@ -330,13 +402,10 @@ namespace Rpg.Networking.Protocol
         private static bool ValidPlayerDeathCause(PlayerDeathCause cause, bool required) =>
             cause >= (required ? PlayerDeathCause.Combat : PlayerDeathCause.None) && cause <= PlayerDeathCause.DeadZone;
 
-        private static bool ValidPlayerPosition(PlayerPositionDto player) => player != null && player.entityId > 0 &&
+        private static bool ValidPlayerPosition(PlayerPositionDto player) => player != null && player.entityId > 0 && player.processedInputSeq >= 0 &&
             ValidPlayerDeathCause(player.deathCause, false) &&
             (player.deathCause == PlayerDeathCause.None ? player.deathHealthVersion == 0 && player.deathMaxHealth == 0 :
                 ValidHealth(0, player.deathMaxHealth, player.deathHealthVersion) && player.movementState == MovementAnimationState.Idle && player.attack == null) &&
-            player.parrying == (player.movementState == MovementAnimationState.Parry || player.movementState == MovementAnimationState.ParrySuccess) &&
-            player.parrySucceeded == (player.movementState == MovementAnimationState.ParrySuccess) &&
-            ValidFlaskState(player.flask) &&
             ValidSkillFills(player.skillFills) &&
             player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
             (player.facingDir == -1 || player.facingDir == 1) && IsValidMovementAnimation(player.movementState, player.yVelocity);
@@ -424,10 +493,13 @@ namespace Rpg.Networking.Protocol
         private static bool ValidBlackholeStates(BlackholeStatesDto value)
         {
             if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.blackholes == null || value.blackholes.Length > 2) return false;
-            var ids = new System.Collections.Generic.HashSet<int>();
+            var ids = new System.Collections.Generic.HashSet<long>();
             foreach (var blackhole in value.blackholes)
             {
-                if (!ValidRoomSkillObject(blackhole, ids) || !ValidCoordinate(blackhole.scale) || blackhole.scale < 0 ||
+                if (blackhole == null || blackhole.skillInstanceId <= 0 || !ids.Add(blackhole.skillInstanceId) ||
+                    blackhole.position == null || blackhole.position.Length != 2 ||
+                    !ValidCoordinate(blackhole.position[0]) || !ValidCoordinate(blackhole.position[1]) ||
+                    !ValidCoordinate(blackhole.scale) || blackhole.scale < 0 ||
                     blackhole.prompts == null || blackhole.prompts.Length > 16) return false;
                 foreach (var prompt in blackhole.prompts)
                     if (prompt == null || prompt.targetEntityId <= 0 || prompt.keyCode <= 0 || prompt.position == null ||
@@ -438,21 +510,29 @@ namespace Rpg.Networking.Protocol
         private static bool ValidCloneStates(CloneStatesDto value)
         {
             if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.clones == null || value.clones.Length > 128) return false;
-            var ids = new System.Collections.Generic.HashSet<int>();
+            var ids = new System.Collections.Generic.HashSet<long>();
             foreach (var clone in value.clones)
-                if (!ValidRoomSkillObject(clone, ids) ||
-                    clone.attackNumber < 0 || clone.attackNumber > 3 ||
+                if (clone == null || clone.skillInstanceId <= 0 || !ids.Add(clone.skillInstanceId) ||
+                    clone.position == null || clone.position.Length != 2 ||
+                    !ValidCoordinate(clone.position[0]) || !ValidCoordinate(clone.position[1]) ||
                     float.IsNaN(clone.alpha) || clone.alpha < 0 || clone.alpha > 1) return false;
             return true;
         }
         private static bool ValidCrystalStates(CrystalStatesDto value)
         {
             if (!ValidAuthorityResult(value) || value.stateSeq <= 0 || value.crystals == null || value.crystals.Length > 128) return false;
-            var ids = new System.Collections.Generic.HashSet<int>();
+            var ids = new System.Collections.Generic.HashSet<long>();
             foreach (var crystal in value.crystals)
-                if (!ValidRoomSkillObject(crystal, ids) || !ValidCoordinate(crystal.scale) || crystal.scale <= 0) return false;
+                if (crystal == null || crystal.skillInstanceId <= 0 || !ids.Add(crystal.skillInstanceId) ||
+                    crystal.position == null || crystal.position.Length != 2 ||
+                    !ValidCoordinate(crystal.position[0]) || !ValidCoordinate(crystal.position[1]) ||
+                    !ValidCoordinate(crystal.scale) || crystal.scale <= 0) return false;
             return true;
         }
+        private static bool ValidSkillInstanceEventHeader(RoomSkillInstanceEventDto value)
+            => ValidAuthorityResult(value) && value.loadId > 0 && value.requestSeq >= 0 && value.skillInstanceId > 0 &&
+                value.entityId > 0 && value.sourcePlayerId > 0 && value.sourceEntityId > 0 &&
+                value.startTick > 0 && value.startTick <= value.authorityTick;
         private static bool ValidSwordDirection(float[] value) => value != null && value.Length == 2 && ValidCoordinate(value[0]) && ValidCoordinate(value[1]) &&
             Mathf.Abs(value[0] * value[0] + value[1] * value[1] - 1) < .01f;
         private static bool ValidSwordStates(SwordStatesDto value)
@@ -464,12 +544,11 @@ namespace Rpg.Networking.Protocol
             foreach (var owner in value.owners)
                 if (owner == null || owner.playerId <= 0 || owner.entityId <= 0 || owners.ContainsKey(owner.playerId) || !ids.Add(owner.entityId)) return false;
                 else owners.Add(owner.playerId, owner.entityId);
-            var sources = new System.Collections.Generic.HashSet<int>();
             foreach (var sword in value.swords)
-                if (!ValidRoomSkillObject(sword, ids) || !instances.Add(sword.skillInstanceId) ||
-                    !sources.Add(sword.sourcePlayerId) || !owners.TryGetValue(sword.sourcePlayerId, out int entity) || entity != sword.sourceEntityId ||
-                    sword.startTick == 0 || sword.startTick > value.authorityTick || sword.endTick <= sword.startTick ||
-                    sword.phase < SwordPhase.Flying || sword.phase > SwordPhase.Returning || !ValidSwordDirection(sword.direction)) return false;
+                if (sword == null || sword.skillInstanceId <= 0 || !instances.Add(sword.skillInstanceId) ||
+                    sword.position == null || sword.position.Length != 2 ||
+                    !ValidCoordinate(sword.position[0]) || !ValidCoordinate(sword.position[1]) ||
+                    !ValidSwordDirection(sword.direction)) return false;
             return true;
         }
         public static bool ValidFlaskState(RoomFlaskStateDto value) => value != null && value.version > 0 && value.stateSeq > 0 &&

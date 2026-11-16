@@ -15,20 +15,26 @@ namespace Rpg.Networking
         private readonly AuthorityResultSequence results;
         private readonly Func<int> allocateEntity;
         private readonly Action<SwordStatesDto> publish;
+        private readonly Action<SwordInstanceEventDto> publishEvent;
+        private readonly Func<long> currentLoadId;
         private readonly Action<Player, SwordInputDto> sendInput;
-        private readonly Dictionary<int, NetworkSkillObject> swords = new Dictionary<int, NetworkSkillObject>();
+        private readonly Dictionary<long, NetworkSkillObject> swords = new Dictionary<long, NetworkSkillObject>();
+        private readonly Dictionary<long, SwordPhase> publishedPhases = new Dictionary<long, SwordPhase>();
         private readonly Dictionary<int, long> requests = new Dictionary<int, long>();
+        private readonly Dictionary<int, long> releaseRequests = new Dictionary<int, long>();
         private long stateSeq, appliedSeq;
         private ulong appliedTick;
         private bool disposed;
 
         public RoomSwordNetwork(RoomPresentationContext context, RoomPlayerEntities players, RoomNetworkObjects objects,
             RoomCombatDamage damage, SwordSkill template, Action<Player, SwordInputDto> sendInput,
-            AuthorityResultSequence results = null, Func<int> allocateEntity = null, Action<SwordStatesDto> publish = null)
+            AuthorityResultSequence results = null, Func<int> allocateEntity = null, Action<SwordStatesDto> publish = null,
+            Action<SwordInstanceEventDto> publishEvent = null, Func<long> currentLoadId = null)
         {
             this.context = context; this.players = players; this.objects = objects; this.damage = damage;
             this.template = template; this.sendInput = sendInput; this.results = results;
             this.allocateEntity = allocateEntity; this.publish = publish;
+            this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
         }
         public void EnsurePlayers()
         {
@@ -66,7 +72,11 @@ namespace Rpg.Networking
             skill.RoomDirection = direction;
             player.FlipController(direction.x);
             if (input.action == SwordAction.Aim && state != player.aimSwordState) player.stateMachine.ChangeState(player.aimSwordState);
-            else if (input.action == SwordAction.Release && state == player.aimSwordState) player.aimSwordState.ReleaseRoomSword(direction);
+            else if (input.action == SwordAction.Release && state == player.aimSwordState)
+            {
+                releaseRequests[actor.PlayerId] = input.actionSeq;
+                player.aimSwordState.ReleaseRoomSword(direction);
+            }
             Publish();
         }
         private static void Cancel(Player player)
@@ -89,7 +99,7 @@ namespace Rpg.Networking
                 startTick = tick, endTick = tick + (ulong)duration };
             var sword = Register(value, dto);
             sword.Attack = new PrimaryAttackInstance(context.RoomSessionId, dto.sourcePlayerId, dto.sourceEntityId,
-                dto.skillInstanceId, requests[dto.sourcePlayerId], tick, dto.endTick,
+                dto.skillInstanceId, releaseRequests[dto.sourcePlayerId], tick, dto.endTick,
                 new PrimaryAttackTiming(0, duration, new PrimaryHitSegmentTiming(0, duration)));
         }
         private NetworkSkillObject Register(GameObject value, SwordObjectDto dto)
@@ -101,10 +111,12 @@ namespace Rpg.Networking
             value.GetComponent<SwordSkillController>().Network = sword;
             context.RegisterEntity(dto.entityId, 0, value.transform);
             if (context.IsGuest) value.GetComponent<RemotePlayerView>().enabled = false;
-            swords.Add(dto.entityId, sword);
+            swords.Add(dto.skillInstanceId, sword);
             sword.Lifetime = objects.Register(context.RoomSessionId, dto.sourcePlayerId, value, () =>
             {
-                swords.Remove(dto.entityId); sword.Attack?.Close(); context.RemoveEntity(dto.entityId);
+                swords.Remove(dto.skillInstanceId);
+                if (!context.IsGuest && !disposed && publishedPhases.Remove(dto.skillInstanceId)) PublishInstanceEvent(sword, SwordInstanceEventKind.End);
+                sword.Attack?.Close(); context.RemoveEntity(dto.entityId);
                 if (!context.IsGuest && players.Entities.TryGetValue(dto.sourceEntityId, out var source) &&
                     source != null && source.sword == value) source.AssignNewSword(null);
                 if (!context.IsGuest && !disposed) Publish();
@@ -115,23 +127,87 @@ namespace Rpg.Networking
         public void Publish()
         {
             if (disposed || context.IsGuest || GameSimulationClock.AuthorityTick == 0) return;
+            foreach (var sword in swords.Values)
+            {
+                if (!publishedPhases.TryGetValue(sword.SkillInstanceId, out var phase))
+                    PublishInstanceEvent(sword, SwordInstanceEventKind.Spawn);
+                else if (phase != sword.Phase)
+                    PublishInstanceEvent(sword, SwordInstanceEventKind.Phase);
+                publishedPhases[sword.SkillInstanceId] = sword.Phase;
+            }
             var owners = new List<SwordOwnerDto>();
             foreach (var player in players.Entities.Values)
                 if (player != null && player.Combat.PlayerId > 0)
                     owners.Add(new SwordOwnerDto { playerId = player.Combat.PlayerId, entityId = player.Combat.EntityId,
                         aiming = player.stateMachine.currentState == player.aimSwordState,
                         catching = player.stateMachine.currentState == player.catchSwordState });
-            var values = new List<SwordObjectDto>();
+            var values = new List<SwordTrajectoryDto>();
             foreach (var sword in swords.Values)
             {
                 Vector2 position = sword.transform.position, direction = sword.transform.right;
-                values.Add(new SwordObjectDto { entityId = sword.EntityId, sourcePlayerId = sword.SourcePlayerId,
-                    sourceEntityId = sword.SourceEntityId, skillInstanceId = sword.SkillInstanceId,
-                    startTick = sword.StartTick, endTick = sword.EndTick, phase = sword.Phase,
+                values.Add(new SwordTrajectoryDto { skillInstanceId = sword.SkillInstanceId,
                     position = new[] { position.x, position.y }, direction = new[] { direction.x, direction.y } });
             }
             publish(new SwordStatesDto { roomSessionId = context.RoomSessionId, authorityTick = GameSimulationClock.AuthorityTick,
                 resultId = results.Allocate(), stateSeq = ++stateSeq, owners = owners.ToArray(), swords = values.ToArray() });
+        }
+
+        public void ReplayActiveInstances()
+        {
+            foreach (var sword in swords.Values)
+            {
+                PublishInstanceEvent(sword, SwordInstanceEventKind.Spawn);
+                publishedPhases[sword.SkillInstanceId] = sword.Phase;
+            }
+        }
+
+        private void PublishInstanceEvent(NetworkSkillObject sword, SwordInstanceEventKind kind)
+        {
+            Vector2 position = sword.transform.position, direction = sword.transform.right;
+            var value = new SwordInstanceEventDto { roomSessionId = context.RoomSessionId, loadId = currentLoadId(),
+                authorityTick = GameSimulationClock.AuthorityTick, resultId = results.Allocate(),
+                requestSeq = sword.Attack.RequestSeq, skillInstanceId = sword.SkillInstanceId,
+                entityId = sword.EntityId, sourcePlayerId = sword.SourcePlayerId, sourceEntityId = sword.SourceEntityId,
+                startTick = sword.StartTick, endTick = sword.EndTick, kind = kind, phase = sword.Phase,
+                position = new[] { position.x, position.y }, direction = new[] { direction.x, direction.y } };
+            publishEvent(value);
+            Debug.Log($"[RoomSword] A {kind} instance={value.skillInstanceId} requestSeq={value.requestSeq} phase={value.phase} tick={value.authorityTick}");
+        }
+
+        public void ApplyEvent(SwordInstanceEventDto value)
+        {
+            if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
+            if (value.kind == SwordInstanceEventKind.End)
+            {
+                if (!swords.TryGetValue(value.skillInstanceId, out var ended))
+                    throw new InvalidOperationException("Sword end arrived without its spawn event.");
+                if (ended.EntityId != value.entityId || ended.SourceEntityId != value.sourceEntityId ||
+                    ended.StartTick != value.startTick || ended.EndTick != value.endTick)
+                    throw new InvalidOperationException("Sword end metadata changed within an instance.");
+                ended.Lifetime.Dispose();
+                Debug.Log($"[RoomSword] B End instance={value.skillInstanceId} resultId={value.resultId}");
+                return;
+            }
+            bool created = false;
+            if (!swords.TryGetValue(value.skillInstanceId, out var sword))
+            {
+                if (value.kind != SwordInstanceEventKind.Spawn) throw new InvalidOperationException("Sword phase arrived before its spawn event.");
+                var dto = new SwordObjectDto { entityId = value.entityId, sourcePlayerId = value.sourcePlayerId,
+                    sourceEntityId = value.sourceEntityId, skillInstanceId = value.skillInstanceId,
+                    startTick = value.startTick, endTick = value.endTick };
+                sword = Register(UnityEngine.Object.Instantiate(template.SwordPrefab), dto);
+                created = true;
+            }
+            if (sword.EntityId != value.entityId || sword.SourceEntityId != value.sourceEntityId ||
+                sword.StartTick != value.startTick || sword.EndTick != value.endTick)
+                throw new InvalidOperationException("Sword phase metadata changed within an instance.");
+            sword.ResetTrajectory();
+            sword.transform.position = new Vector2(value.position[0], value.position[1]);
+            sword.transform.right = new Vector2(value.direction[0], value.direction[1]);
+            bool changed = sword.Phase != value.phase || created;
+            sword.GetComponent<SwordSkillController>().ShowNetworkPhase(value.phase, changed);
+            sword.Phase = value.phase;
+            Debug.Log($"[RoomSword] B {value.kind} instance={value.skillInstanceId} requestSeq={value.requestSeq} phase={value.phase} resultId={value.resultId}");
         }
         public void Apply(SwordStatesDto value)
         {
@@ -143,19 +219,16 @@ namespace Rpg.Networking
                 if (!players.Entities.TryGetValue(owner.entityId, out var player) || player.Combat.PlayerId != owner.playerId) continue;
                 if (owner.catching && !player.anim.GetBool("CatchSword") && player.IsLocalInputOwner)
                     player.fx.ScreenShake(player.fx.shakeSwordImpact);
-                player.anim.SetBool("AimSword", owner.aiming); player.anim.SetBool("CatchSword", owner.catching);
-                player.GetComponent<RemotePlayerView>().SwordActionActive = owner.aiming || owner.catching;
+                var view = player.GetComponent<RemotePlayerView>();
+                if (!view.LocalSwordPreviewActive) player.anim.SetBool("AimSword", owner.aiming);
+                player.anim.SetBool("CatchSword", owner.catching);
+                view.SwordActionActive = view.LocalSwordPreviewActive || owner.aiming || owner.catching;
             }
-            var live = new HashSet<int>();
             foreach (var dto in value.swords)
             {
-                live.Add(dto.entityId);
-                if (!swords.TryGetValue(dto.entityId, out var sword))
-                    sword = Register(UnityEngine.Object.Instantiate(template.SwordPrefab), dto);
-                sword.Apply(dto, value.authorityTick, value.stateSeq);
+                if (swords.TryGetValue(dto.skillInstanceId, out var sword))
+                    sword.Apply(dto, value.authorityTick, value.stateSeq);
             }
-            foreach (var sword in new List<NetworkSkillObject>(swords.Values))
-                if (!live.Contains(sword.EntityId)) sword.Lifetime.Dispose();
         }
         public void Dispose()
         {
@@ -165,6 +238,7 @@ namespace Rpg.Networking
         public void RemovePlayer(int playerId)
         {
             requests.Remove(playerId);
+            releaseRequests.Remove(playerId);
             foreach (var player in players.Entities.Values)
                 if (player.Combat.PlayerId == playerId) { Cancel(player); break; }
             foreach (var sword in new List<NetworkSkillObject>(swords.Values))

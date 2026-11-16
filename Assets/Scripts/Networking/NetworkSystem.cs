@@ -14,6 +14,7 @@ namespace Rpg.Networking
         private NetConnection closingConnection;
         private int mainThreadId;
         private bool disposed;
+        private bool monsterStateRejectionLogged;
         private readonly List<Action> sessionUnsubscribers = new List<Action>();
 
         public long SessionId { get; private set; }
@@ -51,6 +52,7 @@ namespace Rpg.Networking
             connection = value;
             SessionId = value.SessionId;
             ProcessedCount = RejectedCount = StalePacketCount = 0;
+            monsterStateRejectionLogged = false;
             LastMessageError = null;
             LastRejectedProtocolId = 0;
         }
@@ -113,8 +115,9 @@ namespace Rpg.Networking
                 }
                 try
                 {
-                    ProtocolCodec.DecodeAndDispatch(packet.ProtocolId, packet.Payload, architecture,
+                    object dto = ProtocolCodec.DecodeAndDispatch(packet.ProtocolId, packet.Payload, architecture,
                         !string.IsNullOrEmpty(RoomSessionId));
+                    RoomMessageMetrics.Record(updatingSession, false, packet.ProtocolId, packet.Payload.Length, dto);
                     if (SessionId == updatingSession) ProcessedCount++;
                 }
                 catch (Exception error)
@@ -122,6 +125,11 @@ namespace Rpg.Networking
                     // Unknown IDs, invalid JSON/fields and handler failures cannot stop later packets.
                     if (SessionId == updatingSession)
                     {
+                        if (packet.ProtocolId == (short)ProtocolId.MonsterStates && !monsterStateRejectionLogged)
+                        {
+                            monsterStateRejectionLogged = true;
+                            UnityEngine.Debug.LogError($"[RoomMonsterSync] Rejected MonsterStates: {error}");
+                        }
                         RejectedCount++;
                         LastMessageError = error;
                         LastRejectedProtocolId = packet.ProtocolId;

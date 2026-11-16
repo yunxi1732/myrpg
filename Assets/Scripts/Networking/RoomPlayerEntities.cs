@@ -154,6 +154,8 @@ namespace Rpg.Networking
                 player.Combat.ConfigureRoomDodgeBonus(dodgeBonus);
                 player.enabled = true;
                 clone.GetComponent<PlayerStats>().enabled = true;
+                if (context.IsGuest && identity.PlayerId == context.LocalPlayerId)
+                    clone.AddComponent<LocalMovementPrediction>().ConfigureGravity(clone.GetComponent<Rigidbody2D>().gravityScale);
                 context.RegisterEntity(identity.EntityId, identity.PlayerId, clone.transform);
                 if (context.IsGuest) clone.GetComponent<RemotePlayerView>().TeleportDistance = teleportDistance;
                 clone.GetComponent<NetworkEntityIdentity>().HoldMovement();
@@ -358,14 +360,14 @@ namespace Rpg.Networking
             var movement = player.MovementAnimation;
             return new PlayerPositionDto
             {
-                entityId = identity.EntityId, position = new[] { position.x, position.y }, facingDir = player.facingDir,
-                movementState = movement, yVelocity = player.rb.linearVelocity.y, attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState(),
+                entityId = identity.EntityId, processedInputSeq = player.LastSimulatedMovementInputSeq,
+                position = new[] { position.x, position.y }, facingDir = player.facingDir,
+                movementState = movement, yVelocity = player.rb.linearVelocity.y, attack = CaptureAttack(player),
                 deathCause = DeathCauseFor(identity.EntityId, player),
                 deathHealthVersion = player.stats.currentHealth == 0 ? player.stats.NetworkHealthVersion : 0,
                 deathMaxHealth = player.stats.currentHealth == 0 ? player.stats.GetMaxHealthValue() : 0,
                 skillFills = RoomCombatConfiguration.HudFills(player.Combat.Skills),
-                parrying = movement == MovementAnimationState.Parry || movement == MovementAnimationState.ParrySuccess,
-                parrySucceeded = movement == MovementAnimationState.ParrySuccess, invincible = player.stats.isInvincible
+                invincible = player.stats.isInvincible
             };
         }
 
@@ -396,8 +398,12 @@ namespace Rpg.Networking
                 if (applied)
                 {
                     var display = player.GetComponent<RemotePlayerView>();
-                    display.ParryActive = state.parrying;
-                    display.ParrySucceeded = state.parrySucceeded;
+                    if (player.IsLocalInputOwner)
+                        player.GetComponent<LocalMovementPrediction>().CompareAuthority(value.authorityTick, state.processedInputSeq,
+                            new Vector2(state.position[0], state.position[1]), state.movementState);
+                    display.ParryActive = state.movementState == MovementAnimationState.Parry ||
+                        state.movementState == MovementAnimationState.ParrySuccess;
+                    display.ParrySucceeded = state.movementState == MovementAnimationState.ParrySuccess;
                     player.stats.ApplyConfirmedInvincibility(state.invincible);
                     if (state.deathCause != PlayerDeathCause.None)
                     {
@@ -410,7 +416,6 @@ namespace Rpg.Networking
                         }
                     }
                 }
-                presentation.ApplyFlaskState(value.roomSessionId, value.authorityTick, state.flask);
                 presentation.ApplySkillFills(value.roomSessionId, value.authorityTick, value.stateSeq, state.skillFills);
             }
         }
@@ -450,14 +455,37 @@ namespace Rpg.Networking
             }
         }
 
-        public bool RequestPrimaryAttack(RoomPlayerIdentity source, PrimaryAttackRequestDto request)
+        public PrimaryAttackRejection RequestPrimaryAttack(RoomPlayerIdentity source, PrimaryAttackRequestDto request)
         {
             if (!TryGetAuthorityCombatPlayer(source, out Player player) || request == null ||
-                player.IsLocalInputOwner != ReferenceEquals(source, hostIdentity)) return false;
+                player.IsLocalInputOwner != ReferenceEquals(source, hostIdentity)) return PrimaryAttackRejection.InvalidOperator;
             var runtime = player.Combat.PrimaryAttack;
             bool accepted = runtime.TryQueue(request.requestSeq, GameSimulationClock.AuthorityTick, player.CheckNetworkPrimaryAttack());
             if (!accepted) Debug.Log($"[PrimaryAttack] REJECT player={source.PlayerId} requestSeq={request.requestSeq} phase=request reason={runtime.LastRejection}");
-            return accepted;
+            return accepted ? PrimaryAttackRejection.None : runtime.LastRejection;
+        }
+
+        public bool TryConsumeGuestPrimaryAttackExecution(long loadId, out PrimaryAttackExecutionDto result)
+        {
+            Player player = entities[guestIdentity.EntityId];
+            if (player.TryConsumeNetworkPrimaryAttackResolution(out long requestSeq, out PrimaryAttackInstance instance,
+                out PrimaryAttackRejection rejection))
+            {
+                result = new PrimaryAttackExecutionDto { roomSessionId = context.RoomSessionId, loadId = loadId,
+                    requestSeq = requestSeq, authorityTick = GameSimulationClock.AuthorityTick,
+                    accepted = instance != null, rejection = rejection };
+                if (instance != null)
+                {
+                    result.attackInstanceId = instance.AttackInstanceId;
+                    result.startTick = instance.StartTick;
+                    result.facingDir = instance.FacingDir;
+                    result.comboIndex = instance.ComboIndex;
+                    result.durationTicks = checked((int)(instance.EndTick - instance.StartTick));
+                }
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         public EquipmentChangeResultDto RequestEquipmentChange(RoomPlayerIdentity source, EquipmentChangeRequestDto request, AuthorityResultSequence results)
@@ -530,10 +558,37 @@ namespace Rpg.Networking
             return player.TryQueueNetworkDash(request.actionSeq, request.currentAxis);
         }
 
+        public bool TryConsumeGuestDashExecution(long loadId, out DashExecutionDto result)
+        {
+            Player player = entities[guestIdentity.EntityId];
+            if (player.TryConsumeNetworkDashResolution(out long actionSeq, out bool accepted, out ulong tick, out int facing))
+            {
+                result = new DashExecutionDto { roomSessionId = context.RoomSessionId, loadId = loadId,
+                    actionSeq = actionSeq, authorityTick = tick, accepted = accepted, facingDir = facing };
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
         public bool RequestGuestJump(RoomPlayerIdentity source, JumpRequestDto request)
         {
             if (!TryGetGuestMovementPlayer(source, out Player player)) return false;
             return player.TryQueueNetworkJump(request.actionSeq);
+        }
+
+        public bool TryConsumeGuestJumpExecution(long loadId, out JumpExecutionDto result)
+        {
+            Player player = entities[guestIdentity.EntityId];
+            if (player.TryConsumeNetworkJumpResolution(out long actionSeq, out bool accepted, out bool wallJump,
+                out ulong tick, out int facing))
+            {
+                result = new JumpExecutionDto { roomSessionId = context.RoomSessionId, loadId = loadId,
+                    actionSeq = actionSeq, authorityTick = tick, accepted = accepted, wallJump = wallJump, facingDir = facing };
+                return true;
+            }
+            result = null;
+            return false;
         }
 
         private bool TryGetGuestMovementPlayer(RoomPlayerIdentity source, out Player player)

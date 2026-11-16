@@ -62,8 +62,7 @@ public class UI_InGame : MonoBehaviour
             CheckCooldownOf(crystalImage, roomSkills.Get<CrystalSkill>().Cooldown);
             CheckCooldownOf(swordImage, roomSkills.Get<SwordSkill>().Cooldown);
             CheckCooldownOf(blackholeImage, roomSkills.Get<BlackholeSkill>().Cooldown);
-            if (flaskImage != null && networkEntity.FlaskCooldownSeconds > 0)
-                CheckCooldownOf(flaskImage, networkEntity.FlaskCooldownSeconds);
+            if (flaskImage != null) flaskImage.fillAmount = networkEntity.FlaskFill;
             return;
         }
         UpdateSoulsUI();

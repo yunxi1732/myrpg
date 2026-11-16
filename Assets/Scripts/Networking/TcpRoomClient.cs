@@ -49,6 +49,9 @@ namespace Rpg.Networking
         public event Action SceneInitializationAllowed;
         public event Action<PlayerInitializationDto> PlayerInitializationReceived;
         public event Action<PlayerPositionsDto> PlayerPositionsReceived;
+        public event Action<DashExecutionDto> DashExecutionReceived;
+        public event Action<JumpExecutionDto> JumpExecutionReceived;
+        public event Action<PrimaryAttackExecutionDto> PrimaryAttackExecutionReceived;
         public event Action<MonsterInitializationDto> MonsterInitializationReceived;
         public event Action<MonsterStatesDto> MonsterStatesReceived;
         public event Action<DamageResultDto> DamageResultReceived;
@@ -61,9 +64,13 @@ namespace Rpg.Networking
         public event Action<SkillUnlockResultDto> SkillUnlockResultReceived;
         public event Action<FlaskUseResultDto> FlaskUseResultReceived;
         public event Action<SwordStatesDto> SwordStatesReceived;
+        public event Action<SwordInstanceEventDto> SwordInstanceEventReceived;
         public event Action<CrystalStatesDto> CrystalStatesReceived;
+        public event Action<CrystalInstanceEventDto> CrystalInstanceEventReceived;
         public event Action<CloneStatesDto> CloneStatesReceived;
+        public event Action<CloneInstanceEventDto> CloneInstanceEventReceived;
         public event Action<BlackholeStatesDto> BlackholeStatesReceived;
+        public event Action<BlackholeInstanceEventDto> BlackholeInstanceEventReceived;
         public event Action<ElementStatesDto> ElementStatesReceived;
         private long lastMonsterSeq;
         private ulong lastMonsterTick;
@@ -76,6 +83,7 @@ namespace Rpg.Networking
             set => movementSender.MinimumIntervalMilliseconds = value;
         }
         public long SentMovementInputSeq => movementSender.SentSequence;
+        public float LastSentMovementAxis => movementSender.LastSentAxis;
         public long LastSentActionSeq { get; private set; }
         public long LastSentPrimaryAttackRequestSeq { get; private set; }
         private long inputLockSeq;
@@ -298,9 +306,13 @@ namespace Rpg.Networking
                         FlaskUseResultReceived?.Invoke(result);
                     });
                     SubscribeSkillStates<SwordStatesDto>(boundConnection, result => SwordStatesReceived?.Invoke(result));
+                    SubscribeSkillInstanceEvent<SwordInstanceEventDto>(boundConnection, value => SwordInstanceEventReceived?.Invoke(value));
                     SubscribeSkillStates<CrystalStatesDto>(boundConnection, result => CrystalStatesReceived?.Invoke(result));
+                    SubscribeSkillInstanceEvent<CrystalInstanceEventDto>(boundConnection, value => CrystalInstanceEventReceived?.Invoke(value));
                     SubscribeSkillStates<CloneStatesDto>(boundConnection, result => CloneStatesReceived?.Invoke(result));
+                    SubscribeSkillInstanceEvent<CloneInstanceEventDto>(boundConnection, value => CloneInstanceEventReceived?.Invoke(value));
                     SubscribeSkillStates<BlackholeStatesDto>(boundConnection, result => BlackholeStatesReceived?.Invoke(result));
+                    SubscribeSkillInstanceEvent<BlackholeInstanceEventDto>(boundConnection, value => BlackholeInstanceEventReceived?.Invoke(value));
                     handshakePeer.Subscribe<MonsterStatesDto>(value =>
                     {
                         var states = (MonsterStatesDto)value;
@@ -318,6 +330,30 @@ namespace Rpg.Networking
                             ProtocolCodec.FindPosition(positions, LocalIdentity.EntityId) == null) return;
                         // No global sequence shared with health/HUD/input; display sorts per entity/position stream.
                         PlayerPositionsReceived?.Invoke(positions);
+                    });
+                    handshakePeer.Subscribe<DashExecutionDto>(value =>
+                    {
+                        var execution = (DashExecutionDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected ||
+                            !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                            execution.roomSessionId != RoomSessionId || execution.loadId != SceneLoadId) return;
+                        DashExecutionReceived?.Invoke(execution);
+                    });
+                    handshakePeer.Subscribe<JumpExecutionDto>(value =>
+                    {
+                        var execution = (JumpExecutionDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected ||
+                            !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                            execution.roomSessionId != RoomSessionId || execution.loadId != SceneLoadId) return;
+                        JumpExecutionReceived?.Invoke(execution);
+                    });
+                    handshakePeer.Subscribe<PrimaryAttackExecutionDto>(value =>
+                    {
+                        var execution = (PrimaryAttackExecutionDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected ||
+                            !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                            execution.roomSessionId != RoomSessionId || execution.loadId != SceneLoadId) return;
+                        PrimaryAttackExecutionReceived?.Invoke(execution);
                     });
                     handshakePeer.Disconnected += value =>
                     {
@@ -522,6 +558,16 @@ namespace Rpg.Networking
                     lastPlayerInitializationSeq > 0 && result.roomSessionId == RoomSessionId) handler(result);
             });
         }
+        private void SubscribeSkillInstanceEvent<T>(NetConnection boundConnection, Action<T> handler) where T : RoomSkillInstanceEventDto
+        {
+            handshakePeer.Subscribe<T>(value =>
+            {
+                var result = (T)value;
+                if (ReferenceEquals(Connection, boundConnection) && State == RoomConnectionState.Connected &&
+                    CanInitializeEntities && lastPlayerInitializationSeq > 0 &&
+                    result.roomSessionId == RoomSessionId && result.loadId == SceneLoadId) handler(result);
+            });
+        }
 
 
         public bool SendJumpRequest(long actionSeq)
@@ -609,10 +655,17 @@ namespace Rpg.Networking
             CraftResultReceived = null;
             SkillUnlockResultReceived = null;
             FlaskUseResultReceived = null;
+            DashExecutionReceived = null;
+            JumpExecutionReceived = null;
+            PrimaryAttackExecutionReceived = null;
             SwordStatesReceived = null;
+            SwordInstanceEventReceived = null;
             CrystalStatesReceived = null;
+            CrystalInstanceEventReceived = null;
             CloneStatesReceived = null;
+            CloneInstanceEventReceived = null;
             BlackholeStatesReceived = null;
+            BlackholeInstanceEventReceived = null;
         }
     }
 }

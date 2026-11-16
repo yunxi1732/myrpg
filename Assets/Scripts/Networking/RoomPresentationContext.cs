@@ -30,8 +30,12 @@ namespace Rpg.Networking
             NotifyChanged(); return true;
         }
         public Sprite FlaskIcon { get; private set; }
-        public float FlaskFill { get; private set; }
-        public float FlaskCooldownSeconds { get; private set; }
+        private ulong flaskCooldownEndTick;
+        private int flaskDurationTicks;
+        private double flaskAppliedAt;
+        public float FlaskFill => flaskDurationTicks == 0 ? 0 : Mathf.Clamp01((float)(
+            ((double)(flaskCooldownEndTick > flaskTick ? flaskCooldownEndTick - flaskTick : 0) -
+             (MonotonicClock.Now - flaskAppliedAt) / GameSimulationClock.FixedDeltaTime) / flaskDurationTicks));
         public string FlaskDefinitionId { get; private set; } = "";
         public bool HasEquippedFlask { get; private set; }
         private long flaskVersion, flaskSeq;
@@ -42,9 +46,8 @@ namespace Rpg.Networking
                 value.cooldownStartTick > tick || value.version < flaskVersion || value.stateSeq <= flaskSeq || tick < flaskTick) return false;
             flaskVersion = value.version; flaskSeq = value.stateSeq; flaskTick = tick;
             HasEquippedFlask = value.equippedItemId.Length > 0; FlaskDefinitionId = value.definitionId; FlaskIcon = null;
-            ulong remaining = value.cooldownEndTick > tick ? value.cooldownEndTick - tick : 0;
-            FlaskFill = value.durationTicks > 0 ? Mathf.Clamp01((float)remaining / value.durationTicks) : 0;
-            FlaskCooldownSeconds = value.durationTicks * GameSimulationClock.FixedDeltaTime;
+            flaskCooldownEndTick = value.cooldownEndTick; flaskDurationTicks = value.durationTicks;
+            flaskAppliedAt = MonotonicClock.Now;
             NotifyChanged(); return true;
         }
         private readonly float[] skillFills = new float[5];
@@ -117,7 +120,7 @@ namespace Rpg.Networking
             foreach (float fill in cooldownFills) if (!ValidFill(fill)) return false;
             hudTick = authorityTick; hudSeq = stateSeq;
             if (currencyVersion == 0) Currency = currency;
-            if (flaskVersion == 0) { FlaskIcon = flask; FlaskFill = flaskFill; }
+            if (flaskVersion == 0) FlaskIcon = flask;
             Array.Copy(cooldownFills, skillFills, 5); HasHud = true;
             NotifyChanged(); return true;
         }

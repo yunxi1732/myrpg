@@ -32,7 +32,8 @@ public sealed partial class PlayerCombatContext
         int actual = 0;
         if (rejection == FlaskUseRejection.None)
         {
-            double ticks = Math.Ceiling((double)(definition.Cooldown / fixedDelta));
+            // Decimal conversion preserves authored 15s / 0.02s as exactly 750 ticks across Unity runtimes.
+            decimal ticks = Math.Ceiling((decimal)definition.Cooldown / (decimal)fixedDelta);
             if (ticks > int.MaxValue) return null;
             int duration = (int)ticks; ulong end = checked(tick + (ulong)duration);
             long version = checked(flaskVersion + 1);

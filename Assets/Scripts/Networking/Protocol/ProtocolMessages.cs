@@ -5,8 +5,8 @@ namespace Rpg.Networking.Protocol
     public static class ProtocolSchema
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
-        // Event-driven local item drop motion after A confirms the spawn.
-        public const int SchemaVersion = 49;
+        // Periodic monster attacks use a sparse list; player positions omit confirmed flask state and derived parry flags.
+        public const int SchemaVersion = 59;
     }
 
     public enum ProtocolId : short
@@ -53,7 +53,14 @@ namespace Rpg.Networking.Protocol
         DropSpawn = 41,
         PickupRequest = 42,
         PickupResult = 43,
-        RoomRetryReady = 44
+        RoomRetryReady = 44,
+        DashExecution = 45,
+        JumpExecution = 46,
+        PrimaryAttackExecution = 47,
+        SwordInstanceEvent = 48,
+        CrystalInstanceEvent = 49,
+        CloneInstanceEvent = 50,
+        BlackholeInstanceEvent = 51
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash, Parry, ParrySuccess }
@@ -346,10 +353,33 @@ namespace Rpg.Networking.Protocol
         public bool exploding;
         public float scale = 1;
     }
+    public enum CrystalInstanceEventKind { Spawn, Explode, End }
+    [Serializable]
+    public abstract class RoomSkillInstanceEventDto : AuthorityResultDto
+    {
+        public long loadId, requestSeq, skillInstanceId;
+        public int entityId, sourcePlayerId, sourceEntityId;
+        public ulong startTick;
+    }
+    [Serializable]
+    public sealed class CrystalInstanceEventDto : RoomSkillInstanceEventDto
+    {
+        public CrystalInstanceEventKind kind;
+        public bool derived;
+        public float[] position;
+        public float scale;
+    }
+    [Serializable]
+    public sealed class CrystalTrajectoryDto
+    {
+        public long skillInstanceId;
+        public float[] position;
+        public float scale;
+    }
     [Serializable]
     public sealed class CrystalStatesDto : RoomSkillStatesDto
     {
-        public CrystalObjectDto[] crystals;
+        public CrystalTrajectoryDto[] crystals;
     }
     [Serializable]
     public sealed class CloneObjectDto : RoomSkillObjectDto
@@ -358,10 +388,27 @@ namespace Rpg.Networking.Protocol
         public float alpha;
         public int attackNumber;
     }
+    public enum CloneInstanceEventKind { Spawn, End }
+    [Serializable]
+    public sealed class CloneInstanceEventDto : RoomSkillInstanceEventDto
+    {
+        public CloneInstanceEventKind kind;
+        public float[] position;
+        public bool facingLeft;
+        public int attackNumber;
+    }
+    [Serializable]
+    public sealed class CloneTrajectoryDto
+    {
+        public long skillInstanceId;
+        public float[] position;
+        public bool facingLeft;
+        public float alpha;
+    }
     [Serializable]
     public sealed class CloneStatesDto : RoomSkillStatesDto
     {
-        public CloneObjectDto[] clones;
+        public CloneTrajectoryDto[] clones;
     }
     public enum BlackholeAction { Cast, Select, Release }
     [Serializable]
@@ -384,12 +431,30 @@ namespace Rpg.Networking.Protocol
         public float scale;
         public BlackholePromptDto[] prompts;
     }
+    public enum BlackholeInstanceEventKind { Spawn, Select, Release, End }
+    [Serializable]
+    public sealed class BlackholeInstanceEventDto : RoomSkillInstanceEventDto
+    {
+        public BlackholeInstanceEventKind kind;
+        public int targetEntityId;
+        public float[] position;
+        public float scale;
+    }
+    [Serializable]
+    public sealed class BlackholeTrajectoryDto
+    {
+        public long skillInstanceId;
+        public float[] position;
+        public float scale;
+        public BlackholePromptDto[] prompts;
+    }
     [Serializable]
     public sealed class BlackholeStatesDto : RoomSkillStatesDto
     {
-        public BlackholeObjectDto[] blackholes;
+        public BlackholeTrajectoryDto[] blackholes;
     }
     public enum SwordPhase { Flying, Stuck, Returning }
+    public enum SwordInstanceEventKind { Spawn, Phase, End }
     [Serializable]
     public sealed class SwordInputDto : RoomSkillInputDto
     {
@@ -410,10 +475,24 @@ namespace Rpg.Networking.Protocol
         public float[] direction;
     }
     [Serializable]
+    public sealed class SwordInstanceEventDto : RoomSkillInstanceEventDto
+    {
+        public ulong endTick;
+        public SwordInstanceEventKind kind;
+        public SwordPhase phase;
+        public float[] position, direction;
+    }
+    [Serializable]
+    public sealed class SwordTrajectoryDto
+    {
+        public long skillInstanceId;
+        public float[] position, direction;
+    }
+    [Serializable]
     public sealed class SwordStatesDto : RoomSkillStatesDto
     {
         public SwordOwnerDto[] owners;
-        public SwordObjectDto[] swords;
+        public SwordTrajectoryDto[] swords;
     }
     [Serializable]
     public sealed class FlaskUseRequestDto
@@ -451,6 +530,13 @@ namespace Rpg.Networking.Protocol
         public ulong authorityTick;
         public long stateSeq;
         public MonsterStateDto[] monsters;
+        public MonsterAttackStateDto[] attacks;
+    }
+    [Serializable]
+    public sealed class MonsterAttackStateDto
+    {
+        public int entityId;
+        public MonsterAttackDto attack;
     }
     [Serializable]
     public sealed class MonsterStateDto
@@ -464,7 +550,6 @@ namespace Rpg.Networking.Protocol
         public bool counterWindow;
         public bool active;
         public bool dead;
-        public MonsterAttackDto attack;
     }
 
     [Serializable]
@@ -579,6 +664,18 @@ namespace Rpg.Networking.Protocol
         public long actionSeq; // One press. A decides ground/wall jump; B supplies no wall side, impulse or duration.
     }
 
+    [Serializable]
+    public sealed class JumpExecutionDto
+    {
+        public string roomSessionId;
+        public long loadId;
+        public long actionSeq;
+        public ulong authorityTick;
+        public bool accepted;
+        public bool wallJump;
+        public int facingDir; // A's facing after the jump starts; zero on rejection.
+    }
+
     // A dedicated per-player press stream. No actor ID, hit target, attack instance ID or resultId supplied by B.
     [Serializable]
     public sealed class PrimaryAttackRequestDto
@@ -587,10 +684,37 @@ namespace Rpg.Networking.Protocol
     }
 
     [Serializable]
+    public sealed class PrimaryAttackExecutionDto
+    {
+        public string roomSessionId;
+        public long loadId;
+        public long requestSeq;
+        public ulong authorityTick;
+        public bool accepted;
+        public PrimaryAttackRejection rejection;
+        public long attackInstanceId;
+        public ulong startTick;
+        public int facingDir;
+        public int comboIndex;
+        public int durationTicks;
+    }
+
+    [Serializable]
     public sealed class DashRequestDto
     {
         public long actionSeq;
         public float currentAxis; // Input at the press; zero asks A to use its own current facing.
+    }
+
+    [Serializable]
+    public sealed class DashExecutionDto
+    {
+        public string roomSessionId;
+        public long loadId;
+        public long actionSeq;
+        public ulong authorityTick; // Start tick when accepted; decision tick when rejected.
+        public bool accepted;
+        public int facingDir; // Zero on rejection.
     }
 
     [Serializable]
@@ -614,9 +738,9 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class PlayerPositionDto
     {
-        public RoomFlaskStateDto flask = new RoomFlaskStateDto();
         public float[] skillFills = new float[5];
         public int entityId;
+        public long processedInputSeq;
         public float[] position;
         public int facingDir;
         public MovementAnimationState movementState;
@@ -624,7 +748,7 @@ namespace Rpg.Networking.Protocol
         public PlayerDeathCause deathCause;
         public long deathHealthVersion;
         public int deathMaxHealth;
-        public bool parrying, parrySucceeded, invincible;
+        public bool invincible;
         public PlayerAttackDto attack;
     }
 

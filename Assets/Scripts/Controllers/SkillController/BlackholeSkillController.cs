@@ -73,6 +73,7 @@ public class BlackholeSkillController : MonoBehaviour
         cloneAttackReleased = true;
         canCreateHotkey = false;
         DestroyHotkey();
+        Room?.OnReleased(this);
 
         if (playerCanDisappear)
         {

@@ -14,13 +14,25 @@ public class Player : Entity
     public bool CanReadSimulationInput => EntityRuntimePermissions.CanReadSimulationInput(this);
     public bool CanUseLegacyActions => EntityRuntimePermissions.CanUseLegacyActions(this);
     public PlayerInputData InputData { get; } = new PlayerInputData();
+    public long LastSimulatedMovementInputSeq { get; private set; }
     private long nextActionSeq, lastActionSeq, localJumpPress;
     private enum NetworkJumpKind { None, Ground, Wall }
     private NetworkJumpKind pendingJump;
+    private long pendingJumpActionSeq, resolvedJumpActionSeq;
+    private bool resolvedJumpAccepted, resolvedWallJump;
+    private ulong resolvedJumpTick;
+    private int resolvedJumpFacing;
     private long localDashPress;
     private float localDashAxis, pendingDashAxis;
     private bool dashPending;
+    private long pendingDashActionSeq, resolvedDashActionSeq;
+    private bool resolvedDashAccepted;
+    private ulong resolvedDashTick;
+    private int resolvedDashFacing;
     private long nextPrimaryAttackRequestSeq, localPrimaryAttackPress;
+    private long resolvedPrimaryAttackRequestSeq;
+    private PrimaryAttackInstance resolvedPrimaryAttackInstance;
+    private PrimaryAttackRejection resolvedPrimaryAttackRejection;
     private long nextFlaskRequestSeq, localFlaskPress;
     private long nextCrystalRequestSeq, localCrystalPress;
     [Header("Network Primary Attack (A configuration)")]
@@ -43,6 +55,8 @@ public class Player : Entity
     public void SetNetworkInputLocked(bool locked)
     {
         NetworkInputLocked = locked;
+        if (dashPending) ResolveNetworkDash(false);
+        if (pendingJump != NetworkJumpKind.None) ResolveNetworkJump(false, false);
         InputData.Clear(); localJumpPress = 0; localDashPress = 0;
         pendingJump = NetworkJumpKind.None; dashPending = false;
         localPrimaryAttackPress = 0; combat?.PrimaryAttack?.CancelPending();
@@ -229,6 +243,7 @@ public class Player : Entity
         GetComponent<NetworkHitFeedback>()?.AdvanceAuthorityKnockback(GameSimulationClock.AuthorityTick);
         if (stats != null && stats.currentHealth <= 0) { HoldNetworkAtZeroHealth(); return; }
         SimulateMovement();
+        LastSimulatedMovementInputSeq = InputData.InputSeq;
         Combat.PrimaryAttackHits?.Step(GameSimulationClock.AuthorityTick);
     }
 
@@ -236,6 +251,14 @@ public class Player : Entity
     {
         if (NetworkInputLocked || IsLocalInputOwner && GameplayControlLock.IsLocked)
         {
+            if (dashPending) ResolveNetworkDash(false);
+            if (pendingJump != NetworkJumpKind.None) ResolveNetworkJump(false, false);
+            if (!IsLocalInputOwner && Combat.PrimaryAttack?.HasPending == true)
+            {
+                resolvedPrimaryAttackRequestSeq = Combat.PrimaryAttack.PendingRequestSeq;
+                resolvedPrimaryAttackInstance = null;
+                resolvedPrimaryAttackRejection = PrimaryAttackRejection.Locked;
+            }
             InputData.Clear();
             localJumpPress = 0; localDashPress = 0; pendingJump = NetworkJumpKind.None; dashPending = false;
             localPrimaryAttackPress = 0; combat?.PrimaryAttack?.CancelPending();
@@ -249,7 +272,15 @@ public class Player : Entity
             int combo = runtime.PeekComboIndex(GameSimulationClock.AuthorityTick, PlayerPrimaryAttack.NetworkComboWindowTicks);
             PlayerPrimaryAttack.TryNetworkTiming(anim, combo, out var timing);
             int interval = condition == PrimaryAttackRejection.None ? Mathf.CeilToInt(networkPrimaryAttackInterval / GameSimulationClock.FixedDeltaTime) : 0;
-            if (runtime.TryBegin(GameSimulationClock.AuthorityTick, condition, timing, interval, PlayerPrimaryAttack.NetworkComboWindowTicks))
+            long requestSeq = runtime.PendingRequestSeq;
+            bool began = runtime.TryBegin(GameSimulationClock.AuthorityTick, condition, timing, interval, PlayerPrimaryAttack.NetworkComboWindowTicks);
+            if (!IsLocalInputOwner)
+            {
+                resolvedPrimaryAttackRequestSeq = requestSeq;
+                resolvedPrimaryAttackInstance = began ? runtime.Current : null;
+                resolvedPrimaryAttackRejection = began ? PrimaryAttackRejection.None : runtime.LastRejection;
+            }
+            if (began)
             {
                 runtime.Current.SetFacingAtStart(facingDir);
                 stateMachine.ChangeState(primaryAttackState);
@@ -267,8 +298,10 @@ public class Player : Entity
                 dashDir = pendingDashAxis == 0 ? facingDir : Mathf.Sign(pendingDashAxis);
                 stateMachine.ChangeState(dashState);
                 Combat.Skills.Commit<DashSkill>();
+                ResolveNetworkDash(true);
                 return;
             }
+            ResolveNetworkDash(false);
         }
         // Preserve WallSlide's original Space-before-reverse-input priority. A rechecks its wall before taking off.
         if (GameSimulationClock.IsNetwork && pendingJump == NetworkJumpKind.Wall)
@@ -277,14 +310,21 @@ public class Player : Entity
             if (GetNetworkJumpKind() == NetworkJumpKind.Wall)
             {
                 stateMachine.ChangeState(wallJumpState);
+                ResolveNetworkJump(true, true);
                 return; // Do not consume the 0.2s control window in the entry step.
             }
+            ResolveNetworkJump(false, false);
         }
         stateMachine.currentState.Update();
         if (GameSimulationClock.IsNetwork && pendingJump == NetworkJumpKind.Ground)
         {
             pendingJump = NetworkJumpKind.None; // Consume once; never turn an airborne request into a later jump.
-            if (GetNetworkJumpKind() == NetworkJumpKind.Ground) stateMachine.ChangeState(jumpState);
+            if (GetNetworkJumpKind() == NetworkJumpKind.Ground)
+            {
+                stateMachine.ChangeState(jumpState);
+                ResolveNetworkJump(true, false);
+            }
+            else ResolveNetworkJump(false, false);
         }
     }
 
@@ -298,6 +338,18 @@ public class Player : Entity
     public bool TryConsumePrimaryAttackPress(out long requestSeq)
     {
         requestSeq = localPrimaryAttackPress; localPrimaryAttackPress = 0;
+        return requestSeq > 0;
+    }
+
+    public bool TryConsumeNetworkPrimaryAttackResolution(out long requestSeq, out PrimaryAttackInstance instance,
+        out PrimaryAttackRejection rejection)
+    {
+        requestSeq = resolvedPrimaryAttackRequestSeq;
+        instance = resolvedPrimaryAttackInstance;
+        rejection = resolvedPrimaryAttackRejection;
+        resolvedPrimaryAttackRequestSeq = 0;
+        resolvedPrimaryAttackInstance = null;
+        resolvedPrimaryAttackRejection = PrimaryAttackRejection.None;
         return requestSeq > 0;
     }
     public bool TryConsumeFlaskPress(out long requestSeq)
@@ -333,6 +385,25 @@ public class Player : Entity
         return TryQueueNetworkMovementAction(actionSeq, false, 0);
     }
 
+    public bool TryConsumeNetworkJumpResolution(out long actionSeq, out bool accepted, out bool wallJump, out ulong tick, out int facing)
+    {
+        actionSeq = resolvedJumpActionSeq; accepted = resolvedJumpAccepted; wallJump = resolvedWallJump;
+        tick = resolvedJumpTick; facing = resolvedJumpFacing;
+        resolvedJumpActionSeq = 0;
+        return actionSeq > 0;
+    }
+
+    private void ResolveNetworkJump(bool accepted, bool wallJump)
+    {
+        resolvedJumpActionSeq = pendingJumpActionSeq;
+        resolvedJumpAccepted = accepted;
+        resolvedWallJump = wallJump;
+        resolvedJumpTick = GameSimulationClock.AuthorityTick;
+        resolvedJumpFacing = accepted ? facingDir : 0;
+        pendingJumpActionSeq = 0;
+        pendingJump = NetworkJumpKind.None;
+    }
+
     private NetworkJumpKind GetNetworkJumpKind()
     {
         if (NetworkInputLocked || stats.isDead || stats.currentHealth <= 0 || isBusy || isKnocked ||
@@ -362,6 +433,24 @@ public class Player : Entity
         return TryQueueNetworkMovementAction(actionSeq, true, axis);
     }
 
+    public bool TryConsumeNetworkDashResolution(out long actionSeq, out bool accepted, out ulong tick, out int facing)
+    {
+        actionSeq = resolvedDashActionSeq; accepted = resolvedDashAccepted;
+        tick = resolvedDashTick; facing = resolvedDashFacing;
+        resolvedDashActionSeq = 0;
+        return actionSeq > 0;
+    }
+
+    private void ResolveNetworkDash(bool accepted)
+    {
+        resolvedDashActionSeq = pendingDashActionSeq;
+        resolvedDashAccepted = accepted;
+        resolvedDashTick = GameSimulationClock.AuthorityTick;
+        resolvedDashFacing = accepted ? facingDir : 0;
+        pendingDashActionSeq = 0;
+        dashPending = false;
+    }
+
     private bool TryQueueNetworkMovementAction(long actionSeq, bool dash, float axis)
     {
         if (!GameSimulationClock.IsNetwork || !IsAuthoritative || actionSeq <= 0 || actionSeq <= lastActionSeq) return false;
@@ -370,12 +459,12 @@ public class Player : Entity
         if (dash)
         {
             if (!CanPerformNetworkDash()) return false;
-            pendingDashAxis = axis; dashPending = true;
+            pendingDashAxis = axis; pendingDashActionSeq = actionSeq; dashPending = true;
             return true;
         }
         NetworkJumpKind kind = GetNetworkJumpKind();
         if (kind == NetworkJumpKind.None) return false;
-        pendingJump = kind;
+        pendingJump = kind; pendingJumpActionSeq = actionSeq;
         return true;
     }
 
@@ -506,6 +595,14 @@ public class Player : Entity
     public void HoldNetworkAtZeroHealth()
     {
         if (!GameSimulationClock.IsNetwork || !IsAuthoritative) return;
+        if (dashPending) ResolveNetworkDash(false);
+        if (pendingJump != NetworkJumpKind.None) ResolveNetworkJump(false, false);
+        if (!IsLocalInputOwner && combat?.PrimaryAttack?.HasPending == true)
+        {
+            resolvedPrimaryAttackRequestSeq = combat.PrimaryAttack.PendingRequestSeq;
+            resolvedPrimaryAttackInstance = null;
+            resolvedPrimaryAttackRejection = PrimaryAttackRejection.Dead;
+        }
         InputData.Clear(); localJumpPress = 0; localDashPress = 0; localPrimaryAttackPress = 0; localFlaskPress = 0; localCrystalPress = 0;
         pendingJump = NetworkJumpKind.None; dashPending = false;
         combat?.PrimaryAttack?.InterruptCurrent(); combat?.PrimaryAttackHits?.Reset();

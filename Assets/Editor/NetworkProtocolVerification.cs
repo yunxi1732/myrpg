@@ -39,6 +39,11 @@ public static class NetworkProtocolVerification
         VerifyJumpRequest();
         VerifyDashRequest();
         VerifyPrimaryAttackRequest();
+        VerifyPrimaryAttackExecution();
+        VerifySwordInstanceEvent();
+        VerifyCrystalInstanceEvent();
+        VerifyCloneInstanceEvent();
+        VerifyBlackholeInstanceEvent();
         VerifyLocalInputLock();
         VerifyMonsterInitialization();
         VerifyMonsterStates();
@@ -56,41 +61,180 @@ public static class NetworkProtocolVerification
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Decode((short)ProtocolId.PrimaryAttackRequest, Encoding.UTF8.GetBytes("{}"), true));
     }
 
+    private static void VerifyPrimaryAttackExecution()
+    {
+        var execution = new PrimaryAttackExecutionDto { roomSessionId = Guid.NewGuid().ToString("N"), loadId = 2,
+            requestSeq = 42, authorityTick = 105, accepted = true, rejection = PrimaryAttackRejection.None,
+            attackInstanceId = 7, startTick = 104, facingDir = -1, comboIndex = 1, durationTicks = 20 };
+        var confirmed = (PrimaryAttackExecutionDto)RoundTrip(execution, true);
+        RequireSend(confirmed.requestSeq == 42 && confirmed.attackInstanceId == 7 && confirmed.startTick == 104 &&
+            confirmed.facingDir == -1 && confirmed.comboIndex == 1 && confirmed.durationTicks == 20 &&
+            ProtocolCodec.MessageKind(typeof(PrimaryAttackExecutionDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(PrimaryAttackExecutionDto)) == RoomDeliveryHint.Reliable,
+            "Accepted ordinary attack carries A's instance and action on the reliable execution channel");
+        execution.accepted = false; execution.rejection = PrimaryAttackRejection.Busy;
+        execution.attackInstanceId = 0; execution.startTick = 0; execution.facingDir = 0;
+        execution.comboIndex = 0; execution.durationTicks = 0;
+        RequireSend(((PrimaryAttackExecutionDto)RoundTrip(execution, true)).rejection == PrimaryAttackRejection.Busy,
+            "Rejected ordinary attack retains request sequence and A's reason");
+        execution.rejection = PrimaryAttackRejection.None;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(execution, true));
+    }
+
+    private static void VerifySwordInstanceEvent()
+    {
+        string room = Guid.NewGuid().ToString("N");
+        var instance = new SwordInstanceEventDto { roomSessionId = room, loadId = 2, authorityTick = 10,
+            resultId = 1, requestSeq = 4, skillInstanceId = 7, entityId = 30, sourcePlayerId = 2,
+            sourceEntityId = 20, startTick = 10, endTick = 360, kind = SwordInstanceEventKind.Spawn,
+            phase = SwordPhase.Flying, position = new[] { 1f, 2f }, direction = new[] { 1f, 0f } };
+        var copy = (SwordInstanceEventDto)RoundTrip(instance, true);
+        RequireSend(copy.skillInstanceId == 7 && copy.requestSeq == 4 && copy.kind == SwordInstanceEventKind.Spawn &&
+            ProtocolCodec.MessageKind(typeof(SwordInstanceEventDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(SwordInstanceEventDto)) == RoomDeliveryHint.Reliable,
+            "Sword lifecycle event carries authority instance identity reliably");
+        instance.kind = SwordInstanceEventKind.Phase; instance.phase = SwordPhase.Stuck;
+        RequireSend(((SwordInstanceEventDto)RoundTrip(instance, true)).phase == SwordPhase.Stuck,
+            "Sword phase uses the same instance ID");
+        instance.kind = SwordInstanceEventKind.End;
+        RequireSend(((SwordInstanceEventDto)RoundTrip(instance, true)).kind == SwordInstanceEventKind.End,
+            "Sword end uses the same instance ID");
+        instance.skillInstanceId = 0;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(instance, true));
+        var trajectory = new SwordStatesDto { roomSessionId = room, authorityTick = 11, resultId = 2, stateSeq = 1,
+            owners = new[] { new SwordOwnerDto { playerId = 2, entityId = 20 } },
+            swords = new[] { new SwordTrajectoryDto { skillInstanceId = 7, position = new[] { 2f, 2f },
+                direction = new[] { 1f, 0f } } } };
+        RequireSend(((SwordStatesDto)RoundTrip(trajectory, true)).swords[0].skillInstanceId == 7,
+            "Sword snapshots retain only instance-linked trajectory data");
+    }
+
+    private static void VerifyCrystalInstanceEvent()
+    {
+        string room = Guid.NewGuid().ToString("N");
+        var value = new CrystalInstanceEventDto { roomSessionId = room, loadId = 2, authorityTick = 10,
+            resultId = 1, requestSeq = 4, skillInstanceId = 7, entityId = 30, sourcePlayerId = 2,
+            sourceEntityId = 20, startTick = 10, kind = CrystalInstanceEventKind.Spawn,
+            position = new[] { 1f, 2f }, scale = 1f };
+        var copy = (CrystalInstanceEventDto)RoundTrip(value, true);
+        RequireSend(copy.skillInstanceId == 7 && copy.requestSeq == 4 && copy.kind == CrystalInstanceEventKind.Spawn &&
+            ProtocolCodec.MessageKind(typeof(CrystalInstanceEventDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(CrystalInstanceEventDto)) == RoomDeliveryHint.Reliable,
+            "Crystal spawn carries authority instance identity reliably");
+        value.kind = CrystalInstanceEventKind.Explode;
+        RequireSend(((CrystalInstanceEventDto)RoundTrip(value, true)).kind == CrystalInstanceEventKind.Explode,
+            "Crystal explosion uses the same instance ID");
+        value.kind = CrystalInstanceEventKind.End;
+        RequireSend(((CrystalInstanceEventDto)RoundTrip(value, true)).kind == CrystalInstanceEventKind.End,
+            "Crystal end uses the same instance ID");
+        value.skillInstanceId = 0;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
+        value.skillInstanceId = 7; value.derived = true; value.requestSeq = 0;
+        RequireSend(((CrystalInstanceEventDto)RoundTrip(value, true)).derived,
+            "Derived crystal keeps source ownership without a direct request");
+        var trajectory = new CrystalStatesDto { roomSessionId = room, authorityTick = 11, resultId = 2,
+            stateSeq = 1, crystals = new[] { new CrystalTrajectoryDto { skillInstanceId = 7,
+                position = new[] { 2f, 2f }, scale = 2f } } };
+        RequireSend(((CrystalStatesDto)RoundTrip(trajectory, true)).crystals[0].skillInstanceId == 7,
+            "Crystal snapshots retain only instance-linked position and scale");
+    }
+
+    private static void VerifyCloneInstanceEvent()
+    {
+        string room = Guid.NewGuid().ToString("N");
+        var value = new CloneInstanceEventDto { roomSessionId = room, loadId = 2, authorityTick = 10,
+            resultId = 1, requestSeq = 0, skillInstanceId = 7, entityId = 30, sourcePlayerId = 2,
+            sourceEntityId = 20, startTick = 10, kind = CloneInstanceEventKind.Spawn,
+            position = new[] { 1f, 2f }, facingLeft = true, attackNumber = 3 };
+        var copy = (CloneInstanceEventDto)RoundTrip(value, true);
+        RequireSend(copy.skillInstanceId == 7 && copy.sourceEntityId == 20 && copy.facingLeft &&
+            copy.attackNumber == 3 && ProtocolCodec.MessageKind(typeof(CloneInstanceEventDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(CloneInstanceEventDto)) == RoomDeliveryHint.Reliable,
+            "Clone spawn carries A's position, source and selected action reliably");
+        value.kind = CloneInstanceEventKind.End;
+        RequireSend(((CloneInstanceEventDto)RoundTrip(value, true)).kind == CloneInstanceEventKind.End,
+            "Clone end retains its instance ID");
+        value.attackNumber = 4;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
+        var trajectory = new CloneStatesDto { roomSessionId = room, authorityTick = 11, resultId = 2,
+            stateSeq = 1, clones = new[] { new CloneTrajectoryDto { skillInstanceId = 7,
+                position = new[] { 2f, 2f }, facingLeft = true, alpha = .5f } } };
+        RequireSend(((CloneStatesDto)RoundTrip(trajectory, true)).clones[0].skillInstanceId == 7,
+            "Clone snapshots retain only instance-linked position, facing and alpha");
+    }
+
+    private static void VerifyBlackholeInstanceEvent()
+    {
+        string room = Guid.NewGuid().ToString("N");
+        var value = new BlackholeInstanceEventDto { roomSessionId = room, loadId = 2, authorityTick = 10,
+            resultId = 1, requestSeq = 4, skillInstanceId = 7, entityId = 30, sourcePlayerId = 2,
+            sourceEntityId = 20, startTick = 10, kind = BlackholeInstanceEventKind.Spawn,
+            position = new[] { 1f, 2f }, scale = 1f };
+        var spawn = (BlackholeInstanceEventDto)RoundTrip(value, true);
+        RequireSend(spawn.skillInstanceId == 7 && spawn.sourceEntityId == 20 &&
+            ProtocolCodec.MessageKind(typeof(BlackholeInstanceEventDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(BlackholeInstanceEventDto)) == RoomDeliveryHint.Reliable,
+            "Blackhole spawn uses the shared reliable instance event entry");
+        value.kind = BlackholeInstanceEventKind.Select; value.requestSeq = 5; value.targetEntityId = 40;
+        RequireSend(((BlackholeInstanceEventDto)RoundTrip(value, true)).targetEntityId == 40,
+            "Blackhole selection confirms A's target on the same instance");
+        value.targetEntityId = 0; value.kind = BlackholeInstanceEventKind.Release;
+        RequireSend(((BlackholeInstanceEventDto)RoundTrip(value, true)).kind == BlackholeInstanceEventKind.Release,
+            "Blackhole release uses the same instance ID");
+        value.requestSeq = 0; value.kind = BlackholeInstanceEventKind.End;
+        RequireSend(((BlackholeInstanceEventDto)RoundTrip(value, true)).kind == BlackholeInstanceEventKind.End,
+            "Blackhole end uses the same instance ID");
+        value.skillInstanceId = 0;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
+        var trajectory = new BlackholeStatesDto { roomSessionId = room, authorityTick = 11, resultId = 2,
+            stateSeq = 1, blackholes = new[] { new BlackholeTrajectoryDto { skillInstanceId = 7,
+                position = new[] { 2f, 2f }, scale = 2f, prompts = Array.Empty<BlackholePromptDto>() } } };
+        RequireSend(((BlackholeStatesDto)RoundTrip(trajectory, true)).blackholes[0].skillInstanceId == 7,
+            "Blackhole snapshots retain instance-linked position, scale and target prompts");
+    }
+
     private static void VerifyMonsterStates()
     {
         var value = new MonsterStatesDto
         {
             roomSessionId = Guid.NewGuid().ToString("N"), loadId = 1, authorityTick = 105, stateSeq = 2,
-            monsters = new[] {
+            attacks = Array.Empty<MonsterAttackStateDto>(), monsters = new[] {
                 new MonsterStateDto { entityId = 3, position = new[] { 1f, 2f }, facingDir = -1, aiState = MonsterAiState.Patrol, moving = true, active = true },
                 new MonsterStateDto { entityId = 4, targetEntityId = 20, position = new[] { 3f, 2f }, facingDir = 1, aiState = MonsterAiState.Chase, active = true }
             }
         };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value));
         var copy = (MonsterStatesDto)RoundTrip(value, true);
+        RequireSend(!JsonUtility.ToJson(value).Contains("\"actionId\":0"),
+            "Non-attacking monster snapshots omit empty attack metadata");
         RequireSend(copy.authorityTick == 105 && copy.stateSeq == 2 && copy.monsters[0].moving &&
             copy.monsters[1].aiState == MonsterAiState.Chase && copy.monsters[1].targetEntityId == 20,
             "Monster AI snapshots carry movement, target and animation state on one authority timeline");
         var attacking = value.monsters[1];
         attacking.aiState = MonsterAiState.Attack;
-        attacking.attack = new MonsterAttackDto { actionId = 7, actionNumber = 1, startTick = 100, durationTicks = 57, facingDir = 1 };
+        var attack = new MonsterAttackDto { actionId = 7, actionNumber = 1, startTick = 100, durationTicks = 57, facingDir = 1 };
+        value.attacks = new[] { new MonsterAttackStateDto { entityId = attacking.entityId, attack = attack } };
         copy = (MonsterStatesDto)RoundTrip(value, true);
-        RequireSend(copy.monsters[1].attack.actionId == 7 && copy.monsters[1].attack.actionNumber == 1 && copy.monsters[1].attack.startTick == 100 &&
-            copy.monsters[1].attack.durationTicks == 57, "Attack identity, animation number, facing and simulation timing survive the sole codec");
-        attacking.attack.startTick = 106;
+        RequireSend(copy.attacks.Length == 1 && copy.attacks[0].entityId == attacking.entityId && copy.attacks[0].attack.actionId == 7 &&
+            copy.attacks[0].attack.actionNumber == 1 && copy.attacks[0].attack.startTick == 100 &&
+            copy.attacks[0].attack.durationTicks == 57, "Only the active attack identity and timing survive the sole codec");
+        attack.startTick = 106;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
-        attacking.attack.startTick = 100; attacking.attack.actionNumber = 2;
+        attack.startTick = 100; attack.actionNumber = 2;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
-        attacking.attack.actionNumber = 1; attacking.attack.facingDir = -1;
+        attack.actionNumber = 1; attack.facingDir = -1;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
-        attacking.attack.facingDir = 1; attacking.attack.actionId = 0;
+        attack.facingDir = 1; attack.actionId = 0;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
-        attacking.attack.actionId = 7; attacking.moving = true;
+        attack.actionId = 7; attacking.moving = true;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         attacking.moving = false;
         attacking.targetEntityId = -1;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         attacking.targetEntityId = 20;
+        value.attacks = Array.Empty<MonsterAttackStateDto>();
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
+        value.attacks = new[] { new MonsterAttackStateDto { entityId = attacking.entityId, attack = attack } };
         value.monsters[0].aiState = (MonsterAiState)99;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         value.monsters[0].aiState = MonsterAiState.Idle; value.monsters[1].entityId = 3;
@@ -157,6 +301,17 @@ public static class NetworkProtocolVerification
             NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(new DashRequestDto { actionSeq = 1, currentAxis = axis }, true));
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(new DashRequestDto(), true));
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(new DashRequestDto { actionSeq = -1 }, true));
+        var execution = new DashExecutionDto { roomSessionId = Guid.NewGuid().ToString("N"), loadId = 2,
+            actionSeq = 3, authorityTick = 40, accepted = true, facingDir = -1 };
+        var confirmed = (DashExecutionDto)RoundTrip(execution, true);
+        RequireSend(confirmed.actionSeq == 3 && confirmed.authorityTick == 40 && confirmed.accepted && confirmed.facingDir == -1 &&
+            ProtocolCodec.MessageKind(typeof(DashExecutionDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(DashExecutionDto)) == RoomDeliveryHint.Reliable,
+            "Dash execution confirms A's start tick and direction on the reliable action stream");
+        execution.accepted = false; execution.facingDir = 0;
+        RequireSend(!((DashExecutionDto)RoundTrip(execution, true)).accepted, "Rejected dash retains its request sequence");
+        execution.facingDir = 1;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(execution, true));
     }
 
     private static void VerifyJumpRequest()
@@ -169,6 +324,18 @@ public static class NetworkProtocolVerification
         request.actionSeq = -1;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(request, true));
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Decode((short)ProtocolId.JumpRequest, Encoding.UTF8.GetBytes("{}"), true));
+        var execution = new JumpExecutionDto { roomSessionId = Guid.NewGuid().ToString("N"), loadId = 2,
+            actionSeq = 4, authorityTick = 50, accepted = true, wallJump = true, facingDir = -1 };
+        var confirmed = (JumpExecutionDto)RoundTrip(execution, true);
+        RequireSend(confirmed.actionSeq == 4 && confirmed.authorityTick == 50 && confirmed.accepted &&
+            confirmed.wallJump && confirmed.facingDir == -1 &&
+            ProtocolCodec.MessageKind(typeof(JumpExecutionDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(JumpExecutionDto)) == RoomDeliveryHint.Reliable,
+            "A confirms ground/wall jump execution with its start tick and facing");
+        execution.accepted = false; execution.wallJump = false; execution.facingDir = 0;
+        RequireSend(!((JumpExecutionDto)RoundTrip(execution, true)).accepted, "Rejected jump retains its request sequence");
+        execution.wallJump = true;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(execution, true));
     }
 
     private static void VerifyPlayerPositions()
@@ -178,11 +345,15 @@ public static class NetworkProtocolVerification
             roomSessionId = Guid.NewGuid().ToString("N"), loadId = 1, authorityTick = 200, stateSeq = 8,
             players = new[]
             {
-                new PlayerPositionDto { facingDir = -1, entityId = 20, position = new[] { -2.5f, 3f }, movementState = MovementAnimationState.Fall, yVelocity = -4 },
+                new PlayerPositionDto { facingDir = -1, entityId = 20, processedInputSeq = 7,
+                    position = new[] { -2.5f, 3f }, movementState = MovementAnimationState.Fall, yVelocity = -4 },
                 new PlayerPositionDto { facingDir = 1, entityId = 10, position = new[] { 1f, -4f } }
             }
         };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value));
+        string json = JsonUtility.ToJson(value);
+        RequireSend(!json.Contains("\"flask\"") && !json.Contains("\"parrying\"") && !json.Contains("\"parrySucceeded\"") &&
+            json.Contains("\"skillFills\""), "Periodic player positions omit confirmed flask and derived parry data but retain unconfirmed skill fills");
         var copy = (PlayerPositionsDto)RoundTrip(value, true);
         RequireSend(copy.authorityTick == 200 && copy.stateSeq == 8 && copy.loadId == 1 &&
             ProtocolCodec.FindPosition(copy, 10).position[1] == -4, "Two entity positions share one snapshot tick/sequence, independent of array order");
@@ -190,6 +361,11 @@ public static class NetworkProtocolVerification
             "Each entity carries its own authoritative facing");
         RequireSend(ProtocolCodec.FindPosition(copy, 20).movementState == MovementAnimationState.Fall &&
             ProtocolCodec.FindPosition(copy, 20).yVelocity == -4, "Movement animation and vertical velocity share the authoritative snapshot");
+        RequireSend(ProtocolCodec.FindPosition(copy, 20).processedInputSeq == 7 &&
+            ProtocolCodec.FindPosition(copy, 10).processedInputSeq == 0, "Each player snapshot carries its own processed movement input sequence");
+        value.players[0].processedInputSeq = -1;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
+        value.players[0].processedInputSeq = 7;
         value.players[0].movementState = (MovementAnimationState)99;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         value.players[0].movementState = MovementAnimationState.Fall;

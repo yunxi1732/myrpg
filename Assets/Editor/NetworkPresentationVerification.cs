@@ -162,6 +162,16 @@ public static class NetworkPresentationVerification
             second.GetComponent<RemotePlayerView>().TeleportDistance = 2;
             Require(local.ApplyPosition(room, 20, 103, new Vector2(10, 4)) && second.position.x == 10 &&
                 second.GetComponent<RemotePlayerView>().BufferedStateCount == 1, "Configured large-jump threshold clears the buffer and snaps");
+            var localDisplay = second.GetComponent<RemotePlayerView>();
+            Require(!first.GetComponent<RemotePlayerView>().ApplyPredictedPosition(new Vector2(99, 4)) &&
+                localDisplay.ApplyPredictedPosition(new Vector2(12, 4)) && second.position.x == 12,
+                "Only B's local player may submit a predicted display position");
+            Require(local.ApplyPosition(room, 21, 104, new Vector2(11, 4)), "Local display still accepts authority state");
+            localDisplay.AdvanceDisplay(GameSimulationClock.FixedDeltaTime * 5);
+            Require(second.position.x == 12 && first.position.x != 99,
+                "Authority interpolation cannot write B's predicted position or the remote display");
+            localDisplay.ClearPredictedPosition();
+            Require(second.position.x == 11, "Releasing prediction returns B's local display to authority interpolation");
             Require(local.ApplyHealth(room, 11, 2, 75, 150), "High position sequence cannot suppress a separate health stream");
             Transform ownView = MakeView(preview, "A local fixture", template, Vector3.zero);
             AddRuntimeFixture(ownView);
@@ -453,6 +463,7 @@ public static class NetworkPresentationVerification
         value.SetActive(false); SceneManager.MoveGameObjectToScene(value, scene);
         value.AddComponent<Rigidbody2D>(); value.AddComponent<CapsuleCollider2D>();
         var enemy = value.AddComponent<EnemySkeleton>(); enemy.attackCheck = value.transform;
+        var counter = new GameObject("Counter image fixture"); counter.transform.SetParent(value.transform);
         var stats = value.AddComponent<EnemyStats>();
         foreach (var field in typeof(CharaterStats).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
             if (field.FieldType == typeof(Stat)) field.SetValue(stats, new Stat());
@@ -460,6 +471,7 @@ public static class NetworkPresentationVerification
         var serialized = new SerializedObject(enemy);
         serialized.FindProperty("groundCheck").objectReferenceValue = value.transform;
         serialized.FindProperty("wallCheck").objectReferenceValue = value.transform;
+        serialized.FindProperty("counterImage").objectReferenceValue = counter;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return enemy;
     }
@@ -509,6 +521,8 @@ public static class NetworkPresentationVerification
         Require(buffer.Add(115, 4, Vector2.zero, 5, 5), "Attack end is a normal ordered state");
         buffer.Advance(.1f, .02f);
         Require(buffer.MonsterAttack == null, "Attack ends when its exit sample reaches the display timeline");
+        Require(!buffer.Add(116, 5, Vector2.zero, 5, 5, facingDir: -1, monsterAttack: attack),
+            "A retired monster attack cannot be resurrected by a later snapshot");
         attack.actionId = 8; attack.startTick = 116;
         Require(buffer.Add(125, 5, Vector2.right * 20, 5, 5, true, -1, monsterAttack: attack) &&
             buffer.MonsterAttack.actionId == 8 && buffer.MonsterAttack.startTick == 116,

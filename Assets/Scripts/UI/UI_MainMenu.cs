@@ -15,6 +15,7 @@ public class UI_MainMenu : MonoBehaviour
     [SerializeField] UI_FadeScreen fadeScreen;
     [SerializeField] private RoomPanel roomPanel;
     [SerializeField] private Button onlineButton;
+    [SerializeField] private bool logRoomMessageMetrics = true;
     [SerializeField] private GameObject[] mainMenuButtons = new GameObject[0];
     private readonly UISystem panels = new UISystem();
     private bool[] previousButtonVisibility;
@@ -35,6 +36,7 @@ public class UI_MainMenu : MonoBehaviour
         var host = gameObject.AddComponent<ArchitectureHost>();
         roomHost = new TcpRoomHost();
         roomClient = new TcpRoomClient();
+        RoomMessageMetrics.Enabled = logRoomMessageMetrics;
         host.Current.RegistSystem(roomHost);
         host.Current.RegistSystem(roomClient);
         host.Current.InitAllModules();
@@ -80,6 +82,7 @@ public class UI_MainMenu : MonoBehaviour
 
     private void OnDestroy()
     {
+        RoomMessageMetrics.Enabled = false;
         if (ownsBackgroundRun) Application.runInBackground = previousBackgroundRun;
         ownsBackgroundRun = false;
         panels.Dispose();

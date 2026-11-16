@@ -22,6 +22,10 @@ namespace Rpg.Networking
             public RoomNetworkObjects.Registration Lifetime;
             public readonly Dictionary<int, Prompt> Prompts = new Dictionary<int, Prompt>();
             public readonly HashSet<Enemy> Frozen = new HashSet<Enemy>();
+            public readonly HashSet<int> SelectedTargets = new HashSet<int>();
+            public ulong StartTick;
+            public long CastRequestSeq, ReleaseRequestSeq;
+            public bool Published, Released;
         }
         private readonly RoomPresentationContext context;
         private readonly RoomPlayerEntities players;
@@ -32,20 +36,28 @@ namespace Rpg.Networking
         private readonly AuthorityResultSequence results;
         private readonly Func<int> allocateEntity;
         private readonly Action<BlackholeStatesDto> publish;
-        private readonly Action<BlackholeInputDto> sendInput;
-        private readonly Dictionary<int, Hole> holes = new Dictionary<int, Hole>();
+        private readonly Action<BlackholeInstanceEventDto> publishEvent;
+        private readonly Func<long> currentLoadId;
+        private readonly Func<BlackholeInputDto, bool> sendInput;
+        private readonly Dictionary<long, Hole> holes = new Dictionary<long, Hole>();
         private readonly Dictionary<int, long> requests = new Dictionary<int, long>();
+        private readonly Dictionary<int, long> castRequests = new Dictionary<int, long>();
         private long localActionSeq, stateSeq, appliedSeq;
+        private long localPreviewSeq;
+        private GameObject localPreview;
+        private float localPreviewEndTime;
         private ulong appliedTick;
         private bool disposed;
 
         public RoomBlackholeNetwork(RoomPresentationContext context, RoomPlayerEntities players, RoomSceneMonsters monsters,
             RoomNetworkObjects objects, BlackholeSkill template, RoomCloneNetwork clones, AuthorityResultSequence results,
-            Func<int> allocateEntity, Action<BlackholeStatesDto> publish, Action<BlackholeInputDto> sendInput)
+            Func<int> allocateEntity, Action<BlackholeStatesDto> publish, Func<BlackholeInputDto, bool> sendInput,
+            Action<BlackholeInstanceEventDto> publishEvent, Func<long> currentLoadId)
         {
             this.context = context; this.players = players; this.monsters = monsters; this.objects = objects;
             this.template = template; this.clones = clones; this.results = results; this.allocateEntity = allocateEntity;
             this.publish = publish; this.sendInput = sendInput;
+            this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
         }
         public void EnsurePlayers()
         {
@@ -53,13 +65,40 @@ namespace Rpg.Networking
         }
         public void SendCastOrRelease(Player player)
         {
-            sendInput(new BlackholeInputDto { roomSessionId = context.RoomSessionId, actionSeq = ++localActionSeq,
-                action = holes.ContainsKey(player.Combat.PlayerId) ? BlackholeAction.Release : BlackholeAction.Cast });
+            var input = new BlackholeInputDto { roomSessionId = context.RoomSessionId, actionSeq = ++localActionSeq,
+                action = FindOwnerHole(player.Combat.PlayerId) != null ? BlackholeAction.Release : BlackholeAction.Cast };
+            if (sendInput(input) && context.IsGuest && input.action == BlackholeAction.Cast)
+                BeginLocalPreview(input.actionSeq, player.transform.position);
+        }
+        private Hole FindOwnerHole(int playerId)
+        {
+            foreach (var hole in holes.Values)
+                if (hole.State.sourcePlayerId == playerId) return hole;
+            return null;
         }
         public void SendSelection(int targetEntityId, KeyCode key)
         {
             sendInput(new BlackholeInputDto { roomSessionId = context.RoomSessionId, actionSeq = ++localActionSeq,
                 action = BlackholeAction.Select, targetEntityId = targetEntityId, keyCode = (int)key });
+        }
+        private void BeginLocalPreview(long actionSeq, Vector3 position)
+        {
+            CancelLocalPreview();
+            var fx = template.BlackholePrefab.transform.GetChild(0).gameObject;
+            localPreview = UnityEngine.Object.Instantiate(fx, position, Quaternion.identity);
+            localPreviewSeq = actionSeq;
+            localPreviewEndTime = GameSimulationClock.Time + fx.GetComponent<Animator>().runtimeAnimatorController.animationClips[0].length;
+        }
+        private void CancelLocalPreview()
+        {
+            if (localPreview != null) UnityEngine.Object.Destroy(localPreview);
+            localPreview = null;
+            localPreviewSeq = 0;
+        }
+        public void AdvanceLocalPreview(Player player)
+        {
+            if (localPreviewSeq > 0 && (player.stats.currentHealth <= 0 || GameSimulationClock.Time >= localPreviewEndTime))
+                CancelLocalPreview();
         }
         public void Request(RoomPlayerIdentity actor, BlackholeInputDto input)
         {
@@ -69,24 +108,31 @@ namespace Rpg.Networking
             var player = players.Entities[actor.EntityId];
             if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked ||
                 player.stats.currentHealth <= 0) return;
-            holes.TryGetValue(actor.PlayerId, out var hole);
+            var hole = FindOwnerHole(actor.PlayerId);
             if (input.action == BlackholeAction.Cast)
             {
                 if (hole != null || !player.Combat.Skills.Get<BlackholeSkill>().Unlocked ||
                     player.Combat.Skills.Get<BlackholeSkill>().Remaining > 0 || !player.IsGroundDetected() ||
                     player.stateMachine.currentState != player.idleState && player.stateMachine.currentState != player.moveState) return;
+                castRequests[actor.PlayerId] = input.actionSeq;
                 player.stateMachine.ChangeState(player.blackHoleState);
             }
             else if (hole != null && input.action == BlackholeAction.Release)
+            {
+                hole.ReleaseRequestSeq = input.actionSeq;
                 hole.Object.GetComponent<BlackholeSkillController>().ReleaseRoom();
+                hole.ReleaseRequestSeq = 0;
+            }
             else if (hole != null && input.action == BlackholeAction.Select &&
                 hole.Prompts.TryGetValue(input.targetEntityId, out var prompt) && !prompt.Selected &&
                 input.keyCode == prompt.State.keyCode && hole.Frozen.Contains(prompt.Target.GetComponent<Enemy>()) &&
                 monsters.IsValidPrimaryAttackTarget(prompt.Target.GetComponent<Enemy>()))
             {
                 prompt.Selected = true;
+                hole.SelectedTargets.Add(input.targetEntityId);
                 hole.Object.GetComponent<BlackholeSkillController>().AddEnemyToList(prompt.Target);
                 prompt.Object.GetComponent<BlackholeHotkeyController>().ConfirmSelection();
+                PublishInstanceEvent(hole, BlackholeInstanceEventKind.Select, input.actionSeq, input.targetEntityId);
                 Publish();
             }
         }
@@ -97,6 +143,9 @@ namespace Rpg.Networking
             var state = new BlackholeObjectDto { entityId = allocateEntity(), sourcePlayerId = owner.Combat.PlayerId,
                 sourceEntityId = owner.Combat.EntityId, skillInstanceId = objects.AllocatePrimaryAttackInstanceId() };
             var hole = Register(value, state);
+            hole.StartTick = GameSimulationClock.AuthorityTick;
+            hole.CastRequestSeq = castRequests[owner.Combat.PlayerId];
+            castRequests.Remove(owner.Combat.PlayerId);
             var controller = value.GetComponent<BlackholeSkillController>();
             controller.Room = this;
             controller.SetUpBlackhole(template.AmountOfAttack, template.MaxSize, template.GrowSpeed,
@@ -106,7 +155,7 @@ namespace Rpg.Networking
         private Hole Register(GameObject value, BlackholeObjectDto state)
         {
             var hole = new Hole { Object = value, State = state };
-            holes.Add(state.sourcePlayerId, hole);
+            holes.Add(state.skillInstanceId, hole);
             if (context.IsGuest)
             {
                 value.GetComponent<BlackholeSkillController>().enabled = false;
@@ -116,7 +165,9 @@ namespace Rpg.Networking
             {
                 if (!context.IsGuest) foreach (var enemy in hole.Frozen) if (enemy != null) enemy.FreezeTime(false);
                 foreach (var prompt in new List<Prompt>(hole.Prompts.Values)) prompt.Lifetime.Dispose();
-                holes.Remove(state.sourcePlayerId);
+                holes.Remove(state.skillInstanceId);
+                if (!context.IsGuest && !disposed && hole.Published)
+                    PublishInstanceEvent(hole, BlackholeInstanceEventKind.End, hole.CastRequestSeq);
             });
             return hole;
         }
@@ -139,6 +190,17 @@ namespace Rpg.Networking
             foreach (var hole in holes.Values)
                 if (hole.Object.GetComponent<BlackholeSkillController>() == controller)
                 { clones.SpawnAt(players.Entities[hole.State.sourceEntityId], target, offset, true); return; }
+        }
+        public void OnReleased(BlackholeSkillController controller)
+        {
+            foreach (var hole in holes.Values)
+                if (hole.Object.GetComponent<BlackholeSkillController>() == controller && !hole.Released)
+                {
+                    hole.Released = true;
+                    PublishInstanceEvent(hole, BlackholeInstanceEventKind.Release, hole.ReleaseRequestSeq);
+                    Publish();
+                    return;
+                }
         }
         public void UnregisterHotkey(BlackholeSkillController controller, Enemy enemy)
         {
@@ -163,7 +225,7 @@ namespace Rpg.Networking
                 () => hole.Prompts.Remove(id));
             Publish();
         }
-        public bool Completed(Player player) => holes.TryGetValue(player.Combat.PlayerId, out var hole) &&
+        public bool Completed(Player player) => FindOwnerHole(player.Combat.PlayerId) is Hole hole &&
             hole.Object.GetComponent<BlackholeSkillController>().playerCanExitState;
         public void Publish()
         {
@@ -174,35 +236,98 @@ namespace Rpg.Networking
                     if (prompt.Object == null) prompt.Lifetime.Dispose();
                 if (hole.Object == null) hole.Lifetime.Dispose();
             }
-            var states = new List<BlackholeObjectDto>();
+            var states = new List<BlackholeTrajectoryDto>();
             foreach (var hole in holes.Values)
             {
                 var position = hole.Object.transform.position;
                 hole.State.position = new[] { position.x, position.y };
                 hole.State.scale = Mathf.Max(0, hole.Object.transform.localScale.x);
+                if (!hole.Published)
+                {
+                    PublishInstanceEvent(hole, BlackholeInstanceEventKind.Spawn, hole.CastRequestSeq);
+                    hole.Published = true;
+                }
                 var prompts = new List<BlackholePromptDto>();
                 foreach (var prompt in hole.Prompts.Values) if (!prompt.Selected) prompts.Add(prompt.State);
-                hole.State.prompts = prompts.ToArray(); states.Add(hole.State);
+                states.Add(new BlackholeTrajectoryDto { skillInstanceId = hole.State.skillInstanceId,
+                    position = hole.State.position, scale = hole.State.scale, prompts = prompts.ToArray() });
             }
             publish(new BlackholeStatesDto { roomSessionId = context.RoomSessionId, authorityTick = GameSimulationClock.AuthorityTick,
                 resultId = results.Allocate(), stateSeq = ++stateSeq, blackholes = states.ToArray() });
+        }
+        public void ReplayActiveInstances()
+        {
+            foreach (var hole in holes.Values)
+            {
+                PublishInstanceEvent(hole, BlackholeInstanceEventKind.Spawn, hole.CastRequestSeq);
+                if (hole.Released) PublishInstanceEvent(hole, BlackholeInstanceEventKind.Release, 0);
+            }
+        }
+        private void PublishInstanceEvent(Hole hole, BlackholeInstanceEventKind kind, long requestSeq, int targetEntityId = 0)
+        {
+            var state = hole.State;
+            Vector2 position = hole.Object != null ? hole.Object.transform.position :
+                new Vector2(state.position[0], state.position[1]);
+            var value = new BlackholeInstanceEventDto { roomSessionId = context.RoomSessionId, loadId = currentLoadId(),
+                authorityTick = GameSimulationClock.AuthorityTick, resultId = results.Allocate(),
+                requestSeq = requestSeq, skillInstanceId = state.skillInstanceId, entityId = state.entityId,
+                sourcePlayerId = state.sourcePlayerId, sourceEntityId = state.sourceEntityId,
+                startTick = hole.StartTick, kind = kind, targetEntityId = targetEntityId,
+                position = new[] { position.x, position.y },
+                scale = hole.Object != null ? Mathf.Max(0, hole.Object.transform.localScale.x) : state.scale };
+            publishEvent(value);
+            Debug.Log($"[RoomBlackhole] A {kind} instance={value.skillInstanceId} target={targetEntityId} resultId={value.resultId}");
+        }
+        public void ApplyEvent(BlackholeInstanceEventDto value)
+        {
+            if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
+            if (!holes.TryGetValue(value.skillInstanceId, out var hole))
+            {
+                if (value.kind != BlackholeInstanceEventKind.Spawn)
+                    throw new InvalidOperationException("Blackhole event arrived before its spawn event.");
+                var state = new BlackholeObjectDto { entityId = value.entityId, sourcePlayerId = value.sourcePlayerId,
+                    sourceEntityId = value.sourceEntityId, skillInstanceId = value.skillInstanceId };
+                hole = Register(UnityEngine.Object.Instantiate(template.BlackholePrefab), state);
+                hole.StartTick = value.startTick; hole.CastRequestSeq = value.requestSeq;
+            }
+            if (hole.State.entityId != value.entityId || hole.State.sourcePlayerId != value.sourcePlayerId ||
+                hole.State.sourceEntityId != value.sourceEntityId || hole.StartTick != value.startTick)
+                throw new InvalidOperationException("Blackhole metadata changed within an instance.");
+            if (value.kind == BlackholeInstanceEventKind.End) hole.Lifetime.Dispose();
+            else
+            {
+                if (value.kind == BlackholeInstanceEventKind.Spawn && value.sourcePlayerId == context.LocalPlayerId)
+                    CancelLocalPreview();
+                hole.Object.transform.position = new Vector2(value.position[0], value.position[1]);
+                hole.Object.transform.localScale = Vector3.one * value.scale;
+                if (value.kind == BlackholeInstanceEventKind.Select)
+                {
+                    hole.SelectedTargets.Add(value.targetEntityId);
+                    if (!hole.Released && hole.Prompts.TryGetValue(value.targetEntityId, out var prompt))
+                        prompt.Object.GetComponent<BlackholeHotkeyController>().ConfirmSelection();
+                }
+                else if (value.kind == BlackholeInstanceEventKind.Release)
+                {
+                    hole.Released = true;
+                    foreach (var prompt in new List<Prompt>(hole.Prompts.Values)) prompt.Lifetime.Dispose();
+                }
+            }
+            Debug.Log($"[RoomBlackhole] B {value.kind} instance={value.skillInstanceId} target={value.targetEntityId} resultId={value.resultId}");
         }
         public void Apply(BlackholeStatesDto value)
         {
             if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId ||
                 value.stateSeq <= appliedSeq || value.authorityTick < appliedTick) return;
             appliedSeq = value.stateSeq; appliedTick = value.authorityTick;
-            var live = new HashSet<int>();
             foreach (var state in value.blackholes)
             {
-                live.Add(state.sourcePlayerId);
-                if (!holes.TryGetValue(state.sourcePlayerId, out var hole))
-                    hole = Register(UnityEngine.Object.Instantiate(template.BlackholePrefab), state);
+                if (!holes.TryGetValue(state.skillInstanceId, out var hole)) continue;
                 hole.Object.transform.position = new Vector2(state.position[0], state.position[1]);
                 hole.Object.transform.localScale = new Vector3(state.scale, state.scale, state.scale);
                 var promptIds = new HashSet<int>();
                 foreach (var promptState in state.prompts)
                 {
+                    if (hole.Released || hole.SelectedTargets.Contains(promptState.targetEntityId)) continue;
                     promptIds.Add(promptState.targetEntityId);
                     if (hole.Prompts.ContainsKey(promptState.targetEntityId)) continue;
                     context.TryGetEntity(promptState.targetEntityId, out var targetView);
@@ -214,25 +339,26 @@ namespace Rpg.Networking
                     var component = promptObject.GetComponent<BlackholeHotkeyController>();
                     component.SetUpHotkey((KeyCode)promptState.keyCode, target, hole.Object.GetComponent<BlackholeSkillController>());
                     component.Room = this; component.TargetEntityId = promptState.targetEntityId;
-                    component.enabled = players.Entities[state.sourceEntityId].IsLocalInputOwner;
-                    prompt.Lifetime = objects.Register(context.RoomSessionId, state.sourcePlayerId, promptObject,
+                    component.enabled = players.Entities[hole.State.sourceEntityId].IsLocalInputOwner;
+                    prompt.Lifetime = objects.Register(context.RoomSessionId, hole.State.sourcePlayerId, promptObject,
                         () => hole.Prompts.Remove(promptState.targetEntityId));
                 }
                 foreach (var prompt in new List<Prompt>(hole.Prompts.Values))
                     if (!promptIds.Contains(prompt.State.targetEntityId)) prompt.Lifetime.Dispose();
             }
-            foreach (var hole in new List<Hole>(holes.Values))
-                if (!live.Contains(hole.State.sourcePlayerId)) hole.Lifetime.Dispose();
         }
         public void Dispose()
         {
             disposed = true;
+            CancelLocalPreview();
             foreach (var hole in new List<Hole>(holes.Values)) hole.Lifetime.Dispose();
         }
         public void RemovePlayer(int playerId)
         {
             requests.Remove(playerId);
-            if (holes.TryGetValue(playerId, out var hole)) hole.Lifetime.Dispose();
+            castRequests.Remove(playerId);
+            if (playerId == context.LocalPlayerId) CancelLocalPreview();
+            if (FindOwnerHole(playerId) is Hole hole) hole.Lifetime.Dispose();
         }
     }
 }

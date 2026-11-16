@@ -23,16 +23,14 @@ namespace Rpg.Networking
         {
             if (IsAuthoritative && GameSimulationClock.AuthorityTick >= EndTick) Lifetime.Dispose();
         }
-        internal void Apply(SwordObjectDto value, ulong tick, long seq)
+        internal void Apply(SwordTrajectoryDto value, ulong tick, long seq)
         {
-            bool changed = Phase != value.phase;
             if (!positions.Add(tick, seq, new Vector2(value.position[0], value.position[1]),
-                .1 / GameSimulationClock.FixedDeltaTime, 5, changed)) return;
+                .1 / GameSimulationClock.FixedDeltaTime, 5)) return;
             if (positions.Snapped) transform.position = positions.Position;
             transform.right = new Vector2(value.direction[0], value.direction[1]);
-            GetComponent<SwordSkillController>().ShowNetworkPhase(value.phase, changed);
-            Phase = value.phase;
         }
+        internal void ResetTrajectory() => positions.Clear();
         private void LateUpdate()
         {
             if (!IsAuthoritative && positions.Advance(GameSimulationClock.DeltaTime, GameSimulationClock.FixedDeltaTime))

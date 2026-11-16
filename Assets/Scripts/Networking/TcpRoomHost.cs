@@ -163,8 +163,8 @@ namespace Rpg.Networking
                     {
                         var request = (PrimaryAttackRequestDto)value;
                         if (!playerInitializationSent || !CanInitializeEntities ||
-                            !TryResolvePlayer(boundGuest, out var actor) || request.requestSeq <= LastPrimaryAttackRequestSeq) return;
-                        LastPrimaryAttackRequestSeq = request.requestSeq;
+                            !TryResolvePlayer(boundGuest, out var actor)) return;
+                        LastPrimaryAttackRequestSeq = Math.Max(LastPrimaryAttackRequestSeq, request.requestSeq);
                         PrimaryAttackRequested?.Invoke(actor, request);
                     });
                     guestPeer.Subscribe<LocalInputLockDto>(value =>
@@ -375,6 +375,30 @@ namespace Rpg.Networking
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendMonsterDeath(MonsterDeathDto value) => SendAuthorityInventoryResult(value);
+        public bool SendDashExecution(DashExecutionDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!CanInitializeEntities || !playerInitializationSent || Guest == null || !Guest.IsOpen ||
+                value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId) return false;
+            Guest.Send(value, true);
+            return true;
+        }
+        public bool SendJumpExecution(JumpExecutionDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!CanInitializeEntities || !playerInitializationSent || Guest == null || !Guest.IsOpen ||
+                value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId) return false;
+            Guest.Send(value, true);
+            return true;
+        }
+        public bool SendPrimaryAttackExecution(PrimaryAttackExecutionDto value)
+        {
+            ProtocolCodec.ValidateMessage(value, true);
+            if (!CanInitializeEntities || !playerInitializationSent || Guest == null || !Guest.IsOpen ||
+                value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId) return false;
+            Guest.Send(value, true);
+            return true;
+        }
         public bool SendPlayerDeath(PlayerDeathDto value) => SendAuthorityInventoryResult(value);
         public bool SendDropSpawn(DropSpawnDto value) => SendAuthorityInventoryResult(value);
         public bool SendPickupResult(PickupResultDto value) => SendInventoryResult(value);
@@ -385,6 +409,11 @@ namespace Rpg.Networking
         public bool SendSkillUnlockResult(SkillUnlockResultDto value) => SendAuthorityInventoryResult(value);
         public bool SendFlaskUseResult(FlaskUseResultDto value) => SendAuthorityInventoryResult(value);
         public bool SendSkillStates<T>(T value) where T : RoomSkillStatesDto => SendAuthorityInventoryResult(value);
+        public bool SendSkillInstanceEvent<T>(T value) where T : RoomSkillInstanceEventDto
+        {
+            if (value.loadId != SceneLoadId) return false;
+            return SendAuthorityInventoryResult(value);
+        }
         private void SubscribeSkillInput<T>(NetConnection boundGuest, Action<RoomPlayerIdentity, T> handler) where T : RoomSkillInputDto
         {
             guestPeer.Subscribe<T>(value =>

@@ -22,6 +22,7 @@ namespace Rpg.Networking
         private readonly SortedDictionary<string, SceneEntry> sceneEntries = new SortedDictionary<string, SceneEntry>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> ids = new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<int, SceneEntry> byId = new Dictionary<int, SceneEntry>();
+        private readonly HashSet<int> stalledPositionLogged = new HashSet<int>();
         private readonly Dictionary<int, ItemObject> drops = new Dictionary<int, ItemObject>();
         private readonly Dictionary<int, RoomNetworkObjects.Registration> dropRegistrations = new Dictionary<int, RoomNetworkObjects.Registration>();
         private readonly List<RoomNetworkObjects.Registration> registrations = new List<RoomNetworkObjects.Registration>();
@@ -166,7 +167,9 @@ namespace Rpg.Networking
                 var state = CaptureState(entry, ids[pair.Key], true);
                 list.Add(new InitialMonsterDto { entityId = ids[pair.Key], sceneKey = pair.Key, monsterType = entry.Type,
                     position = state.position, facingDir = state.facingDir, targetEntityId = state.targetEntityId,
-                    active = state.active, dead = state.dead, aiState = state.aiState, moving = state.moving, attack = state.attack, health = stats.currentHealth,
+                    active = state.active, dead = state.dead, aiState = state.aiState, moving = state.moving,
+                    attack = state.aiState == MonsterAiState.Attack ? ((EnemySkeleton)entry.Enemy).NetworkAttack : new MonsterAttackDto(),
+                    health = stats.currentHealth,
                     maxHealth = stats.GetMaxHealthValue(), healthVersion = stats.NetworkHealthVersion });
             }
             return new MonsterInitializationDto { roomSessionId = context.RoomSessionId, loadId = loadId,
@@ -268,7 +271,6 @@ namespace Rpg.Networking
             return new MonsterStateDto { entityId = id, position = new[] { position.x, position.y }, facingDir = enemy.facingDir,
                 targetEntityId = targetId, aiState = aiState, moving = !defeated && enemy.anim != null && enemy.anim.GetBool("Move"),
                 counterWindow = !defeated && enemy.CounterWindowOpen, dead = entry.Dead,
-                attack = aiState == MonsterAiState.Attack ? skeleton.NetworkAttack : new MonsterAttackDto(),
                 active = entry.Active && enemy.gameObject.activeInHierarchy };
         }
 
@@ -406,9 +408,17 @@ namespace Rpg.Networking
         {
             if (disposed || context == null || context.IsGuest) throw new InvalidOperationException("Only A publishes monster movement.");
             var list = new List<MonsterStateDto>();
-            foreach (var pair in sceneEntries) list.Add(CaptureState(pair.Value, ids[pair.Key], false));
+            var attacks = new List<MonsterAttackStateDto>();
+            foreach (var pair in sceneEntries)
+            {
+                var state = CaptureState(pair.Value, ids[pair.Key], false);
+                list.Add(state);
+                if (state.aiState == MonsterAiState.Attack)
+                    attacks.Add(new MonsterAttackStateDto { entityId = state.entityId,
+                        attack = ((EnemySkeleton)pair.Value.Enemy).NetworkAttack });
+            }
             return new MonsterStatesDto { roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = tick,
-                stateSeq = ++nextSeq, monsters = list.ToArray() };
+                stateSeq = ++nextSeq, monsters = list.ToArray(), attacks = attacks.ToArray() };
         }
 
         public void ApplyStates(MonsterStatesDto value)
@@ -416,6 +426,8 @@ namespace Rpg.Networking
             ProtocolCodec.ValidateMessage(value, true);
             if (disposed || context == null || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
             if (value.monsters.Length != byId.Count) throw new InvalidDataException("Monster state count differs from the room manifest.");
+            var attacks = new Dictionary<int, MonsterAttackDto>();
+            foreach (var action in value.attacks) attacks.Add(action.entityId, action.attack);
             foreach (var state in value.monsters)
                 if (!byId.ContainsKey(state.entityId)) throw new InvalidDataException("Unknown monster entity ID: " + state.entityId);
             foreach (var state in value.monsters)
@@ -427,12 +439,15 @@ namespace Rpg.Networking
                 if (!presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
                     new Vector2(state.position[0], state.position[1]), !entry.Enemy.gameObject.activeSelf, state.facingDir,
                     state.moving ? MovementAnimationState.Move : MovementAnimationState.Idle,
-                    monsterAttack: state.aiState == MonsterAiState.Attack ? state.attack : null,
+                    monsterAttack: attacks.TryGetValue(state.entityId, out var attack) ? attack : null,
                     monsterTargetEntityId: state.targetEntityId))
                 {
+                    if (stalledPositionLogged.Add(state.entityId))
+                        Debug.LogWarning($"[RoomMonsterSync] Position rejected entity={state.entityId} tick={value.authorityTick} seq={value.stateSeq} attack={(attack == null ? 0 : attack.actionId)}");
                     if (!state.active) entry.Enemy.gameObject.SetActive(false);
                     continue;
                 }
+                stalledPositionLogged.Remove(state.entityId);
                 var display = entry.Enemy.GetComponent<RemotePlayerView>();
                 bool stunned = !entry.Dead && state.aiState == MonsterAiState.Stunned;
                 if (stunned != display.MonsterStunned)

@@ -117,6 +117,8 @@ namespace Rpg.Networking
                     throw;
                 }
             }
+            RoomMessageMetrics.Record(SessionId, true, ProtocolCodec.MessageId(dto.GetType()),
+                packet.Length - 4 - NetPacket.ProtocolIdSize, dto);
         }
 
         // No automatic drain, JSON parsing, Unity access or business callbacks.

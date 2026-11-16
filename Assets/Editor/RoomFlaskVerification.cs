@@ -56,7 +56,7 @@ public static class RoomFlaskVerification
                     System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(request)), true);
                 var first = Use(b, decoded, catalog, 10, sequence);
                 Require(first.accepted && first.actualHealing == 54 && first.health == 104 && first.flask.durationTicks == 750 && first.flask.cooldownEndTick == 760,
-                    "A uses current B max HP, frozen heal percentage and non-scaled simulation ticks");
+                    $"A uses current B max HP, frozen heal percentage and non-scaled simulation ticks: accepted={first.accepted}, rejection={first.rejection}, heal={first.actualHealing}, health={first.health}, max={first.maxHealth}, duration={first.flask.durationTicks}, end={first.flask.cooldownEndTick}");
                 Require(Use(b, request, catalog, 10, sequence) == null && b.stats.currentHealth == 104, "Duplicate press cannot heal/start cooldown twice");
                 var cooldown = Use(b, Request(room, 4), catalog, 11, sequence);
                 Require(cooldown.rejection == FlaskUseRejection.Cooldown && cooldown.flask.cooldownEndTick == 760 && cooldown.actualHealing == 0,
@@ -74,10 +74,10 @@ public static class RoomFlaskVerification
                 var receipts = new AuthorityResultReceipts(room);
                 Require(receipts.TryAccept(wire) && !receipts.TryAccept(wire) && receipts.TryAccept(noFlask), "Protocol/receipt dedup allows sparse room IDs");
                 Require(view.ApplyVersionedHealth(room, wire.authorityTick, wire.healthVersion, wire.health, wire.maxHealth) &&
-                    view.ApplyFlaskState(room, wire.authorityTick, wire.flask) && slider.value == 104 && overlay.fillAmount == 1,
+                    view.ApplyFlaskState(room, wire.authorityTick, wire.flask) && slider.value == 104 && Mathf.Abs(overlay.fillAmount - 1) < .01f,
                     "B applies final HP and confirmed cooldown to its existing local HUD");
                 var halfway = (RoomFlaskStateDto)Invoke(b.Combat, "CaptureRoomFlaskState");
-                Require(view.ApplyFlaskState(room, 385, halfway) && Mathf.Approximately(overlay.fillAmount, .5f), "A tick snapshot advances cooldown presentation");
+                Require(view.ApplyFlaskState(room, 385, halfway) && Mathf.Abs(overlay.fillAmount - .5f) < .01f, "Confirmed A tick advances cooldown presentation");
                 Require(!view.ApplyFlaskState(room, 10, wire.flask) && !view.ApplyFlaskState(room, 3, before), "Old result/baseline cannot reset the cooldown");
                 long damageVersion = SetHealth(b, 20);
                 view.ApplyVersionedHealth(room, 20, damageVersion, 20, 180);

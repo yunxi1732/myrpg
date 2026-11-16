@@ -22,6 +22,7 @@ namespace Rpg.Networking
         public MonsterAttackDto MonsterAttack { get; private set; }
         public int MonsterTargetEntityId { get; private set; }
         private MonsterAttackDto latestAttack;
+        private long retiredMonsterAttack;
         public PlayerAttackDto PlayerAttack { get; private set; }
         private PlayerAttackDto latestPlayerAttack;
         private long retiredPlayerAttack;
@@ -47,6 +48,7 @@ namespace Rpg.Networking
             if (monsterAttack != null)
             {
                 if (!ProtocolCodec.IsValidMonsterAttack(monsterAttack, tick) || monsterAttack.facingDir != facingDir ||
+                    monsterAttack.actionId <= retiredMonsterAttack ||
                     latestAttack != null && (monsterAttack.actionId < latestAttack.actionId || monsterAttack.actionId == latestAttack.actionId &&
                     (monsterAttack.actionNumber != latestAttack.actionNumber || monsterAttack.startTick != latestAttack.startTick ||
                      monsterAttack.durationTicks != latestAttack.durationTicks || monsterAttack.facingDir != latestAttack.facingDir))) return false;
@@ -55,6 +57,7 @@ namespace Rpg.Networking
                     startTick = monsterAttack.startTick, durationTicks = monsterAttack.durationTicks, facingDir = monsterAttack.facingDir };
                 latestAttack = monsterAttack;
             }
+            else if (latestAttack != null) retiredMonsterAttack = latestAttack.actionId;
             if (playerAttack != null) latestPlayerAttack = playerAttack;
             else if (latestPlayerAttack != null) retiredPlayerAttack = latestPlayerAttack.attackInstanceId;
             bool hadSamples = Count > 0;
@@ -117,7 +120,7 @@ namespace Rpg.Networking
             Position = Vector2.zero; Snapped = false;
             FacingDirection = 1;
             MovementState = MovementAnimationState.Idle; YVelocity = 0;
-            MonsterAttack = null; latestAttack = null;
+            MonsterAttack = null; latestAttack = null; retiredMonsterAttack = 0;
             MonsterTargetEntityId = 0;
             PlayerAttack = null; latestPlayerAttack = null; retiredPlayerAttack = 0;
         }

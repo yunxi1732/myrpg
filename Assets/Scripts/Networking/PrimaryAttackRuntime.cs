@@ -132,6 +132,7 @@ namespace Rpg.Networking
         public long LastRequestSeq { get; private set; }
         public ulong NextAllowedTick { get; private set; }
         public bool HasPending => pendingSeq > 0;
+        public long PendingRequestSeq => pendingSeq;
         public PrimaryAttackInstance Current { get; private set; }
         public PrimaryAttackRejection LastRejection { get; private set; }
 
