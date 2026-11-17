@@ -55,6 +55,8 @@ namespace Rpg.Networking
             monsterStateRejectionLogged = false;
             LastMessageError = null;
             LastRejectedProtocolId = 0;
+            if (RoomMessageMetrics.Enabled)
+                UnityEngine.Debug.Log($"[RoomSession] attached conn={SessionId}");
         }
 
         // Called only by the local handshake handler after A's confirmation, never copied from gameplay input.
@@ -64,6 +66,8 @@ namespace Rpg.Networking
             if (connection == null || !Guid.TryParseExact(roomSessionId, "N", out _))
                 throw new InvalidOperationException("A valid connected room is required.");
             RoomSessionId = roomSessionId;
+            if (RoomMessageMetrics.Enabled)
+                UnityEngine.Debug.Log($"[RoomSession] confirmed conn={SessionId} room={RoomSessionId}");
         }
 
         /// <summary>Session-owned subscription. Closing removes it without touching unrelated game events.</summary>
@@ -85,6 +89,8 @@ namespace Rpg.Networking
         public void CloseSession()
         {
             RequireMainThread();
+            if (RoomMessageMetrics.Enabled && SessionId != 0)
+                UnityEngine.Debug.Log($"[RoomSession] closed conn={SessionId} room={RoomSessionId} processed={ProcessedCount} rejected={RejectedCount} stale={StalePacketCount} pending={connection?.PendingCount ?? closingConnection?.PendingCount ?? 0}");
             // Invalidate first, before waiting for the old receiver or touching subscriptions.
             SessionId = 0;
             RoomSessionId = null;

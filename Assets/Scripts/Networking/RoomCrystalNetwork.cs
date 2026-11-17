@@ -31,6 +31,7 @@ namespace Rpg.Networking
         private readonly Action<CrystalStatesDto> publish;
         private readonly Action<CrystalInstanceEventDto> publishEvent;
         private readonly Func<long> currentLoadId;
+        private readonly Action<int, int, long, SkillRequestRejection> reject;
         private readonly Dictionary<long, Crystal> crystals = new Dictionary<long, Crystal>();
         private readonly Dictionary<int, long> requests = new Dictionary<int, long>();
         private readonly Dictionary<int, (int remaining, ulong deadline)> stacks = new Dictionary<int, (int, ulong)>();
@@ -40,12 +41,14 @@ namespace Rpg.Networking
 
         public RoomCrystalNetwork(RoomPresentationContext context, RoomPlayerEntities players, RoomNetworkObjects objects,
             CrystalSkill template, RoomCombatDamage damage, AuthorityResultSequence results, Func<int> allocateEntity,
-            Action<CrystalStatesDto> publish, Action<CrystalInstanceEventDto> publishEvent, Func<long> currentLoadId)
+            Action<CrystalStatesDto> publish, Action<CrystalInstanceEventDto> publishEvent, Func<long> currentLoadId,
+            Action<int, int, long, SkillRequestRejection> reject = null)
         {
             this.context = context; this.players = players; this.objects = objects; this.template = template;
             this.damage = damage;
             this.results = results; this.allocateEntity = allocateEntity; this.publish = publish;
             this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
+            this.reject = reject;
         }
 
         public void Request(RoomPlayerIdentity actor, CrystalInputDto input)
@@ -54,15 +57,20 @@ namespace Rpg.Networking
                 requests.TryGetValue(actor.PlayerId, out long last) && input.actionSeq <= last) return;
             requests[actor.PlayerId] = input.actionSeq;
             var player = players.Entities[actor.EntityId];
-            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked ||
-                player.stats.currentHealth <= 0 || player.isBusy ||
-                !player.Combat.Skills.Get<CrystalSkill>().Unlocked) return;
+            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.InputLocked); return; }
+            if (player.stats.currentHealth <= 0)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Dead); return; }
+            if (player.isBusy)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Busy); return; }
+            if (!player.Combat.Skills.Get<CrystalSkill>().Unlocked)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.NotUnlocked); return; }
             bool exploding = player.Combat.IsRoomNodeUnlocked("Explosion");
             bool moving = player.Combat.IsRoomNodeUnlocked("Controlled destruction");
             var slot = player.Combat.Skills.Get<CrystalSkill>();
             if (player.Combat.IsRoomNodeUnlocked("Multiple destruction"))
             {
-                if (slot.Remaining > 0) return;
+                if (slot.Remaining > 0) { Reject(actor, input.actionSeq, SkillRequestRejection.Cooldown); return; }
                 if (!stacks.TryGetValue(actor.PlayerId, out var stack))
                 {
                     slot.Configure(template.RoomStackCooldown);
@@ -80,7 +88,8 @@ namespace Rpg.Networking
                 if (!value.Derived && value.State.sourcePlayerId == actor.PlayerId) { existing = value; break; }
             if (existing != null)
             {
-                if (moving || slot.Remaining > 0) return;
+                if (moving || slot.Remaining > 0)
+                { Reject(actor, input.actionSeq, moving ? SkillRequestRejection.Busy : SkillRequestRejection.Cooldown); return; }
                 Vector3 position = player.transform.position;
                 player.transform.position = existing.Object.transform.position;
                 existing.Object.transform.position = position;
@@ -90,9 +99,12 @@ namespace Rpg.Networking
                 Publish();
                 return;
             }
-            if (!player.Combat.Skills.Commit<CrystalSkill>()) return;
+            if (!player.Combat.Skills.Commit<CrystalSkill>())
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Cooldown); return; }
             Spawn(player, player.transform.position, exploding, moving, false, input.actionSeq);
         }
+        private void Reject(RoomPlayerIdentity actor, long requestSeq, SkillRequestRejection reason)
+            => reject?.Invoke(actor.PlayerId, actor.EntityId, requestSeq, reason);
 
         public void Advance()
         {
@@ -219,6 +231,7 @@ namespace Rpg.Networking
             if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
             if (!crystals.TryGetValue(value.skillInstanceId, out var crystal))
             {
+                if (value.kind == CrystalInstanceEventKind.End) return;
                 if (value.kind != CrystalInstanceEventKind.Spawn)
                     throw new InvalidOperationException("Crystal event arrived before its spawn event.");
                 var state = new CrystalObjectDto { entityId = value.entityId, sourcePlayerId = value.sourcePlayerId,

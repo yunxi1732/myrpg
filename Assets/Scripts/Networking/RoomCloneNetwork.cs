@@ -174,6 +174,7 @@ namespace Rpg.Networking
             if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
             if (!clones.TryGetValue(value.skillInstanceId, out var clone))
             {
+                if (value.kind == CloneInstanceEventKind.End) return;
                 if (value.kind != CloneInstanceEventKind.Spawn)
                     throw new InvalidOperationException("Clone end arrived without its spawn event.");
                 var state = new CloneObjectDto { entityId = value.entityId, sourcePlayerId = value.sourcePlayerId,

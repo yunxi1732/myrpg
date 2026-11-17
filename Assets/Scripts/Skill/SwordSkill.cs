@@ -154,6 +154,7 @@ public class SwordSkill : Skill
 
     public void CancelAim()
     {
+        RoomNetwork?.RejectPendingRelease(player);
         throwRequested = false;
         finalDir = Vector2.zero;
         DotsActive(false);

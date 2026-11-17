@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System;
-using System.Net.Sockets;
 using Rpg.Networking;
 using UnityEngine.EventSystems;
 
@@ -16,6 +15,9 @@ public class UI_MainMenu : MonoBehaviour
     [SerializeField] private RoomPanel roomPanel;
     [SerializeField] private Button onlineButton;
     [SerializeField] private bool logRoomMessageMetrics = true;
+    [SerializeField, Min(0)] private int roomTestSendDelayMs;
+    [SerializeField, Min(0)] private int roomTestSendJitterMs;
+    [SerializeField, Range(0, 100)] private int roomTestSendLossPercent;
     [SerializeField] private GameObject[] mainMenuButtons = new GameObject[0];
     private readonly UISystem panels = new UISystem();
     private bool[] previousButtonVisibility;
@@ -26,10 +28,14 @@ public class UI_MainMenu : MonoBehaviour
     private bool previousBackgroundRun;
     private RoomSceneCoordinator sceneCoordinator;
     private bool networkSceneView;
+    private int appliedTestDelayMs, appliedTestJitterMs, appliedTestLossPercent;
 
     private void Awake()
     {
         if (roomPanel == null || onlineButton == null) return;
+        appliedTestDelayMs = roomTestSendDelayMs;
+        appliedTestJitterMs = roomTestSendJitterMs;
+        appliedTestLossPercent = roomTestSendLossPercent;
         roomPanel.OnInit();
         onlineButton.interactable = roomPanel.IsReady;
         panels.RegisterPanel(UIPanelId.Room, roomPanel.gameObject);
@@ -125,19 +131,17 @@ public class UI_MainMenu : MonoBehaviour
         // An empty address explicitly selects local hosting; connection failure never creates a room.
         if (!string.IsNullOrWhiteSpace(roomPanel.Address))
         {
-            roomClient.Connect(roomPanel.Address, port);
+            Debug.Log($"[RoomNetTest] B outgoing delay={roomTestSendDelayMs}ms jitter={roomTestSendJitterMs}ms loss={roomTestSendLossPercent}%");
+            roomClient.Connect(roomPanel.Address, port, roomTestSendDelayMs, roomTestSendJitterMs, roomTestSendLossPercent);
             return;
         }
         roomPanel.SetConnectionPending(true);
         string result;
         try
         {
-            roomHost.StartListening(port);
+            Debug.Log($"[RoomNetTest] A outgoing delay={roomTestSendDelayMs}ms jitter={roomTestSendJitterMs}ms loss={roomTestSendLossPercent}%");
+            roomHost.StartListening(port, roomTestSendDelayMs, roomTestSendJitterMs, roomTestSendLossPercent);
             result = "Room created - waiting for B";
-        }
-        catch (SocketException error)
-        {
-            result = error.SocketErrorCode == SocketError.AddressAlreadyInUse ? "Port is already in use" : "Cannot listen: " + error.SocketErrorCode;
         }
         catch (Exception error) { result = "Cannot create room: " + error.Message; }
         roomPanel.ShowConnectionResult(result);
@@ -251,6 +255,16 @@ public class UI_MainMenu : MonoBehaviour
 
     private void Update()
     {
+        if (appliedTestDelayMs != roomTestSendDelayMs || appliedTestJitterMs != roomTestSendJitterMs ||
+            appliedTestLossPercent != roomTestSendLossPercent)
+        {
+            roomHost?.SetTestNetwork(roomTestSendDelayMs, roomTestSendJitterMs, roomTestSendLossPercent);
+            roomClient?.SetTestNetwork(roomTestSendDelayMs, roomTestSendJitterMs, roomTestSendLossPercent);
+            appliedTestDelayMs = roomTestSendDelayMs;
+            appliedTestJitterMs = roomTestSendJitterMs;
+            appliedTestLossPercent = roomTestSendLossPercent;
+            Debug.Log($"[RoomNetTest] outgoing updated delay={roomTestSendDelayMs}ms jitter={roomTestSendJitterMs}ms loss={roomTestSendLossPercent}%");
+        }
         if (!networkSceneView || roomPanel.IsSceneLoading || !Input.GetKeyDown(KeyCode.Escape)) return;
         if (roomOpen) CloseRoomPanel();
         else OpenRoomPanel();

@@ -33,7 +33,7 @@ namespace Rpg.Networking.Protocol
             }
         }
 
-        // Sole ID/DTO/semantic/delivery registry. FutureDelivery is metadata; TCP behavior stays unchanged.
+        // Sole ID/DTO/semantic/delivery registry; the room transport uses these delivery hints.
         private static readonly Entry[] Entries =
         {
             Register<HandshakeHelloDto>(ProtocolId.HandshakeHello, RoomMessageKind.Scene, RoomDeliveryHint.Reliable, true),
@@ -79,6 +79,7 @@ namespace Rpg.Networking.Protocol
             Register<BlackholeInputDto>(ProtocolId.BlackholeInput, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
             Register<BlackholeStatesDto>(ProtocolId.BlackholeStates, RoomMessageKind.State, RoomDeliveryHint.Reliable),
             Register<BlackholeInstanceEventDto>(ProtocolId.BlackholeInstanceEvent, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
+            Register<SkillRequestRejectionDto>(ProtocolId.SkillRequestRejection, RoomMessageKind.ExecutionConfirmation, RoomDeliveryHint.Reliable),
             Register<ParryInputDto>(ProtocolId.ParryInput, RoomMessageKind.ActionRequest, RoomDeliveryHint.Reliable),
             Register<MonsterDeathDto>(ProtocolId.MonsterDeath, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
             Register<PlayerDeathDto>(ProtocolId.PlayerDeath, RoomMessageKind.AuthorityResult, RoomDeliveryHint.Reliable),
@@ -214,6 +215,13 @@ namespace Rpg.Networking.Protocol
                 playerDeath.entityId > 0 && ValidPlayerDeathCause(playerDeath.cause, true) &&
                 ValidHealth(0, playerDeath.maxHealth, playerDeath.healthVersion)) return;
             if (dto is ParryInputDto parryInput && Guid.TryParseExact(parryInput.roomSessionId, "N", out _) && parryInput.actionSeq > 0) return;
+            if (dto is SkillRequestRejectionDto skillRejection && ValidAuthorityResult(skillRejection) &&
+                skillRejection.loadId > 0 && skillRejection.requestSeq > 0 && skillRejection.playerId > 0 &&
+                skillRejection.entityId > 0 &&
+                (skillRejection.skillId == RoomSkillId.Sword || skillRejection.skillId == RoomSkillId.Crystal ||
+                    skillRejection.skillId == RoomSkillId.Blackhole || skillRejection.skillId == RoomSkillId.Parry) &&
+                skillRejection.reason > SkillRequestRejection.None &&
+                skillRejection.reason <= SkillRequestRejection.NoTarget) return;
             if (dto is BlackholeInputDto blackholeInput && Guid.TryParseExact(blackholeInput.roomSessionId, "N", out _) &&
                 blackholeInput.actionSeq > 0 && blackholeInput.action >= BlackholeAction.Cast && blackholeInput.action <= BlackholeAction.Release &&
                 (blackholeInput.action == BlackholeAction.Select ? blackholeInput.targetEntityId > 0 && blackholeInput.keyCode > 0 :
@@ -305,11 +313,13 @@ namespace Rpg.Networking.Protocol
                     !jumpExecution.wallJump && jumpExecution.facingDir == 0)) return;
             if (dto is PlayerPositionsDto positions && Guid.TryParseExact(positions.roomSessionId, "N", out _) &&
                 positions.loadId > 0 && positions.authorityTick > 0 && positions.stateSeq > 0 &&
-                positions.players != null && positions.players.Length == 2 &&
-                ValidPlayerPosition(positions.players[0]) && ValidPlayerPosition(positions.players[1]) &&
+                positions.players != null && positions.players.Length >= 1 && positions.players.Length <= 2 &&
+                ValidPlayerPosition(positions.players[0]) &&
                 ValidPlayerAttack(positions.players[0].attack, positions.players[0].entityId, positions.players[0].facingDir, positions.authorityTick) &&
-                ValidPlayerAttack(positions.players[1].attack, positions.players[1].entityId, positions.players[1].facingDir, positions.authorityTick) &&
-                positions.players[0].entityId != positions.players[1].entityId) return;
+                (positions.players.Length == 1 ||
+                    ValidPlayerPosition(positions.players[1]) &&
+                    ValidPlayerAttack(positions.players[1].attack, positions.players[1].entityId, positions.players[1].facingDir, positions.authorityTick) &&
+                    positions.players[0].entityId != positions.players[1].entityId)) return;
             if (dto is MovementInputDto movement && movement.inputSeq > 0 && IsValidMovementAxis(movement.currentAxis)) return;
             if (dto is HandshakeHelloDto hello && hello.schemaVersion > 0) return;
             if (dto is VerificationEchoDto echo && echo.text != null) return;

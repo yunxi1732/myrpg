@@ -1,6 +1,5 @@
 using System;
 using System.Net;
-using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Rpg.Networking.Protocol;
@@ -11,12 +10,13 @@ namespace Rpg.Networking
     /// <summary>A's listener and admission handshake. No scene loading or entity creation.</summary>
     public sealed class TcpRoomHost : ISystem, IUpdateModule, IDisposable
     {
-        private TcpListener listener;
+        private UtpRoomTransport listener;
         private bool disposed;
         private RoomHandshakePeer guestPeer;
         private Stopwatch handshakeClock;
         private int nextPlayerId, nextEntityId;
-        private readonly List<Tuple<NetConnection, Stopwatch>> rejected = new List<Tuple<NetConnection, Stopwatch>>();
+        private readonly List<Tuple<NetConnection, RoomHandshakePeer, Stopwatch>> rejected =
+            new List<Tuple<NetConnection, RoomHandshakePeer, Stopwatch>>();
         public string RoomSessionId { get; private set; }
         public RoomPlayerIdentity HostIdentity { get; private set; }
         public RoomPlayerIdentity GuestIdentity { get; private set; }
@@ -52,6 +52,7 @@ namespace Rpg.Networking
         public bool CanInitializeEntities { get; private set; }
         private double sceneDeadline;
         private long sceneGuestConnection;
+        private double nextOldInputLogTime;
         public bool IsListening => listener != null;
         public int Port { get; private set; }
         public NetConnection Guest { get; private set; }
@@ -59,20 +60,13 @@ namespace Rpg.Networking
 
         public void Init() { }
 
-        public void StartListening(int port)
+        public void StartListening(int port, int sendDelayMs = 0, int sendJitterMs = 0, float sendLossPercent = 0)
         {
             if (disposed) throw new ObjectDisposedException(nameof(TcpRoomHost));
             if (IsListening) return; // Idempotent: repeated creation cannot start another listener.
             if (port < 1 || port > 65535) throw new ArgumentOutOfRangeException(nameof(port));
-            var candidate = new TcpListener(IPAddress.Any, port);
-            try
-            {
-                candidate.ExclusiveAddressUse = true;
-                candidate.Start(8);
-            }
-            catch { candidate.Stop(); throw; }
-            listener = candidate;
-            Port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener = UtpRoomTransport.Listen(port, sendDelayMs, sendJitterMs, sendLossPercent);
+            Port = port;
             RejectedConnections = 0;
             RoomSessionId = Guid.NewGuid().ToString("N");
             Results = new AuthorityResultSequence(RoomSessionId);
@@ -82,34 +76,37 @@ namespace Rpg.Networking
             StateChanged?.Invoke();
         }
 
+        public void SetTestNetwork(int sendDelayMs, int sendJitterMs, float sendLossPercent)
+            => listener?.SetTestNetwork(sendDelayMs, sendJitterMs, sendLossPercent);
+
         public void Update()
         {
             if (disposed || listener == null) return;
-            // Pending avoids blocking Unity Update. Limit work even if many clients try to join.
-            for (int i = 0; i < 8 && listener != null && listener.Pending(); i++)
+            listener.Update();
+            // Accept at most eight new UDP peers in one frame.
+            for (int i = 0; i < 8 && listener != null && listener.TryAccept(out NetConnection accepted); i++)
             {
-                TcpClient accepted = listener.AcceptTcpClient();
                 if (Guest != null)
                 {
-                    // Hold the rejection socket until B has sent hello, so closing cannot race its first write.
+                    // Keep the UDP peer alive long enough to flush its reliable rejection.
                     if (rejected.Count < 8)
                     {
                         NetConnection extra = null;
                         try
                         {
-                            extra = NetConnection.Adopt(accepted);
+                            extra = accepted;
                             extra.Send(Rejection(HandshakeRejection.RoomFull));
-                            rejected.Add(Tuple.Create(extra, Stopwatch.StartNew()));
+                            rejected.Add(Tuple.Create(extra, (RoomHandshakePeer)null, Stopwatch.StartNew()));
                         }
-                        catch { extra?.Dispose(); accepted.Close(); }
+                        catch { accepted.Dispose(); }
                     }
-                    else accepted.Close();
+                    else accepted.Dispose();
                     RejectedConnections++;
                     continue;
                 }
                 try
                 {
-                    Guest = NetConnection.Adopt(accepted);
+                    Guest = accepted;
                     guestPeer = new RoomHandshakePeer(Guest);
                     guestPeer.Subscribe<HandshakeHelloDto>(value => AcceptHello((HandshakeHelloDto)value));
                     NetConnection boundGuest = Guest;
@@ -195,7 +192,16 @@ namespace Rpg.Networking
                     {
                         var movement = (MovementInputDto)value;
                         if (!playerInitializationSent || !CanInitializeEntities ||
-                            !TryResolvePlayer(boundGuest, out var actor) || movement.inputSeq <= LastMovementInputSeq) return;
+                            !TryResolvePlayer(boundGuest, out var actor)) return;
+                        if (movement.inputSeq <= LastMovementInputSeq)
+                        {
+                            if (RoomMessageMetrics.Enabled && MonotonicClock.Now >= nextOldInputLogTime)
+                            {
+                                UnityEngine.Debug.Log($"[RoomInputOrder] rejectedSeq={movement.inputSeq} currentSeq={LastMovementInputSeq} conn={boundGuest.SessionId}");
+                                nextOldInputLogTime = MonotonicClock.Now + 5;
+                            }
+                            return;
+                        }
                         // Codec already rejected non-finite/out-of-range axes. The connection supplies ownership.
                         LastMovementInputSeq = movement.inputSeq;
                         MovementInputReceived?.Invoke(actor, movement);
@@ -237,14 +243,15 @@ namespace Rpg.Networking
                     };
                     handshakeClock = Stopwatch.StartNew();
                 }
-                catch { DropGuest(); accepted.Close(); continue; }
+                catch { DropGuest(); accepted.Dispose(); continue; }
                 StateChanged?.Invoke();
             }
             for (int i = rejected.Count - 1; i >= 0; i--)
             {
                 var entry = rejected[i];
-                if (entry.Item1.PendingCount > 0 || !entry.Item1.IsOpen || entry.Item2.ElapsedMilliseconds >= 5000)
+                if (!entry.Item1.IsOpen || entry.Item3.ElapsedMilliseconds >= 5000)
                 {
+                    entry.Item2?.Dispose();
                     entry.Item1.Dispose();
                     rejected.RemoveAt(i);
                 }
@@ -288,9 +295,9 @@ namespace Rpg.Networking
         private void RejectGuest(HandshakeRejection reason)
         {
             try { if (Guest.IsOpen) Guest.Send(Rejection(reason)); }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { }
-            finally { DropGuest(); StateChanged?.Invoke(); }
+            finally { DropGuest(true); StateChanged?.Invoke(); }
         }
 
         private RoomPlayerIdentity AllocateIdentity() =>
@@ -362,7 +369,7 @@ namespace Rpg.Networking
             if (!IsListening || !CanInitializeEntities || !playerInitializationSent || !monsterInitializationSent ||
                 value.roomSessionId != RoomSessionId || Results == null || value.resultId > Results.LastAllocated || Guest == null || !Guest.IsOpen) return false;
             try { Guest.Send(value, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
         public bool SendDamageResult(DamageResultDto value)
@@ -371,7 +378,7 @@ namespace Rpg.Networking
             if (!IsListening || !CanInitializeEntities || !playerInitializationSent || !monsterInitializationSent ||
                 value.roomSessionId != RoomSessionId || Results == null || value.resultId > Results.LastAllocated || Guest == null || !Guest.IsOpen) return false;
             try { Guest.Send(value, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendMonsterDeath(MonsterDeathDto value) => SendAuthorityInventoryResult(value);
@@ -414,6 +421,11 @@ namespace Rpg.Networking
             if (value.loadId != SceneLoadId) return false;
             return SendAuthorityInventoryResult(value);
         }
+        public bool SendSkillRequestRejection(SkillRequestRejectionDto value)
+        {
+            if (value.loadId != SceneLoadId) return false;
+            return SendAuthorityInventoryResult(value);
+        }
         private void SubscribeSkillInput<T>(NetConnection boundGuest, Action<RoomPlayerIdentity, T> handler) where T : RoomSkillInputDto
         {
             guestPeer.Subscribe<T>(value =>
@@ -431,7 +443,7 @@ namespace Rpg.Networking
             if (!IsListening || !CanInitializeEntities || !playerInitializationSent || value.roomSessionId != RoomSessionId ||
                 Results == null || value.resultId > Results.LastAllocated || Guest == null || !Guest.IsOpen) return false;
             try { Guest.Send(value, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
         public bool SendMonsterStates(MonsterStatesDto value)
@@ -439,8 +451,40 @@ namespace Rpg.Networking
             ProtocolCodec.ValidateMessage(value, true);
             if (!CanInitializeEntities || !playerInitializationSent || Guest == null || !Guest.IsOpen ||
                 value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId) return false;
-            try { Guest.Send(value, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            try
+            {
+                int capacity = Guest.UnreliablePayloadCapacity;
+                if (ProtocolCodec.Encode(value, true).Length <= capacity) { Guest.Send(value, true); return true; }
+                var monsters = new List<MonsterStateDto>();
+                var attacks = new List<MonsterAttackStateDto>();
+                var group = new MonsterStatesDto { roomSessionId = value.roomSessionId, loadId = value.loadId,
+                    authorityTick = value.authorityTick, stateSeq = value.stateSeq };
+                foreach (var monster in value.monsters)
+                {
+                    monsters.Add(monster);
+                    MonsterAttackStateDto matchedAttack = null;
+                    foreach (var attack in value.attacks)
+                        if (attack.entityId == monster.entityId) { matchedAttack = attack; break; }
+                    if (matchedAttack != null) attacks.Add(matchedAttack);
+                    group.monsters = monsters.ToArray();
+                    group.attacks = attacks.ToArray();
+                    if (ProtocolCodec.Encode(group, true).Length <= capacity) continue;
+                    monsters.RemoveAt(monsters.Count - 1);
+                    if (matchedAttack != null) attacks.RemoveAt(attacks.Count - 1);
+                    if (monsters.Count == 0) throw new InvalidDataException("One monster state exceeds UDP payload capacity.");
+                    group.monsters = monsters.ToArray();
+                    group.attacks = attacks.ToArray();
+                    Guest.Send(group, true);
+                    monsters.Clear(); attacks.Clear();
+                    monsters.Add(monster);
+                    if (matchedAttack != null) attacks.Add(matchedAttack);
+                }
+                group.monsters = monsters.ToArray();
+                group.attacks = attacks.ToArray();
+                Guest.Send(group, true);
+                return true;
+            }
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
@@ -451,8 +495,21 @@ namespace Rpg.Networking
                 HostIdentity == null || GuestIdentity == null || value.roomSessionId != RoomSessionId || value.loadId != SceneLoadId ||
                 ProtocolCodec.FindPosition(value, HostIdentity.EntityId) == null ||
                 ProtocolCodec.FindPosition(value, GuestIdentity.EntityId) == null) return false;
-            try { Guest.Send(value, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            try
+            {
+                int capacity = Guest.UnreliablePayloadCapacity;
+                if (ProtocolCodec.Encode(value, true).Length <= capacity) { Guest.Send(value, true); return true; }
+                foreach (var player in value.players)
+                {
+                    var group = new PlayerPositionsDto { roomSessionId = value.roomSessionId, loadId = value.loadId,
+                        authorityTick = value.authorityTick, stateSeq = value.stateSeq, players = new[] { player } };
+                    if (ProtocolCodec.Encode(group, true).Length > capacity)
+                        throw new InvalidDataException("One player state exceeds UDP payload capacity.");
+                    Guest.Send(group, true);
+                }
+                return true;
+            }
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException)
             {
                 // NetConnection records transport failure; normal peer update performs disconnect cleanup.
@@ -460,19 +517,27 @@ namespace Rpg.Networking
             }
         }
 
-        private void DropGuest()
+        private void DropGuest(bool holdRejection = false)
         {
             monsterInitializationSent = false;
             var previous = guestPeer;
+            var previousConnection = Guest;
             LastMovementInputSeq = 0;
+            nextOldInputLogTime = 0;
             LastActionSeq = 0;
             LastPrimaryAttackRequestSeq = 0;
             LastInputLockSeq = 0;
             playerInitializationSent = false;
             GuestSceneReady = CanInitializeEntities = false;
             guestPeer = null;
-            try { previous?.Dispose(); }
-            finally { Guest?.Dispose(); Guest = null; GuestIdentity = null; handshakeClock = null; }
+            Guest = null; GuestIdentity = null; handshakeClock = null;
+            if (holdRejection && previousConnection != null)
+                rejected.Add(Tuple.Create(previousConnection, previous, Stopwatch.StartNew()));
+            else
+            {
+                try { previous?.Dispose(); }
+                finally { previousConnection?.Dispose(); }
+            }
         }
 
         // Request ownership is resolved by the actual connection, never a player ID supplied in a DTO.
@@ -489,9 +554,12 @@ namespace Rpg.Networking
             try
             {
                 if (Guest != null && Guest.IsOpen)
+                {
                     Guest.Send(new RoomClosedDto { roomSessionId = RoomSessionId });
+                    listener.Flush();
+                }
             }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { }
             finally { StopListening(); }
             RoomExited?.Invoke(exit);
@@ -502,13 +570,13 @@ namespace Rpg.Networking
         {
             Results?.Dispose(); Results = null;
             bool changed = listener != null || Guest != null;
-            TcpListener previous = listener;
+            UtpRoomTransport previous = listener;
             listener = null;
             Port = 0;
-            previous?.Stop();
             DropGuest();
-            foreach (var entry in rejected) entry.Item1.Dispose();
+            foreach (var entry in rejected) { entry.Item2?.Dispose(); entry.Item1.Dispose(); }
             rejected.Clear();
+            previous?.Dispose();
             RoomSessionId = null;
             HostIdentity = null;
             SceneLoadId = 0;

@@ -1824,7 +1824,10 @@ MonoBehaviour:
   fadeScreen: {fileID: 1604597568}
   roomPanel: {fileID: 1900100100}
   onlineButton: {fileID: 1795503760}
-  logRoomMessageMetrics: 0
+  logRoomMessageMetrics: 1
+  roomTestSendDelayMs: 0
+  roomTestSendJitterMs: 0
+  roomTestSendLossPercent: 0
   mainMenuButtons:
   - {fileID: 767272263}
   - {fileID: 1240901272}

@@ -17,6 +17,7 @@ namespace Rpg.Networking
             public long Sequence;
             public float Axis;
             public Vector2 Position;
+            public double SentAt;
         }
 
         private readonly Queue<InputRecord> recentInputs = new Queue<InputRecord>();
@@ -27,6 +28,10 @@ namespace Rpg.Networking
         private float predictedX;
         private bool started;
         private double nextComparisonLogTime;
+        private double nextTestSummaryTime;
+        private int comparedInputs, smoothCorrections, snapCorrections;
+        private double totalAckMs, totalAbsoluteErrorX;
+        private float maxAckMs, maxAbsoluteErrorX, maxCorrectionX;
         private float lastSentAxis;
         private long lastSentInputSeq, pendingDashActionSeq;
         private float dashRemaining, dashDirection;
@@ -48,7 +53,8 @@ namespace Rpg.Networking
         public void RecordSentInput(long sequence, float axis)
         {
             recentInputs.Enqueue(new InputRecord { Sequence = sequence, Axis = axis,
-                Position = new Vector2(started ? predictedX : transform.position.x, started ? predictedY : transform.position.y) });
+                Position = new Vector2(started ? predictedX : transform.position.x, started ? predictedY : transform.position.y),
+                SentAt = MonotonicClock.Now });
             while (recentInputs.Count > 64) recentInputs.Dequeue();
             lastSentInputSeq = sequence;
             if (axis != 0) releaseInputSeq = 0;
@@ -74,11 +80,17 @@ namespace Rpg.Networking
                     LastComparedInputSeq = record.Sequence;
                     LastComparedAxis = record.Axis;
                     LastComparedHorizontalError = authorityPosition.x - record.Position.x;
+                    float ackMs = (float)((MonotonicClock.Now - record.SentAt) * 1000);
+                    float absoluteErrorX = Mathf.Abs(LastComparedHorizontalError);
+                    comparedInputs++;
+                    totalAckMs += ackMs; totalAbsoluteErrorX += absoluteErrorX;
+                    maxAckMs = Mathf.Max(maxAckMs, ackMs);
+                    maxAbsoluteErrorX = Mathf.Max(maxAbsoluteErrorX, absoluteErrorX);
                     if (logAuthorityComparisons && MonotonicClock.Now >= nextComparisonLogTime)
                     {
                         Debug.Log($"[RoomPrediction] ackInputSeq={record.Sequence} axis={record.Axis:0.##} " +
                             $"sentPredictedX={record.Position.x:0.###} authorityX={authorityPosition.x:0.###} " +
-                            $"historicalErrorX={LastComparedHorizontalError:0.###} currentPredictedX={predictedX:0.###}");
+                            $"historicalErrorX={LastComparedHorizontalError:0.###} currentPredictedX={predictedX:0.###} inputAckMs={ackMs:0}");
                         nextComparisonLogTime = MonotonicClock.Now + 1;
                     }
                 }
@@ -269,6 +281,8 @@ namespace Rpg.Networking
                     if (Mathf.Abs(error) >= snapDistance)
                     {
                         predictedX = settledAuthorityX;
+                        snapCorrections++;
+                        maxCorrectionX = Mathf.Max(maxCorrectionX, Mathf.Abs(error));
                         if (logAuthorityComparisons)
                             Debug.Log($"[RoomPrediction] correction=Snap errorX={error:0.###} correctedX={predictedX:0.###}");
                     }
@@ -278,6 +292,8 @@ namespace Rpg.Networking
                         correctionTargetX = settledAuthorityX;
                         correctionElapsed = 0;
                         smoothing = true;
+                        smoothCorrections++;
+                        maxCorrectionX = Mathf.Max(maxCorrectionX, Mathf.Abs(error));
                         if (logAuthorityComparisons)
                             Debug.Log($"[RoomPrediction] correction=Smooth errorX={error:0.###} duration={smoothCorrectionSeconds:0.###}s");
                     }
@@ -316,6 +332,16 @@ namespace Rpg.Networking
                 if (correctionElapsedY >= smoothCorrectionSeconds) smoothingY = false;
             }
             display.ApplyPredictedPosition(new Vector2(predictedX, predictedY));
+            if (logAuthorityComparisons && comparedInputs > 0 && MonotonicClock.Now >= nextTestSummaryTime)
+            {
+                Debug.Log($"[RoomPredictionSummary] samples={comparedInputs} inputAckMs(avg/max)={totalAckMs / comparedInputs:0}/{maxAckMs:0} " +
+                    $"absErrorX(avg/max)={totalAbsoluteErrorX / comparedInputs:0.###}/{maxAbsoluteErrorX:0.###} " +
+                    $"correctionX(smooth/snap)={smoothCorrections}/{snapCorrections} maxCorrectionX={maxCorrectionX:0.###}");
+                comparedInputs = smoothCorrections = snapCorrections = 0;
+                totalAckMs = totalAbsoluteErrorX = 0;
+                maxAckMs = maxAbsoluteErrorX = maxCorrectionX = 0;
+                nextTestSummaryTime = MonotonicClock.Now + 10;
+            }
         }
 
         public void ResetPrediction()
@@ -325,6 +351,10 @@ namespace Rpg.Networking
             LastComparedInputSeq = 0;
             LastComparedAxis = LastComparedHorizontalError = 0;
             nextComparisonLogTime = 0;
+            nextTestSummaryTime = 0;
+            comparedInputs = smoothCorrections = snapCorrections = 0;
+            totalAckMs = totalAbsoluteErrorX = 0;
+            maxAckMs = maxAbsoluteErrorX = maxCorrectionX = 0;
             lastSentAxis = 0; lastSentInputSeq = 0; releaseInputSeq = 0;
             predictedX = predictedY = 0;
             pendingDashActionSeq = 0; dashRemaining = dashDirection = 0;

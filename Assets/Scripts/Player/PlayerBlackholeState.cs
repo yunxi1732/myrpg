@@ -27,6 +27,7 @@ public class PlayerBlackholeState : PlayerState
     public override void Exit()
     {
         base.Exit();
+        if (GameSimulationClock.IsNetwork && !skillUsed) player.RoomBlackhole.RejectPendingCast(player);
         player.rb.gravityScale = defaultGravity;
 
         player.fx.MakeTransparent(false);

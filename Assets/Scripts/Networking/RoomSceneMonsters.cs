@@ -425,7 +425,6 @@ namespace Rpg.Networking
         {
             ProtocolCodec.ValidateMessage(value, true);
             if (disposed || context == null || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
-            if (value.monsters.Length != byId.Count) throw new InvalidDataException("Monster state count differs from the room manifest.");
             var attacks = new Dictionary<int, MonsterAttackDto>();
             foreach (var action in value.attacks) attacks.Add(action.entityId, action.attack);
             foreach (var state in value.monsters)

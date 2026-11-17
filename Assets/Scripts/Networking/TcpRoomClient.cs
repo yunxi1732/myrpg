@@ -2,8 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 using Rpg.Networking.Protocol;
 using System.IO;
 
@@ -11,30 +9,25 @@ namespace Rpg.Networking
 {
     public enum RoomConnectionState { Idle, Connecting, Connected, Failed, Cancelled, Handshaking, Disconnected }
 
-    /// <summary>Async TCP and admission handshake. Results are consumed on main-thread Update.</summary>
+    /// <summary>Nonblocking UDP connection and admission handshake on main-thread Update.</summary>
     public sealed class TcpRoomClient : ISystem, IUpdateModule, IDisposable
     {
         private sealed class Attempt
         {
             public readonly long Id;
-            public readonly TcpClient Client;
-            public readonly Task Task;
+            public readonly UtpRoomTransport Transport;
             public readonly Stopwatch Elapsed = Stopwatch.StartNew();
 
-            public Attempt(long id, IPAddress address, int port)
+            public Attempt(long id, string address, int port, int sendDelayMs, int sendJitterMs, float sendLossPercent)
             {
                 Id = id;
-                Client = new TcpClient(address.AddressFamily);
-                try { Task = Client.ConnectAsync(address, port); }
-                catch { Client.Close(); throw; }
-                // Observe even a late fault after cancellation. Never touches state, events or Unity.
-                Task.ContinueWith(task => { var ignored = task.Exception; }, CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                Transport = UtpRoomTransport.Connect(address, port, sendDelayMs, sendJitterMs, sendLossPercent);
             }
         }
 
         private readonly int timeoutMilliseconds;
         private Attempt attempt;
+        private UtpRoomTransport activeTransport;
         private long generation;
         private bool disposed;
         private RoomHandshakePeer handshakePeer;
@@ -71,6 +64,7 @@ namespace Rpg.Networking
         public event Action<CloneInstanceEventDto> CloneInstanceEventReceived;
         public event Action<BlackholeStatesDto> BlackholeStatesReceived;
         public event Action<BlackholeInstanceEventDto> BlackholeInstanceEventReceived;
+        public event Action<SkillRequestRejectionDto> SkillRequestRejectionReceived;
         public event Action<ElementStatesDto> ElementStatesReceived;
         private long lastMonsterSeq;
         private ulong lastMonsterTick;
@@ -106,25 +100,33 @@ namespace Rpg.Networking
 
         public void Init() { }
 
-        public void Connect(string address, int port)
+        public void Connect(string address, int port, int sendDelayMs = 0, int sendJitterMs = 0, float sendLossPercent = 0)
         {
             if (disposed) throw new ObjectDisposedException(nameof(TcpRoomClient));
             if (State == RoomConnectionState.Connecting || Connection != null) return;
-            if (!IPAddress.TryParse(address, out IPAddress ip)) { Fail("Invalid IP address"); return; }
+            if (!IPAddress.TryParse(address, out IPAddress ip) || ip.AddressFamily != AddressFamily.InterNetwork)
+            { Fail("Invalid IPv4 address"); return; }
             if (port < 1 || port > 65535) { Fail("Port must be 1-65535"); return; }
             FailureMessage = null;
-            try { attempt = new Attempt(++generation, ip, port); }
+            try { attempt = new Attempt(++generation, address, port, sendDelayMs, sendJitterMs, sendLossPercent); }
             catch (Exception error) { Fail(Describe(error)); return; }
             State = RoomConnectionState.Connecting;
             StateChanged?.Invoke();
         }
 
+        public void SetTestNetwork(int sendDelayMs, int sendJitterMs, float sendLossPercent)
+        {
+            attempt?.Transport.SetTestNetwork(sendDelayMs, sendJitterMs, sendLossPercent);
+            activeTransport?.SetTestNetwork(sendDelayMs, sendJitterMs, sendLossPercent);
+        }
+
         public void Update()
         {
             if (disposed) return;
-            if (State == RoomConnectionState.Connected) { handshakePeer?.Update(); return; }
+            if (State == RoomConnectionState.Connected) { activeTransport.Update(); handshakePeer?.Update(); return; }
             if (State == RoomConnectionState.Handshaking)
             {
+                activeTransport.Update();
                 handshakePeer.Update();
                 if (State == RoomConnectionState.Handshaking)
                 {
@@ -141,8 +143,16 @@ namespace Rpg.Networking
             if (attempt == null) return;
             Attempt current = attempt;
             if (current.Id != generation) return;
-            if (!current.Task.IsCompleted)
+            try { current.Transport.Update(); }
+            catch (Exception error) { InvalidateAttempt(); Fail(Describe(error)); return; }
+            if (!current.Transport.ClientConnection.IsOpen)
             {
+                if (current.Transport.ConnectFailed)
+                {
+                    InvalidateAttempt();
+                    Fail("Connection failed");
+                    return;
+                }
                 if (current.Elapsed.ElapsedMilliseconds >= timeoutMilliseconds)
                 {
                     InvalidateAttempt();
@@ -150,25 +160,13 @@ namespace Rpg.Networking
                 }
                 return;
             }
-            // Completion is applied only while this exact attempt is still current.
+            // The UDP Connect event was received for this attempt.
             if (!ReferenceEquals(attempt, current) || current.Id != generation) return;
             attempt = null;
-            if (current.Task.IsFaulted)
+            activeTransport = current.Transport;
+            try
             {
-                current.Client.Close();
-                Fail(Describe(current.Task.Exception.GetBaseException()));
-                return;
-            }
-            if (current.Task.IsCanceled)
-            {
-                current.Client.Close();
-                State = RoomConnectionState.Cancelled;
-            }
-            else
-            {
-                try
-                {
-                    Connection = NetConnection.Adopt(current.Client);
+                    Connection = activeTransport.ClientConnection;
                     handshakePeer = new RoomHandshakePeer(Connection);
                     handshakePeer.Subscribe<HandshakeResultDto>(value => ApplyHandshake((HandshakeResultDto)value));
                     NetConnection boundConnection = Connection;
@@ -313,6 +311,14 @@ namespace Rpg.Networking
                     SubscribeSkillInstanceEvent<CloneInstanceEventDto>(boundConnection, value => CloneInstanceEventReceived?.Invoke(value));
                     SubscribeSkillStates<BlackholeStatesDto>(boundConnection, result => BlackholeStatesReceived?.Invoke(result));
                     SubscribeSkillInstanceEvent<BlackholeInstanceEventDto>(boundConnection, value => BlackholeInstanceEventReceived?.Invoke(value));
+                    handshakePeer.Subscribe<SkillRequestRejectionDto>(value =>
+                    {
+                        var rejection = (SkillRequestRejectionDto)value;
+                        if (!ReferenceEquals(Connection, boundConnection) || State != RoomConnectionState.Connected ||
+                            !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
+                            rejection.roomSessionId != RoomSessionId || rejection.loadId != SceneLoadId) return;
+                        SkillRequestRejectionReceived?.Invoke(rejection);
+                    });
                     handshakePeer.Subscribe<MonsterStatesDto>(value =>
                     {
                         var states = (MonsterStatesDto)value;
@@ -367,9 +373,8 @@ namespace Rpg.Networking
                     State = RoomConnectionState.Handshaking;
                     handshakeClock = Stopwatch.StartNew();
                     Connection.Send(new HandshakeHelloDto { schemaVersion = ProtocolSchema.SchemaVersion });
-                }
-                catch (Exception error) { current.Client.Close(); FailHandshake(Describe(error)); return; }
             }
+            catch (Exception error) { FailHandshake(Describe(error)); return; }
             StateChanged?.Invoke();
         }
 
@@ -416,7 +421,7 @@ namespace Rpg.Networking
             ++generation;
             Attempt previous = attempt;
             attempt = null;
-            previous?.Client.Close();
+            previous?.Transport.Dispose();
         }
 
         private void Fail(string message)
@@ -428,12 +433,6 @@ namespace Rpg.Networking
 
         private static string Describe(Exception error)
         {
-            if (error is SocketException socket)
-            {
-                if (socket.SocketErrorCode == SocketError.ConnectionRefused) return "Connection refused";
-                if (socket.SocketErrorCode == SocketError.TimedOut) return "Connection timed out";
-                return "Connection failed: " + socket.SocketErrorCode;
-            }
             return "Connection failed: " + error.Message;
         }
 
@@ -444,6 +443,8 @@ namespace Rpg.Networking
             handshakePeer = null;
             Connection?.Dispose();
             Connection = null;
+            activeTransport?.Dispose();
+            activeTransport = null;
             RoomSessionId = null;
             HostIdentity = LocalIdentity = null;
             handshakeClock = null;
@@ -489,7 +490,7 @@ namespace Rpg.Networking
                 LastSentPrimaryAttackRequestSeq = requestSeq;
                 return true;
             }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
@@ -499,7 +500,7 @@ namespace Rpg.Networking
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(request, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendCraftRequest(CraftRequestDto request)
         {
@@ -507,7 +508,7 @@ namespace Rpg.Networking
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(request, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendPickupRequest(PickupRequestDto request)
         {
@@ -515,7 +516,7 @@ namespace Rpg.Networking
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(request, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendRetryReady(RoomRetryReadyDto ready)
         {
@@ -523,7 +524,7 @@ namespace Rpg.Networking
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(ready, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendSkillUnlockRequest(SkillUnlockRequestDto request)
         {
@@ -531,7 +532,7 @@ namespace Rpg.Networking
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(request, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         public bool SendFlaskUseRequest(FlaskUseRequestDto request)
         {
@@ -539,7 +540,7 @@ namespace Rpg.Networking
                 State != RoomConnectionState.Connected || !CanInitializeEntities || lastPlayerInitializationSeq == 0 ||
                 LocalIdentity == null || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(request, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
         public bool SendSkillInput<T>(T input) where T : RoomSkillInputDto
@@ -547,7 +548,7 @@ namespace Rpg.Networking
             if (input.roomSessionId != RoomSessionId || State != RoomConnectionState.Connected || !CanInitializeEntities ||
                 lastPlayerInitializationSeq == 0 || Connection == null || !Connection.IsOpen) return false;
             try { Connection.Send(input, true); return true; }
-            catch (Exception error) when (error is IOException || error is SocketException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
+            catch (Exception error) when (error is IOException || error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
         private void SubscribeSkillStates<T>(NetConnection boundConnection, Action<T> handler) where T : RoomSkillStatesDto
         {
@@ -587,7 +588,7 @@ namespace Rpg.Networking
                 inputLockSeq++; sentInputLock = locked;
                 return true;
             }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { return false; }
         }
 
@@ -612,7 +613,10 @@ namespace Rpg.Networking
             try
             {
                 if (State == RoomConnectionState.Connected && SceneLoadId > 0)
+                {
                     Connection.Send(new SceneFailedDto { roomSessionId = RoomSessionId, loadId = SceneLoadId, sceneName = RoomScene.Name }, true);
+                    activeTransport.Flush();
+                }
             }
             finally { LeaveRoom(); }
         }
@@ -623,9 +627,13 @@ namespace Rpg.Networking
             var exit = new RoomExitEvent(RoomSessionId, Connection.SessionId, RoomExitReason.GuestLeft, true);
             try
             {
-                if (Connection.IsOpen) Connection.Send(new GuestLeaveDto { roomSessionId = RoomSessionId }, true);
+                if (Connection.IsOpen)
+                {
+                    Connection.Send(new GuestLeaveDto { roomSessionId = RoomSessionId }, true);
+                    activeTransport.Flush();
+                }
             }
-            catch (Exception error) when (error is IOException || error is SocketException ||
+            catch (Exception error) when (error is IOException ||
                 error is ObjectDisposedException || error is InvalidOperationException) { }
             finally { Close(); }
             StateChanged?.Invoke();
@@ -666,6 +674,7 @@ namespace Rpg.Networking
             CloneInstanceEventReceived = null;
             BlackholeStatesReceived = null;
             BlackholeInstanceEventReceived = null;
+            SkillRequestRejectionReceived = null;
         }
     }
 }

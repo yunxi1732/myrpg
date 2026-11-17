@@ -385,9 +385,7 @@ namespace Rpg.Networking
         {
             ProtocolCodec.ValidateMessage(value, true);
             if (disposed || context == null || !context.IsGuest || !AllStarted || appliedStateSeq == 0 ||
-                value.roomSessionId != context.RoomSessionId ||
-                ProtocolCodec.FindPosition(value, hostIdentity.EntityId) == null ||
-                ProtocolCodec.FindPosition(value, guestIdentity.EntityId) == null) return;
+                value.roomSessionId != context.RoomSessionId) return;
             foreach (var state in value.players)
             {
                 if (!entities.TryGetValue(state.entityId, out Player player) || player == null || player.IsAuthoritative ||

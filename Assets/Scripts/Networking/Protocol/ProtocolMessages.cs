@@ -6,7 +6,7 @@ namespace Rpg.Networking.Protocol
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
         // Periodic monster attacks use a sparse list; player positions omit confirmed flask state and derived parry flags.
-        public const int SchemaVersion = 59;
+        public const int SchemaVersion = 60;
     }
 
     public enum ProtocolId : short
@@ -60,7 +60,8 @@ namespace Rpg.Networking.Protocol
         SwordInstanceEvent = 48,
         CrystalInstanceEvent = 49,
         CloneInstanceEvent = 50,
-        BlackholeInstanceEvent = 51
+        BlackholeInstanceEvent = 51,
+        SkillRequestRejection = 52
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash, Parry, ParrySuccess }
@@ -343,6 +344,15 @@ namespace Rpg.Networking.Protocol
         public long stateSeq;
     }
     public enum SwordAction { Aim, Release, Recall, Cancel, Direction }
+    public enum SkillRequestRejection { None, InputLocked, Dead, Busy, NotUnlocked, Cooldown, InvalidState, NoInstance, InvalidTarget, Interrupted, NoTarget }
+    [Serializable]
+    public sealed class SkillRequestRejectionDto : AuthorityResultDto
+    {
+        public long loadId, requestSeq;
+        public int playerId, entityId;
+        public RoomSkillId skillId;
+        public SkillRequestRejection reason;
+    }
     [Serializable]
     public sealed class ParryInputDto : RoomSkillInputDto { }
     [Serializable]
@@ -360,10 +370,12 @@ namespace Rpg.Networking.Protocol
         public long loadId, requestSeq, skillInstanceId;
         public int entityId, sourcePlayerId, sourceEntityId;
         public ulong startTick;
+        public abstract bool EndsInstance { get; }
     }
     [Serializable]
     public sealed class CrystalInstanceEventDto : RoomSkillInstanceEventDto
     {
+        public override bool EndsInstance => kind == CrystalInstanceEventKind.End;
         public CrystalInstanceEventKind kind;
         public bool derived;
         public float[] position;
@@ -392,6 +404,7 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class CloneInstanceEventDto : RoomSkillInstanceEventDto
     {
+        public override bool EndsInstance => kind == CloneInstanceEventKind.End;
         public CloneInstanceEventKind kind;
         public float[] position;
         public bool facingLeft;
@@ -435,6 +448,7 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class BlackholeInstanceEventDto : RoomSkillInstanceEventDto
     {
+        public override bool EndsInstance => kind == BlackholeInstanceEventKind.End;
         public BlackholeInstanceEventKind kind;
         public int targetEntityId;
         public float[] position;
@@ -477,6 +491,7 @@ namespace Rpg.Networking.Protocol
     [Serializable]
     public sealed class SwordInstanceEventDto : RoomSkillInstanceEventDto
     {
+        public override bool EndsInstance => kind == SwordInstanceEventKind.End;
         public ulong endTick;
         public SwordInstanceEventKind kind;
         public SwordPhase phase;

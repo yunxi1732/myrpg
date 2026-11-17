@@ -38,6 +38,7 @@ namespace Rpg.Networking
         private readonly Action<BlackholeStatesDto> publish;
         private readonly Action<BlackholeInstanceEventDto> publishEvent;
         private readonly Func<long> currentLoadId;
+        private readonly Action<int, int, long, SkillRequestRejection> reject;
         private readonly Func<BlackholeInputDto, bool> sendInput;
         private readonly Dictionary<long, Hole> holes = new Dictionary<long, Hole>();
         private readonly Dictionary<int, long> requests = new Dictionary<int, long>();
@@ -52,12 +53,14 @@ namespace Rpg.Networking
         public RoomBlackholeNetwork(RoomPresentationContext context, RoomPlayerEntities players, RoomSceneMonsters monsters,
             RoomNetworkObjects objects, BlackholeSkill template, RoomCloneNetwork clones, AuthorityResultSequence results,
             Func<int> allocateEntity, Action<BlackholeStatesDto> publish, Func<BlackholeInputDto, bool> sendInput,
-            Action<BlackholeInstanceEventDto> publishEvent, Func<long> currentLoadId)
+            Action<BlackholeInstanceEventDto> publishEvent, Func<long> currentLoadId,
+            Action<int, int, long, SkillRequestRejection> reject = null)
         {
             this.context = context; this.players = players; this.monsters = monsters; this.objects = objects;
             this.template = template; this.clones = clones; this.results = results; this.allocateEntity = allocateEntity;
             this.publish = publish; this.sendInput = sendInput;
             this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
+            this.reject = reject;
         }
         public void EnsurePlayers()
         {
@@ -95,6 +98,10 @@ namespace Rpg.Networking
             localPreview = null;
             localPreviewSeq = 0;
         }
+        public void RejectLocalPreview(long requestSeq)
+        {
+            if (localPreviewSeq == requestSeq) CancelLocalPreview();
+        }
         public void AdvanceLocalPreview(Player player)
         {
             if (localPreviewSeq > 0 && (player.stats.currentHealth <= 0 || GameSimulationClock.Time >= localPreviewEndTime))
@@ -106,22 +113,31 @@ namespace Rpg.Networking
                 requests.TryGetValue(actor.PlayerId, out long last) && input.actionSeq <= last) return;
             requests[actor.PlayerId] = input.actionSeq;
             var player = players.Entities[actor.EntityId];
-            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked ||
-                player.stats.currentHealth <= 0) return;
+            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.InputLocked); return; }
+            if (player.stats.currentHealth <= 0)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Dead); return; }
             var hole = FindOwnerHole(actor.PlayerId);
             if (input.action == BlackholeAction.Cast)
             {
-                if (hole != null || !player.Combat.Skills.Get<BlackholeSkill>().Unlocked ||
-                    player.Combat.Skills.Get<BlackholeSkill>().Remaining > 0 || !player.IsGroundDetected() ||
-                    player.stateMachine.currentState != player.idleState && player.stateMachine.currentState != player.moveState) return;
+                if (hole != null) { Reject(actor, input.actionSeq, SkillRequestRejection.Busy); return; }
+                if (!player.Combat.Skills.Get<BlackholeSkill>().Unlocked)
+                { Reject(actor, input.actionSeq, SkillRequestRejection.NotUnlocked); return; }
+                if (player.Combat.Skills.Get<BlackholeSkill>().Remaining > 0)
+                { Reject(actor, input.actionSeq, SkillRequestRejection.Cooldown); return; }
+                if (!player.IsGroundDetected() || player.stateMachine.currentState != player.idleState &&
+                    player.stateMachine.currentState != player.moveState)
+                { Reject(actor, input.actionSeq, SkillRequestRejection.InvalidState); return; }
                 castRequests[actor.PlayerId] = input.actionSeq;
                 player.stateMachine.ChangeState(player.blackHoleState);
             }
             else if (hole != null && input.action == BlackholeAction.Release)
             {
+                if (hole.Released) { Reject(actor, input.actionSeq, SkillRequestRejection.InvalidState); return; }
                 hole.ReleaseRequestSeq = input.actionSeq;
                 hole.Object.GetComponent<BlackholeSkillController>().ReleaseRoom();
                 hole.ReleaseRequestSeq = 0;
+                if (!hole.Released) Reject(actor, input.actionSeq, SkillRequestRejection.NoTarget);
             }
             else if (hole != null && input.action == BlackholeAction.Select &&
                 hole.Prompts.TryGetValue(input.targetEntityId, out var prompt) && !prompt.Selected &&
@@ -135,10 +151,28 @@ namespace Rpg.Networking
                 PublishInstanceEvent(hole, BlackholeInstanceEventKind.Select, input.actionSeq, input.targetEntityId);
                 Publish();
             }
+            else if (input.action == BlackholeAction.Release)
+                Reject(actor, input.actionSeq, SkillRequestRejection.NoInstance);
+            else if (input.action == BlackholeAction.Select)
+                Reject(actor, input.actionSeq, hole == null ? SkillRequestRejection.NoInstance : SkillRequestRejection.InvalidTarget);
+        }
+        private void Reject(RoomPlayerIdentity actor, long requestSeq, SkillRequestRejection reason)
+            => reject?.Invoke(actor.PlayerId, actor.EntityId, requestSeq, reason);
+        public void RejectPendingCast(Player player)
+        {
+            if (context.IsGuest || !castRequests.TryGetValue(player.Combat.PlayerId, out long requestSeq)) return;
+            castRequests.Remove(player.Combat.PlayerId);
+            reject?.Invoke(player.Combat.PlayerId, player.Combat.EntityId, requestSeq, SkillRequestRejection.Interrupted);
         }
         public void Spawn(Player owner)
         {
-            if (!owner.Combat.Skills.Commit<BlackholeSkill>()) return;
+            if (!owner.Combat.Skills.Commit<BlackholeSkill>())
+            {
+                long requestSeq = castRequests[owner.Combat.PlayerId];
+                castRequests.Remove(owner.Combat.PlayerId);
+                reject?.Invoke(owner.Combat.PlayerId, owner.Combat.EntityId, requestSeq, SkillRequestRejection.Cooldown);
+                return;
+            }
             var value = UnityEngine.Object.Instantiate(template.BlackholePrefab, owner.transform.position, Quaternion.identity);
             var state = new BlackholeObjectDto { entityId = allocateEntity(), sourcePlayerId = owner.Combat.PlayerId,
                 sourceEntityId = owner.Combat.EntityId, skillInstanceId = objects.AllocatePrimaryAttackInstanceId() };
@@ -283,6 +317,7 @@ namespace Rpg.Networking
             if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
             if (!holes.TryGetValue(value.skillInstanceId, out var hole))
             {
+                if (value.kind == BlackholeInstanceEventKind.End) return;
                 if (value.kind != BlackholeInstanceEventKind.Spawn)
                     throw new InvalidOperationException("Blackhole event arrived before its spawn event.");
                 var state = new BlackholeObjectDto { entityId = value.entityId, sourcePlayerId = value.sourcePlayerId,

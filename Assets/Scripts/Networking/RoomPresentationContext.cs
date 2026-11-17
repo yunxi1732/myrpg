@@ -57,6 +57,7 @@ namespace Rpg.Networking
         private long healthSeq, hudSeq;
         private ulong positionTick;
         private long positionSeq;
+        private double nextSnapshotOrderLogTime;
         public event Action Changed;
         internal void NotifyEquipmentChanged() => NotifyChanged();
 
@@ -65,6 +66,12 @@ namespace Rpg.Networking
             MovementAnimationState movementState = MovementAnimationState.Idle, float yVelocity = 0, MonsterAttackDto monsterAttack = null, PlayerAttackDto playerAttack = null,
             int monsterTargetEntityId = 0)
         {
+            if (RoomMessageMetrics.Enabled && room == RoomSessionId && stateSeq <= positionSeq &&
+                MonotonicClock.Now >= nextSnapshotOrderLogTime)
+            {
+                Debug.Log($"[RoomSnapshotOrder] entity={EntityId} rejectedSeq={stateSeq} currentSeq={positionSeq} tick={authorityTick}");
+                nextSnapshotOrderLogTime = MonotonicClock.Now + 5;
+            }
             if (!IsValid || View == null || room != RoomSessionId || authorityTick == 0 || stateSeq <= positionSeq || (facingDir != -1 && facingDir != 1) ||
                 !ProtocolCodec.IsValidMovementAnimation(movementState, yVelocity) ||
                 !ProtocolCodec.ValidPlayerAttack(playerAttack, EntityId, facingDir, authorityTick) ||

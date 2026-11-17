@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Rpg.Networking
 {
-    // Optional main-thread measurement at the actual TCP send and validated receive boundaries.
+    // Optional main-thread measurement at the room send and validated receive boundaries.
     public static class RoomMessageMetrics
     {
         private sealed class Sample

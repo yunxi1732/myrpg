@@ -44,6 +44,7 @@ public static class NetworkProtocolVerification
         VerifyCrystalInstanceEvent();
         VerifyCloneInstanceEvent();
         VerifyBlackholeInstanceEvent();
+        VerifySkillRequestRejection();
         VerifyLocalInputLock();
         VerifyMonsterInitialization();
         VerifyMonsterStates();
@@ -191,6 +192,21 @@ public static class NetworkProtocolVerification
                 position = new[] { 2f, 2f }, scale = 2f, prompts = Array.Empty<BlackholePromptDto>() } } };
         RequireSend(((BlackholeStatesDto)RoundTrip(trajectory, true)).blackholes[0].skillInstanceId == 7,
             "Blackhole snapshots retain instance-linked position, scale and target prompts");
+    }
+
+    private static void VerifySkillRequestRejection()
+    {
+        var value = new SkillRequestRejectionDto { roomSessionId = Guid.NewGuid().ToString("N"),
+            loadId = 2, authorityTick = 10, resultId = 3, requestSeq = 4, playerId = 2,
+            entityId = 20, skillId = RoomSkillId.Sword, reason = SkillRequestRejection.InvalidState };
+        var copy = (SkillRequestRejectionDto)RoundTrip(value, true);
+        RequireSend(copy.requestSeq == 4 && copy.skillId == RoomSkillId.Sword &&
+            copy.reason == SkillRequestRejection.InvalidState &&
+            ProtocolCodec.MessageKind(typeof(SkillRequestRejectionDto)) == RoomMessageKind.ExecutionConfirmation &&
+            ProtocolCodec.FutureDelivery(typeof(SkillRequestRejectionDto)) == RoomDeliveryHint.Reliable,
+            "Direct skill rejection carries request sequence and reason reliably");
+        value.requestSeq = 0;
+        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
     }
 
     private static void VerifyMonsterStates()

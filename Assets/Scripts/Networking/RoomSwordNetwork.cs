@@ -18,6 +18,7 @@ namespace Rpg.Networking
         private readonly Action<SwordInstanceEventDto> publishEvent;
         private readonly Func<long> currentLoadId;
         private readonly Action<Player, SwordInputDto> sendInput;
+        private readonly Action<int, int, long, SkillRequestRejection> reject;
         private readonly Dictionary<long, NetworkSkillObject> swords = new Dictionary<long, NetworkSkillObject>();
         private readonly Dictionary<long, SwordPhase> publishedPhases = new Dictionary<long, SwordPhase>();
         private readonly Dictionary<int, long> requests = new Dictionary<int, long>();
@@ -29,12 +30,14 @@ namespace Rpg.Networking
         public RoomSwordNetwork(RoomPresentationContext context, RoomPlayerEntities players, RoomNetworkObjects objects,
             RoomCombatDamage damage, SwordSkill template, Action<Player, SwordInputDto> sendInput,
             AuthorityResultSequence results = null, Func<int> allocateEntity = null, Action<SwordStatesDto> publish = null,
-            Action<SwordInstanceEventDto> publishEvent = null, Func<long> currentLoadId = null)
+            Action<SwordInstanceEventDto> publishEvent = null, Func<long> currentLoadId = null,
+            Action<int, int, long, SkillRequestRejection> reject = null)
         {
             this.context = context; this.players = players; this.objects = objects; this.damage = damage;
             this.template = template; this.sendInput = sendInput; this.results = results;
             this.allocateEntity = allocateEntity; this.publish = publish;
             this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
+            this.reject = reject;
         }
         public void EnsurePlayers()
         {
@@ -55,19 +58,29 @@ namespace Rpg.Networking
             requests[actor.PlayerId] = input.actionSeq;
             var skill = player.RoomSword;
             if (input.action == SwordAction.Cancel) { Cancel(player); Publish(); return; }
-            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked ||
-                player.stats.currentHealth <= 0 || player.isBusy ||
-                player.GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true ||
-                !player.Combat.Skills.Get<SwordSkill>().Unlocked) return;
+            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.InputLocked); return; }
+            if (player.stats.currentHealth <= 0)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Dead); return; }
+            if (player.isBusy || player.GetComponent<NetworkHitFeedback>()?.IsAuthorityKnockbackActive == true)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Busy); return; }
+            if (!player.Combat.Skills.Get<SwordSkill>().Unlocked)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.NotUnlocked); return; }
             var state = player.stateMachine.currentState;
-            if (!player.IsGroundDetected() || state != player.idleState && state != player.moveState && state != player.aimSwordState) return;
+            if (!player.IsGroundDetected() || state != player.idleState && state != player.moveState && state != player.aimSwordState)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.InvalidState); return; }
             if (input.action == SwordAction.Recall)
             {
                 if (player.sword != null) player.sword.GetComponent<SwordSkillController>().ReturnSword();
+                else Reject(actor, input.actionSeq, SkillRequestRejection.NoInstance);
                 return;
             }
-            if (input.action == SwordAction.Direction && state != player.aimSwordState) return;
-            if (HasSword(actor.PlayerId) || skill.ThrowPending || player.Combat.Skills.Get<SwordSkill>().Remaining > 0) return;
+            if (input.action == SwordAction.Direction && state != player.aimSwordState)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.InvalidState); return; }
+            if (HasSword(actor.PlayerId) || skill.ThrowPending)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Busy); return; }
+            if (player.Combat.Skills.Get<SwordSkill>().Remaining > 0)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.Cooldown); return; }
             Vector2 direction = new Vector2(input.direction[0], input.direction[1]);
             skill.RoomDirection = direction;
             player.FlipController(direction.x);
@@ -77,7 +90,17 @@ namespace Rpg.Networking
                 releaseRequests[actor.PlayerId] = input.actionSeq;
                 player.aimSwordState.ReleaseRoomSword(direction);
             }
+            else if (input.action == SwordAction.Release)
+            { Reject(actor, input.actionSeq, SkillRequestRejection.InvalidState); return; }
             Publish();
+        }
+        private void Reject(RoomPlayerIdentity actor, long requestSeq, SkillRequestRejection reason)
+            => reject?.Invoke(actor.PlayerId, actor.EntityId, requestSeq, reason);
+        public void RejectPendingRelease(Player player)
+        {
+            if (context.IsGuest || !releaseRequests.TryGetValue(player.Combat.PlayerId, out long requestSeq)) return;
+            releaseRequests.Remove(player.Combat.PlayerId);
+            reject?.Invoke(player.Combat.PlayerId, player.Combat.EntityId, requestSeq, SkillRequestRejection.Interrupted);
         }
         private static void Cancel(Player player)
         {
@@ -101,6 +124,7 @@ namespace Rpg.Networking
             sword.Attack = new PrimaryAttackInstance(context.RoomSessionId, dto.sourcePlayerId, dto.sourceEntityId,
                 dto.skillInstanceId, releaseRequests[dto.sourcePlayerId], tick, dto.endTick,
                 new PrimaryAttackTiming(0, duration, new PrimaryHitSegmentTiming(0, duration)));
+            releaseRequests.Remove(dto.sourcePlayerId);
         }
         private NetworkSkillObject Register(GameObject value, SwordObjectDto dto)
         {
@@ -179,8 +203,7 @@ namespace Rpg.Networking
             if (disposed || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
             if (value.kind == SwordInstanceEventKind.End)
             {
-                if (!swords.TryGetValue(value.skillInstanceId, out var ended))
-                    throw new InvalidOperationException("Sword end arrived without its spawn event.");
+                if (!swords.TryGetValue(value.skillInstanceId, out var ended)) return;
                 if (ended.EntityId != value.entityId || ended.SourceEntityId != value.sourceEntityId ||
                     ended.StartTick != value.startTick || ended.EndTick != value.endTick)
                     throw new InvalidOperationException("Sword end metadata changed within an instance.");

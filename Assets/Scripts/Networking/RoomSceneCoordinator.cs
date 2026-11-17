@@ -47,6 +47,7 @@ namespace Rpg.Networking
         private long localSkillUnlockRequestSeq;
         private readonly System.Collections.Generic.Queue<SkillUnlockResultDto> pendingSkillUnlockResults = new System.Collections.Generic.Queue<SkillUnlockResultDto>();
         private readonly System.Collections.Generic.Queue<FlaskUseResultDto> pendingFlaskResults = new System.Collections.Generic.Queue<FlaskUseResultDto>();
+        private readonly System.Collections.Generic.Queue<SkillRequestRejectionDto> pendingSkillRequestRejections = new System.Collections.Generic.Queue<SkillRequestRejectionDto>();
         private float flaskHudTimer;
         private SwordSkill swordTemplate;
         private CrystalSkill crystalTemplate;
@@ -61,6 +62,7 @@ namespace Rpg.Networking
         private RoomBlackholeNetwork blackholes;
         private BlackholeStatesDto pendingBlackholeStates;
         private readonly System.Collections.Generic.Queue<BlackholeInstanceEventDto> pendingBlackholeEvents = new System.Collections.Generic.Queue<BlackholeInstanceEventDto>();
+        private readonly System.Collections.Generic.HashSet<long> retiredSkillInstanceIds = new System.Collections.Generic.HashSet<long>();
         private long localParrySeq;
         private readonly System.Collections.Generic.Dictionary<int, long> parryRequests = new System.Collections.Generic.Dictionary<int, long>();
         private RoomSwordNetwork swords;
@@ -121,6 +123,7 @@ namespace Rpg.Networking
             client.PickupResultReceived += OnPickupResult;
             client.SkillUnlockResultReceived += OnSkillUnlockResult;
             client.FlaskUseResultReceived += OnFlaskUseResult;
+            client.SkillRequestRejectionReceived += OnSkillRequestRejection;
             client.SwordStatesReceived += OnSwordStates;
             client.SwordInstanceEventReceived += OnSwordInstanceEvent;
             client.CrystalStatesReceived += OnCrystalStates;
@@ -397,6 +400,8 @@ namespace Rpg.Networking
                 if (!activeRoomIsHost)
                     while (pendingFlaskResults.Count > 0) OnFlaskUseResult(pendingFlaskResults.Dequeue());
                 if (!activeRoomIsHost)
+                    while (pendingSkillRequestRejections.Count > 0) ApplySkillRequestRejection(pendingSkillRequestRejections.Dequeue());
+                if (!activeRoomIsHost)
                     while (pendingDamageResults.Count > 0) CombatDamage.ApplyConfirmedResult(pendingDamageResults.Dequeue());
                 if (!activeRoomIsHost)
                     while (pendingMonsterDeaths.Count > 0) OnMonsterDeath(pendingMonsterDeaths.Dequeue());
@@ -586,7 +591,9 @@ namespace Rpg.Networking
                 activeRoomIsHost ? host.Results : null, activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
                 activeRoomIsHost ? (Action<SwordStatesDto>)(value => host.SendSkillStates(value)) : null,
                 activeRoomIsHost ? (Action<SwordInstanceEventDto>)(value => host.SendSkillInstanceEvent(value)) : null,
-                activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null);
+                activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null,
+                activeRoomIsHost ? (Action<int, int, long, SkillRequestRejection>)((playerId, entityId, seq, reason) =>
+                    RejectSkillRequest(playerId, entityId, RoomSkillId.Sword, seq, reason)) : null);
             swords.EnsurePlayers();
         }
         private void OnSwordInput(RoomPlayerIdentity actor, SwordInputDto input) => swords?.Request(actor, input);
@@ -596,7 +603,9 @@ namespace Rpg.Networking
                 activeRoomIsHost ? host.Results : null, activeRoomIsHost ? (Func<int>)host.AllocateSceneEntityId : null,
                 activeRoomIsHost ? (Action<CrystalStatesDto>)(value => host.SendSkillStates(value)) : null,
                 activeRoomIsHost ? (Action<CrystalInstanceEventDto>)(value => host.SendSkillInstanceEvent(value)) : null,
-                activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null);
+                activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null,
+                activeRoomIsHost ? (Action<int, int, long, SkillRequestRejection>)((playerId, entityId, seq, reason) =>
+                    RejectSkillRequest(playerId, entityId, RoomSkillId.Crystal, seq, reason)) : null);
         }
         private void OnCrystalInput(RoomPlayerIdentity actor, CrystalInputDto input) => crystals?.Request(actor, input);
         private void EnsureCloneNetwork()
@@ -621,7 +630,9 @@ namespace Rpg.Networking
                     return client.SendSkillInput(input);
                 },
                 activeRoomIsHost ? (Action<BlackholeInstanceEventDto>)(value => host.SendSkillInstanceEvent(value)) : null,
-                activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null);
+                activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null,
+                activeRoomIsHost ? (Action<int, int, long, SkillRequestRejection>)((playerId, entityId, seq, reason) =>
+                    RejectSkillRequest(playerId, entityId, RoomSkillId.Blackhole, seq, reason)) : null);
             blackholes.EnsurePlayers();
         }
         private void OnBlackholeInput(RoomPlayerIdentity actor, BlackholeInputDto input) => blackholes?.Request(actor, input);
@@ -632,12 +643,52 @@ namespace Rpg.Networking
                 parryRequests.TryGetValue(actor.PlayerId, out long last) && input.actionSeq <= last) return;
             parryRequests[actor.PlayerId] = input.actionSeq;
             var player = Players.Entities[actor.EntityId];
-            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked ||
-                player.stats.currentHealth <= 0 || !player.Combat.Skills.Get<ParrySkill>().Unlocked ||
-                player.Combat.Skills.Get<ParrySkill>().Remaining > 0 ||
-                !player.IsGroundDetected() || player.stateMachine.currentState != player.idleState &&
-                player.stateMachine.currentState != player.moveState) return;
+            if (player.NetworkInputLocked || player.IsLocalInputOwner && GameplayControlLock.IsActionInputBlocked)
+            { RejectSkillRequest(actor.PlayerId, actor.EntityId, RoomSkillId.Parry, input.actionSeq, SkillRequestRejection.InputLocked); return; }
+            if (player.stats.currentHealth <= 0)
+            { RejectSkillRequest(actor.PlayerId, actor.EntityId, RoomSkillId.Parry, input.actionSeq, SkillRequestRejection.Dead); return; }
+            if (!player.Combat.Skills.Get<ParrySkill>().Unlocked)
+            { RejectSkillRequest(actor.PlayerId, actor.EntityId, RoomSkillId.Parry, input.actionSeq, SkillRequestRejection.NotUnlocked); return; }
+            if (player.Combat.Skills.Get<ParrySkill>().Remaining > 0)
+            { RejectSkillRequest(actor.PlayerId, actor.EntityId, RoomSkillId.Parry, input.actionSeq, SkillRequestRejection.Cooldown); return; }
+            if (!player.IsGroundDetected() || player.stateMachine.currentState != player.idleState &&
+                player.stateMachine.currentState != player.moveState)
+            { RejectSkillRequest(actor.PlayerId, actor.EntityId, RoomSkillId.Parry, input.actionSeq, SkillRequestRejection.InvalidState); return; }
             if (player.Combat.Skills.Commit<ParrySkill>()) player.stateMachine.ChangeState(player.counterAttackState);
+            else RejectSkillRequest(actor.PlayerId, actor.EntityId, RoomSkillId.Parry, input.actionSeq, SkillRequestRejection.Cooldown);
+        }
+        private void RejectSkillRequest(int playerId, int entityId, RoomSkillId skillId, long requestSeq, SkillRequestRejection reason)
+        {
+            if (host.GuestIdentity == null || host.GuestIdentity.PlayerId != playerId ||
+                host.GuestIdentity.EntityId != entityId) return;
+            host.SendSkillRequestRejection(new SkillRequestRejectionDto { roomSessionId = activeRoomSessionId,
+                loadId = initializedLoadId, authorityTick = GameSimulationClock.AuthorityTick,
+                resultId = host.Results.Allocate(), requestSeq = requestSeq, playerId = playerId,
+                entityId = entityId, skillId = skillId, reason = reason });
+        }
+        private void OnSkillRequestRejection(SkillRequestRejectionDto value)
+        {
+            if (!IsSceneSession || returning || activeRoomIsHost || value.roomSessionId != activeRoomSessionId ||
+                value.loadId != initializationLoadId) return;
+            if (CombatDamage == null || initializedLoadId != initializationLoadId || Presentation?.LocalEntity == null)
+            {
+                if (pendingSkillRequestRejections.Count >= 256) { Fail(false, "Skill rejections exceeded the initialization buffer"); return; }
+                pendingSkillRequestRejections.Enqueue(value);
+                return;
+            }
+            ApplySkillRequestRejection(value);
+        }
+        private void ApplySkillRequestRejection(SkillRequestRejectionDto value)
+        {
+            if (value.playerId != Presentation.LocalPlayerId || value.entityId != Presentation.LocalEntity.EntityId ||
+                !CombatDamage.Receipts.TryAccept(value)) return;
+            Debug.Log($"[RoomSkill] B rejected skill={value.skillId} requestSeq={value.requestSeq} reason={value.reason} resultId={value.resultId}");
+            if (value.skillId == RoomSkillId.Sword)
+            {
+                var view = Presentation.LocalEntity.View.GetComponent<RemotePlayerView>();
+                if (view.LocalSwordPreviewActive) view.CancelLocalSwordPreview(value.requestSeq);
+            }
+            else if (value.skillId == RoomSkillId.Blackhole) blackholes.RejectLocalPreview(value.requestSeq);
         }
         private void ReceiveSkillStates<T>(T value, ref T pending, object channel, Action<T> apply) where T : RoomSkillStatesDto
         {
@@ -682,7 +733,9 @@ namespace Rpg.Networking
             if (!CombatDamage.Receipts.TryAccept(value)) return;
             if (!Presentation.TryGetEntity(value.sourceEntityId, out var source) || source.PlayerId != value.sourcePlayerId)
                 throw new InvalidOperationException("Skill instance event source does not match the room player.");
+            if (retiredSkillInstanceIds.Contains(value.skillInstanceId)) return;
             apply(value);
+            if (value.EndsInstance) retiredSkillInstanceIds.Add(value.skillInstanceId);
         }
 
         private void OnElementStates(ElementStatesDto value)
@@ -1195,6 +1248,7 @@ namespace Rpg.Networking
             crystals?.Dispose(); crystals = null; pendingCrystalStates = null; pendingCrystalEvents.Clear();
             clones?.Dispose(); clones = null; pendingCloneStates = null; pendingCloneEvents.Clear();
             blackholes?.Dispose(); blackholes = null; pendingBlackholeStates = null; pendingBlackholeEvents.Clear();
+            retiredSkillInstanceIds.Clear();
             parryRequests.Clear(); localParrySeq = 0;
             CombatDamage?.Dispose(); CombatDamage = null;
             pendingDamageResults.Clear();
@@ -1205,6 +1259,7 @@ namespace Rpg.Networking
             pickupRequests.Clear();
             pendingSkillUnlockResults.Clear(); localSkillUnlockRequestSeq = 0;
             pendingFlaskResults.Clear(); flaskHudTimer = 0;
+            pendingSkillRequestRejections.Clear();
             pendingElementStates = null;
             if (NetworkObjects != null) NetworkObjects.Dispose();
             else if (presentationBinding != null) presentationBinding.Unbind();
@@ -1331,6 +1386,7 @@ namespace Rpg.Networking
                 client.PickupResultReceived -= OnPickupResult;
                 client.SkillUnlockResultReceived -= OnSkillUnlockResult;
                 client.FlaskUseResultReceived -= OnFlaskUseResult;
+                client.SkillRequestRejectionReceived -= OnSkillRequestRejection;
                 client.SwordStatesReceived -= OnSwordStates;
             client.SwordInstanceEventReceived -= OnSwordInstanceEvent;
                 client.CrystalStatesReceived -= OnCrystalStates;
