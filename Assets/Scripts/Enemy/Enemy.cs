@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(CapsuleCollider2D))]
+[RequireComponent(typeof(EnemyStats))]
+[RequireComponent(typeof(EntityFX))]
+[RequireComponent(typeof(ItemDrop))]
 public class Enemy : Entity
 {
     // Adapted network AI/actions only; legacy damage, counter windows, stats and drops stay gated.
@@ -30,7 +35,7 @@ public class Enemy : Entity
         return false;
     }
 
-    public bool DetectsLivingTarget(Transform target)
+    public virtual bool DetectsLivingTarget(Transform target)
     {
         if (!IsValidLivingTarget(target)) return false;
         if (Vector2.Distance(transform.position, target.position) < 2) return true;
@@ -67,6 +72,7 @@ public class Enemy : Entity
     private float defaultMoveSpeed;
 
     [Header("Attack Info")]
+    public float agroDistance = 2;
     public float attackDistance;
     public float attackCooldown;
     [HideInInspector] public float lastTimeAttacked;

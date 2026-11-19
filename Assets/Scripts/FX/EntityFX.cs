@@ -17,16 +17,16 @@ public class EntityFX : MonoBehaviour
         if (sr == null) sr = GetComponentInChildren<SpriteRenderer>(true);
         if (networkBurnColor != null) StopCoroutine(networkBurnColor);
         networkBurnColor = null;
-        if (igniteFX != null) igniteFX.Stop();
-        if (chillFX != null) chillFX.Stop();
-        if (shockFX != null) shockFX.Stop();
+        if (igniteFX != null) { igniteFX.Stop(); igniteFX.gameObject.SetActive(false); }
+        if (chillFX != null) { chillFX.Stop(); chillFX.gameObject.SetActive(false); }
+        if (shockFX != null) { shockFX.Stop(); shockFX.gameObject.SetActive(false); }
         if (sr != null) sr.color = Color.white;
         bool burn = kind == Rpg.Networking.Protocol.ElementEffectKind.Burn;
         bool chill = kind == Rpg.Networking.Protocol.ElementEffectKind.Chill;
         bool shock = kind == Rpg.Networking.Protocol.ElementEffectKind.Shock;
-        if (burn && igniteFX != null) igniteFX.Play();
-        if (chill && chillFX != null) chillFX.Play();
-        if (shock && shockFX != null) shockFX.Play();
+        if (burn && igniteFX != null) { igniteFX.gameObject.SetActive(true); igniteFX.Play(); }
+        if (chill && chillFX != null) { chillFX.gameObject.SetActive(true); chillFX.Play(); }
+        if (shock && shockFX != null) { shockFX.gameObject.SetActive(true); shockFX.Play(); }
         if (sr != null && burn && igniteColor != null && igniteColor.Length >= 2) networkBurnColor = StartCoroutine(PulseColor(IgniteColorFx, .3f));
         if (sr != null && chill && chillColor != null && chillColor.Length >= 2) networkBurnColor = StartCoroutine(PulseColor(ChillColorFx, .3f));
         if (sr != null && shock && shockColor != null && shockColor.Length >= 2) networkBurnColor = StartCoroutine(PulseColor(ShockColorFx, .3f));
@@ -100,6 +100,7 @@ public class EntityFX : MonoBehaviour
     [Header("Hit FX")]
     [SerializeField] private GameObject hitFx;
     [SerializeField] private GameObject criticalHitFx;
+    private GameObject myHealthBar;
 
     protected virtual void Start()
     {
@@ -107,6 +108,7 @@ public class EntityFX : MonoBehaviour
         player = GetComponent<Player>();
         if (player == null && PlayerManager.instance != null) player = PlayerManager.instance.player;
         if (!flashMaterialSaved && sr != null) { originalMat = sr.material; flashMaterialSaved = true; }
+        myHealthBar = GetComponentInChildren<UI_HealthBar>(true)?.gameObject;
     }
 
     /// <summary>Data-only room feedback: no RNG, collision queries, gameplay animation events or damage calls.</summary>
@@ -155,8 +157,10 @@ public class EntityFX : MonoBehaviour
 
     public void MakeTransparent(bool _isTransparent)
     {
-        if (_isTransparent) sr.color = Color.clear;
-        else sr.color = Color.white;
+        if (sr != null) sr.color = _isTransparent ? Color.clear : Color.white;
+        if (myHealthBar == null)
+            myHealthBar = GetComponentInChildren<UI_HealthBar>(true)?.gameObject;
+        if (myHealthBar != null) myHealthBar.SetActive(!_isTransparent);
     }
 
     private IEnumerator FlashFX()
@@ -184,13 +188,14 @@ public class EntityFX : MonoBehaviour
         CancelInvoke();
         sr.color = Color.white;
 
-        igniteFX.Stop();
-        chillFX.Stop();
-        shockFX.Stop();
+        igniteFX.Stop(); igniteFX.gameObject.SetActive(false);
+        chillFX.Stop(); chillFX.gameObject.SetActive(false);
+        shockFX.Stop(); shockFX.gameObject.SetActive(false);
     }
 
     public void ChillFxFor(float _seconds)
     {
+        chillFX.gameObject.SetActive(true);
         chillFX.Play();
         StartColorEffect(ChillColorFx, nameof(ChillColorFx), 0.3f, _seconds);
     }
@@ -204,6 +209,7 @@ public class EntityFX : MonoBehaviour
 
     public void IgniteFxFor(float _seconds)
     {
+        igniteFX.gameObject.SetActive(true);
         igniteFX.Play();
         StartColorEffect(IgniteColorFx, nameof(IgniteColorFx), 0.3f, _seconds);
     }
@@ -217,6 +223,7 @@ public class EntityFX : MonoBehaviour
 
     public void ShockFxFor(float _seconds)
     {
+        shockFX.gameObject.SetActive(true);
         shockFX.Play();
         StartColorEffect(ShockColorFx, nameof(ShockColorFx), 0.3f, _seconds);
     }

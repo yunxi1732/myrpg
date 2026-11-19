@@ -136,4 +136,10 @@ public class Entity : MonoBehaviour
         FlipController(_xVelocity);
     }
     #endregion
+
+    public virtual void SetupDefaultFacingDir(int _dir)
+    {
+        facingDir = _dir;
+        if (facingDir == -1) facingRight = false;
+    }
 }

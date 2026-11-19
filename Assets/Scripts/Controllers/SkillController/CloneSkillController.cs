@@ -89,7 +89,7 @@ public class CloneSkillController : MonoBehaviour
                 {
                     if (Random.Range(0, 100) < chanceToDuplicate)
                     {
-                        SkillManager.instance.clone.CreateClone(hit.transform, new Vector3(1.5f * facingDir, 0));
+                        player.skill.clone.CreateClone(hit.transform, new Vector3(1.5f * facingDir, 0), false);
                     }
                 }
             }

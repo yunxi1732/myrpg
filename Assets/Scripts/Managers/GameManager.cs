@@ -98,12 +98,22 @@ public class GameManager : MonoBehaviour, ISaveManager
         _data.lostCurrencyX = player.position.x;
         _data.lostCurrencyY = player.position.y;
 
-        if (FindClosestCheckpoint() != null)
-            _data.closestCheckpointId = FindClosestCheckpoint().id;
+        Checkpoint closest = FindClosestCheckpoint();
+        _data.closestCheckpointId = closest != null && !string.IsNullOrWhiteSpace(closest.id) ? closest.id : null;
         _data.checkpoints.Clear();
 
         foreach (Checkpoint checkpoint in checkpoints)
         {
+            if (string.IsNullOrWhiteSpace(checkpoint.id))
+            {
+                Debug.LogError($"Checkpoint '{checkpoint.name}' at {checkpoint.transform.position} has no ID. Generate a unique checkpoint ID in the Inspector.", checkpoint);
+                continue;
+            }
+            if (_data.checkpoints.ContainsKey(checkpoint.id))
+            {
+                Debug.LogError($"Duplicate checkpoint ID '{checkpoint.id}' on '{checkpoint.name}' at {checkpoint.transform.position}. Generate a unique ID for this checkpoint.", checkpoint);
+                continue;
+            }
             _data.checkpoints.Add(checkpoint.id, checkpoint.activationStatus);
         }
     }

@@ -50,6 +50,11 @@ public class CloneSkill : Skill
     #region Unlock region
     public override void CheckUnlock()
     {
+        canAttack = false;
+        canApplyOnHitEffect = false;
+        canDuplicateClone = false;
+        crystalInsteadOfClone = false;
+        attackMultiplier = 0;
         UnlockCloneAttack();
         UnlockAggresiveClone();
         UnlockMultiClone();
@@ -91,7 +96,7 @@ public class CloneSkill : Skill
             crystalInsteadOfClone = true;
     }
 
-    public void CreateClone(Transform _clonePosition,Vector3 _offset)
+    public void CreateClone(Transform _clonePosition, Vector3 _offset, bool allowDuplication = true)
     {
         if (crystalInsteadOfClone)
         {
@@ -103,7 +108,15 @@ public class CloneSkill : Skill
         GameObject newClone = Instantiate(clonePrefab);
 
         newClone.GetComponent<CloneSkillController>().
-            SetupClone(_clonePosition, cloneDuration, canAttack, _offset, FindClosestEnemy(newClone.transform), canDuplicateClone, chanceToDuplicate, player, attackMultiplier);
+            SetupClone(_clonePosition, cloneDuration, canAttack, _offset, FindClosestEnemy(newClone.transform), canDuplicateClone && allowDuplication, chanceToDuplicate, player, attackMultiplier);
+    }
+
+    public void CreateDashClone(Transform position)
+    {
+        GameObject newClone = Instantiate(clonePrefab);
+        newClone.GetComponent<CloneSkillController>().SetupClone(
+            position, cloneDuration, true, Vector3.zero, FindClosestEnemy(position),
+            false, 0, player, attackMultiplier > 0 ? attackMultiplier : cloneAttackMultiplier);
     }
 
     public void CreateCloneWithDelay(Transform _enemyTransform)

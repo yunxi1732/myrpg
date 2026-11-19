@@ -117,8 +117,8 @@ public static class MonsterAttackDamageVerification
             }
             Require(UnityEngine.Random.value == expected && a.stats.currentHealth == 73 && b.stats.currentHealth == 116, "B applies final HP independent of local armor and does not roll");
             UnityEngine.Random.state = saved;
-            typeof(EnemySkeletonAnimatorTriggers).GetMethod("AttackTrigger", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(monster.GetComponentInChildren<EnemySkeletonAnimatorTriggers>(true), null);
+            typeof(EnemyAnimatorTriggers).GetMethod("AttackTrigger", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(monster.GetComponentInChildren<EnemyAnimatorTriggers>(true), null);
             Require(a.stats.currentHealth == 73 && b.stats.currentHealth == 116 && !monster.GetComponentInChildren<Animator>(true).fireEvents &&
                 !a.rb.simulated && !b.rb.simulated && a.GetComponent<NetworkHitFeedback>().PresentationCount == 1 &&
                 b.GetComponent<NetworkHitFeedback>().PresentationCount == 1, "B monster event cannot deal damage and B cannot simulate knockback");
