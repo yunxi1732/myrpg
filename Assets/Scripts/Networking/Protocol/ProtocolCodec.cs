@@ -363,7 +363,7 @@ namespace Rpg.Networking.Protocol
                     string.IsNullOrEmpty(monster.sceneKey) || monster.sceneKey.Length > 1024 || !keys.Add(monster.sceneKey) ||
                     string.IsNullOrEmpty(monster.monsterType) || monster.monsterType.Length > 256 ||
                     !ValidHealth(monster.health, monster.maxHealth, monster.healthVersion) || monster.dead && monster.health != 0 ||
-                    monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
+                    !ValidCoordinate(monster.position.x) || !ValidCoordinate(monster.position.y) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) || !ValidMonsterAi(monster.aiState) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir, monster.attack, value.authorityTick)) return false;
             return true;
@@ -392,7 +392,7 @@ namespace Rpg.Networking.Protocol
                 if (monster == null || monster.entityId <= 0 || monster.targetEntityId < 0 || !ids.Add(monster.entityId) || !ValidMonsterAi(monster.aiState) ||
                     monster.counterWindow && monster.aiState != MonsterAiState.Attack ||
                     monster.dead && (monster.aiState != MonsterAiState.Idle || monster.moving || monster.counterWindow || monster.targetEntityId != 0) ||
-                    monster.position == null || monster.position.Length != 2 || !ValidCoordinate(monster.position[0]) || !ValidCoordinate(monster.position[1]) ||
+                    !ValidCoordinate(monster.position.x) || !ValidCoordinate(monster.position.y) ||
                     (monster.facingDir != -1 && monster.facingDir != 1) ||
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir,
                         attacks.TryGetValue(monster.entityId, out var attack) ? attack : null, value.authorityTick)) return false;
@@ -432,7 +432,7 @@ namespace Rpg.Networking.Protocol
             (player.deathCause == PlayerDeathCause.None ? player.deathHealthVersion == 0 && player.deathMaxHealth == 0 :
                 ValidHealth(0, player.deathMaxHealth, player.deathHealthVersion) && player.movementState == MovementAnimationState.Idle && player.attack == null) &&
             ValidSkillFills(player.skillFills) &&
-            player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
+            ValidCoordinate(player.position.x) && ValidCoordinate(player.position.y) &&
             (player.facingDir == -1 || player.facingDir == 1) && IsValidMovementAnimation(player.movementState, player.yVelocity);
 
         private static bool ValidSkillFills(float[] fills)
@@ -458,7 +458,7 @@ namespace Rpg.Networking.Protocol
             ValidPlayerDeathCause(player.deathCause, false) &&
             (player.health == 0 ? player.deathCause != PlayerDeathCause.None : player.deathCause == PlayerDeathCause.None) &&
             ValidFlaskState(player.flask) &&
-            player.position != null && player.position.Length == 2 && ValidCoordinate(player.position[0]) && ValidCoordinate(player.position[1]) &&
+            ValidCoordinate(player.position.x) && ValidCoordinate(player.position.y) &&
             (player.facingDir == -1 || player.facingDir == 1) &&
             IsValidMovementAnimation(player.movementState, player.yVelocity) &&
             ValidHealth(player.health, player.maxHealth, player.healthVersion) && player.currency >= 0 &&

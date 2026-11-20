@@ -145,7 +145,7 @@ public static class PlayerCombatContextVerification
 
     private static InitialPlayerDto Initial(Player player, int playerId, int entityId) => new InitialPlayerDto
     {
-        playerId = playerId, entityId = entityId, position = new[] { 0f, 0f }, facingDir = 1,
+        playerId = playerId, entityId = entityId, position = new Vector2(0f, 0f), facingDir = 1,
         health = player.Combat.Stats.GetMaxHealthValue(), maxHealth = player.Combat.Stats.GetMaxHealthValue(), healthVersion = 1,
         combat = player.Combat.CaptureRoomConfiguration()
     };

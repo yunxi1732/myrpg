@@ -86,7 +86,12 @@ namespace Rpg.Networking
         public void Send(object dto, bool handshakeCompleted = false)
         {
             if (!IsOpen) throw new InvalidOperationException("Connection is closed.");
-            byte[] packet = ProtocolCodec.Encode(dto, handshakeCompleted);
+            SendEncoded(dto, ProtocolCodec.Encode(dto, handshakeCompleted));
+        }
+
+        internal void SendEncoded(object dto, byte[] packet)
+        {
+            if (!IsOpen) throw new InvalidOperationException("Connection is closed.");
             if ((dto is MovementInputDto || dto is PlayerPositionsDto || dto is MonsterStatesDto) &&
                 packet.Length > UnreliablePayloadCapacity)
                 throw new InvalidDataException("UDP snapshot/input exceeds payload capacity: " + packet.Length);

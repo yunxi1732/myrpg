@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Rpg.Networking.Protocol
 {
@@ -6,7 +7,7 @@ namespace Rpg.Networking.Protocol
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
         // Periodic monster attacks use a sparse list; player positions omit confirmed flask state and derived parry flags.
-        public const int SchemaVersion = 60;
+        public const int SchemaVersion = 61;
     }
 
     public enum ProtocolId : short
@@ -582,7 +583,7 @@ namespace Rpg.Networking.Protocol
     {
         public int entityId;
         public int targetEntityId;
-        public float[] position;
+        public Vector2 position;
         public int facingDir;
         public MonsterAiState aiState;
         public bool moving;
@@ -608,7 +609,7 @@ namespace Rpg.Networking.Protocol
         public int targetEntityId;
         public string sceneKey;
         public string monsterType;
-        public float[] position;
+        public Vector2 position;
         public int facingDir;
         public bool active;
         public bool dead;
@@ -675,7 +676,7 @@ namespace Rpg.Networking.Protocol
         public RoomFlaskStateDto flask = new RoomFlaskStateDto();
         public int playerId;
         public int entityId;
-        public float[] position;
+        public Vector2 position;
         public int facingDir;
         public MovementAnimationState movementState;
         public float yVelocity;
@@ -763,7 +764,7 @@ namespace Rpg.Networking.Protocol
         public bool locked;
     }
 
-    // Both entries share the snapshot's authority tick and sequence. Position is exactly [x, y].
+    // Both entries share the snapshot's authority tick and sequence.
     [Serializable]
     public sealed class PlayerPositionsDto
     {
@@ -780,7 +781,7 @@ namespace Rpg.Networking.Protocol
         public float[] skillFills = new float[5];
         public int entityId;
         public long processedInputSeq;
-        public float[] position;
+        public Vector2 position;
         public int facingDir;
         public MovementAnimationState movementState;
         public float yVelocity;

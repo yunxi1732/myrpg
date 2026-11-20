@@ -454,11 +454,13 @@ namespace Rpg.Networking
             try
             {
                 int capacity = Guest.UnreliablePayloadCapacity;
-                if (ProtocolCodec.Encode(value, true).Length <= capacity) { Guest.Send(value, true); return true; }
+                byte[] packet = ProtocolCodec.Encode(value, true);
+                if (packet.Length <= capacity) { Guest.SendEncoded(value, packet); return true; }
                 var monsters = new List<MonsterStateDto>();
                 var attacks = new List<MonsterAttackStateDto>();
                 var group = new MonsterStatesDto { roomSessionId = value.roomSessionId, loadId = value.loadId,
                     authorityTick = value.authorityTick, stateSeq = value.stateSeq };
+                byte[] fittingPacket = null;
                 foreach (var monster in value.monsters)
                 {
                     monsters.Add(monster);
@@ -468,20 +470,25 @@ namespace Rpg.Networking
                     if (matchedAttack != null) attacks.Add(matchedAttack);
                     group.monsters = monsters.ToArray();
                     group.attacks = attacks.ToArray();
-                    if (ProtocolCodec.Encode(group, true).Length <= capacity) continue;
+                    byte[] candidate = ProtocolCodec.Encode(group, true);
+                    if (candidate.Length <= capacity) { fittingPacket = candidate; continue; }
                     monsters.RemoveAt(monsters.Count - 1);
                     if (matchedAttack != null) attacks.RemoveAt(attacks.Count - 1);
                     if (monsters.Count == 0) throw new InvalidDataException("One monster state exceeds UDP payload capacity.");
                     group.monsters = monsters.ToArray();
                     group.attacks = attacks.ToArray();
-                    Guest.Send(group, true);
+                    Guest.SendEncoded(group, fittingPacket);
                     monsters.Clear(); attacks.Clear();
                     monsters.Add(monster);
                     if (matchedAttack != null) attacks.Add(matchedAttack);
+                    fittingPacket = null;
                 }
                 group.monsters = monsters.ToArray();
                 group.attacks = attacks.ToArray();
-                Guest.Send(group, true);
+                byte[] lastPacket = fittingPacket ?? ProtocolCodec.Encode(group, true);
+                if (lastPacket.Length > capacity)
+                    throw new InvalidDataException("One monster state exceeds UDP payload capacity.");
+                Guest.SendEncoded(group, lastPacket);
                 return true;
             }
             catch (Exception error) when (error is IOException ||
@@ -498,14 +505,16 @@ namespace Rpg.Networking
             try
             {
                 int capacity = Guest.UnreliablePayloadCapacity;
-                if (ProtocolCodec.Encode(value, true).Length <= capacity) { Guest.Send(value, true); return true; }
+                byte[] packet = ProtocolCodec.Encode(value, true);
+                if (packet.Length <= capacity) { Guest.SendEncoded(value, packet); return true; }
                 foreach (var player in value.players)
                 {
                     var group = new PlayerPositionsDto { roomSessionId = value.roomSessionId, loadId = value.loadId,
                         authorityTick = value.authorityTick, stateSeq = value.stateSeq, players = new[] { player } };
-                    if (ProtocolCodec.Encode(group, true).Length > capacity)
+                    byte[] groupPacket = ProtocolCodec.Encode(group, true);
+                    if (groupPacket.Length > capacity)
                         throw new InvalidDataException("One player state exceeds UDP payload capacity.");
-                    Guest.Send(group, true);
+                    Guest.SendEncoded(group, groupPacket);
                 }
                 return true;
             }

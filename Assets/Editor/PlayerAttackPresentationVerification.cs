@@ -22,8 +22,8 @@ public static class PlayerAttackPresentationVerification
     {
         string room = Guid.NewGuid().ToString("N");
         var dto = new PlayerPositionsDto { roomSessionId = room, loadId = 1, authorityTick = 106, stateSeq = 2,
-            players = new[] { new PlayerPositionDto { entityId = 101, facingDir = -1, position = new[] { 0f, 0f }, attack = Attack() },
-                new PlayerPositionDto { entityId = 102, facingDir = 1, position = new[] { 2f, 0f } } } };
+            players = new[] { new PlayerPositionDto { entityId = 101, facingDir = -1, position = new Vector2(0f, 0f), attack = Attack() },
+                new PlayerPositionDto { entityId = 102, facingDir = 1, position = new Vector2(2f, 0f) } } };
         var copy = (PlayerPositionsDto)RoundTrip(dto);
         Require(copy.players[0].attack.attackInstanceId == 10 && copy.players[0].attack.comboIndex == 1 && copy.players[0].attack.startTick == 103,
             "Attack metadata uses the existing position protocol and sole codec");
@@ -32,9 +32,9 @@ public static class PlayerAttackPresentationVerification
         dto.players[0].attack.startTick = 107; Invalid(() => ProtocolCodec.Encode(dto, true)); dto.players[0].attack.startTick = 103;
         dto.players[0].attack.durationTicks = 0; Invalid(() => ProtocolCodec.Encode(dto, true)); dto.players[0].attack.durationTicks = 20;
         var initial = new PlayerInitializationDto { roomSessionId = room, loadId = 1, authorityTick = 106, stateSeq = 1,
-            players = new[] { new InitialPlayerDto { playerId = 1, entityId = 101, facingDir = -1, position = new[] { 0f, 0f }, health = 140, maxHealth = 140,
+            players = new[] { new InitialPlayerDto { playerId = 1, entityId = 101, facingDir = -1, position = new Vector2(0f, 0f), health = 140, maxHealth = 140,
                 healthVersion = 1, combat = RoomCombatConfiguration.CreateTestProfile(true), attack = Attack() },
-                new InitialPlayerDto { playerId = 2, entityId = 102, facingDir = 1, position = new[] { 2f, 0f }, health = 180, maxHealth = 180,
+                new InitialPlayerDto { playerId = 2, entityId = 102, facingDir = 1, position = new Vector2(2f, 0f), health = 180, maxHealth = 180,
                     healthVersion = 1, combat = RoomCombatConfiguration.CreateTestProfile(false) } } };
         Require(((PlayerInitializationDto)RoundTrip(initial)).players[0].attack.durationTicks == 20, "Joining B receives A's currently active attack progress");
         // Exercise the wire representation explicitly, rather than only validating DTOs before Unity serialization.

@@ -13,6 +13,8 @@ namespace Rpg.Networking
             StatType.damage, StatType.critChance, StatType.critPower, StatType.health,
             StatType.armor, StatType.evasion, StatType.magicRes, StatType.fireDamage, StatType.iceDamage, StatType.lightingDamage
         };
+        private static readonly RoomSkillId[] HudSkillOrder =
+            { RoomSkillId.Dash, RoomSkillId.Parry, RoomSkillId.Crystal, RoomSkillId.Sword, RoomSkillId.Blackhole };
         public static Stat StatAt(PlayerStats stats, int index) => stats.GetStat(RuntimeStats[index]);
 
         public static PlayerCombatDto CreateTestProfile(bool host)
@@ -108,14 +110,18 @@ namespace Rpg.Networking
 
         public static float[] HudFills(PlayerSkillRuntime skills)
         {
-            RoomSkillId[] order = { RoomSkillId.Dash, RoomSkillId.Parry, RoomSkillId.Crystal, RoomSkillId.Sword, RoomSkillId.Blackhole };
-            var fills = new float[order.Length];
-            for (int i = 0; i < order.Length; i++)
+            var fills = new float[5];
+            FillHudFills(skills, fills);
+            return fills;
+        }
+
+        public static void FillHudFills(PlayerSkillRuntime skills, float[] fills)
+        {
+            for (int i = 0; i < HudSkillOrder.Length; i++)
             {
-                var slot = skills.Get(order[i]);
+                var slot = skills.Get(HudSkillOrder[i]);
                 fills[i] = slot.Cooldown > 0 ? Mathf.Clamp01(slot.Remaining / slot.Cooldown) : 0;
             }
-            return fills;
         }
     }
 }

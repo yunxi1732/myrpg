@@ -11,6 +11,7 @@ namespace Rpg.Networking
         private readonly RoomPlayerEntities players;
         private readonly RoomNetworkObjects objects;
         private readonly RoomCombatDamage damage;
+        private readonly RoomSceneMonsters monsters;
         private readonly SwordSkill template;
         private readonly AuthorityResultSequence results;
         private readonly Func<int> allocateEntity;
@@ -31,9 +32,10 @@ namespace Rpg.Networking
             RoomCombatDamage damage, SwordSkill template, Action<Player, SwordInputDto> sendInput,
             AuthorityResultSequence results = null, Func<int> allocateEntity = null, Action<SwordStatesDto> publish = null,
             Action<SwordInstanceEventDto> publishEvent = null, Func<long> currentLoadId = null,
-            Action<int, int, long, SkillRequestRejection> reject = null)
+            Action<int, int, long, SkillRequestRejection> reject = null, RoomSceneMonsters monsters = null)
         {
             this.context = context; this.players = players; this.objects = objects; this.damage = damage;
+            this.monsters = monsters;
             this.template = template; this.sendInput = sendInput; this.results = results;
             this.allocateEntity = allocateEntity; this.publish = publish;
             this.publishEvent = publishEvent; this.currentLoadId = currentLoadId;
@@ -148,6 +150,13 @@ namespace Rpg.Networking
             return sword;
         }
         internal bool Hit(NetworkSkillObject sword, Enemy enemy) => damage.OnSkillHit(sword.Attack, enemy);
+        internal void FillBounceTargets(Vector2 center, List<Transform> targets)
+        {
+            if (monsters != null) { monsters.FillBounceTargets(center, targets); return; }
+            targets.Clear();
+            foreach (var hit in Physics2D.OverlapCircleAll(center, 10))
+                if (hit.GetComponent<Enemy>() != null) targets.Add(hit.transform);
+        }
         public void Publish()
         {
             if (disposed || context.IsGuest || GameSimulationClock.AuthorityTick == 0) return;

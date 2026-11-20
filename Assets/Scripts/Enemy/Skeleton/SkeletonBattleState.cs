@@ -48,7 +48,8 @@ public class SkeletonBattleState : SkeletonGroundedState
         if (sensed != null)
         {
             stateTimer = enemy.battleTime;
-            if (Vector2.Distance(player.position, enemy.transform.position) <= enemy.attackDistance)
+            if (enemy.attackDistance >= 0 &&
+                ((Vector2)player.position - (Vector2)enemy.transform.position).sqrMagnitude <= enemy.attackDistance * enemy.attackDistance)
             {
                 enemy.SetVelocity(0, rb.linearVelocity.y);
                 if (CanAttack()) stateMachine.ChangeState(enemy.attackState);
@@ -57,7 +58,7 @@ public class SkeletonBattleState : SkeletonGroundedState
         }
         else
         {
-            if (stateTimer < 0 || Vector2.Distance(player.transform.position, enemy.transform.position) > 10)
+            if (stateTimer < 0 || ((Vector2)player.position - (Vector2)enemy.transform.position).sqrMagnitude > 100f)
             { stateMachine.ChangeState(enemy.idleState); return; }
         }
 

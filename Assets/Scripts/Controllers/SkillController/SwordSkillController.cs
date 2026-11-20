@@ -39,6 +39,7 @@ public class SwordSkillController : MonoBehaviour
     private float hitTimer;
     private float hitCooldown;
     private float spinDirection;
+    private readonly List<Collider2D> spinHits = new List<Collider2D>();
 
     private void Awake()
     {
@@ -58,7 +59,7 @@ public class SwordSkillController : MonoBehaviour
         if (isReturning)
         {
             transform.position = Vector2.MoveTowards(rb.transform.position, player.transform.position, returnSpeed * GameSimulationClock.FixedDeltaTime);
-            if (Vector2.Distance(transform.position, player.transform.position) < 1) player.CatchTheSword();
+            if (((Vector2)transform.position - (Vector2)player.transform.position).sqrMagnitude < 1f) player.CatchTheSword();
         }
         BounceLogic();
         SpinLogic();
@@ -87,8 +88,11 @@ public class SwordSkillController : MonoBehaviour
                 if (hitTimer < 0)
                 {
                     hitTimer = hitCooldown;
-                    Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, 1);
-                    foreach (var hit in colliders)
+                    var filter = new ContactFilter2D { useLayerMask = true, layerMask = Physics2D.DefaultRaycastLayers,
+                        useTriggers = Physics2D.queriesHitTriggers };
+                    spinHits.Clear();
+                    Physics2D.OverlapCircle(transform.position, 1, filter, spinHits);
+                    foreach (var hit in spinHits)
                     {
                         Enemy enemy = hit.GetComponent<Enemy>();
                         if (enemy)
@@ -114,7 +118,7 @@ public class SwordSkillController : MonoBehaviour
         if (isBouncing && enemyTarget.Count > 0)
         {
             transform.position = Vector2.MoveTowards(transform.position, enemyTarget[targetIndex].position, bounceSpeed * GameSimulationClock.FixedDeltaTime);
-            if (Vector2.Distance(transform.position, enemyTarget[targetIndex].position) < 0.1f)
+            if (((Vector2)transform.position - (Vector2)enemyTarget[targetIndex].position).sqrMagnitude < 0.01f)
             {
                 var enemy = enemyTarget[targetIndex].GetComponent<Enemy>();
                 if (Network != null) Network.Room.Hit(Network, enemy);
@@ -228,6 +232,11 @@ public class SwordSkillController : MonoBehaviour
         {
             if (isBouncing && enemyTarget.Count <= 0)
             {
+                if (Network != null)
+                {
+                    Network.Room.FillBounceTargets(transform.position, enemyTarget);
+                    return;
+                }
                 Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, 10);
                 foreach (var hit in colliders)
                 {

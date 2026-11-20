@@ -96,14 +96,17 @@ namespace Rpg.Networking
                     {
                         try
                         {
-                            var bytes = new byte[reader.Length];
-                            for (int i = 0; i < bytes.Length; i++) bytes[i] = reader.ReadByte();
-                            using (var stream = new MemoryStream(bytes, false))
-                            {
-                                if (!NetPacket.TryRead(stream, out short id, out byte[] payload) || stream.Position != stream.Length)
-                                    throw new InvalidDataException("Invalid UDP room packet.");
-                                pair.Value.UtpReceived(id, payload);
-                            }
+                            if (reader.Length < 4 + NetPacket.ProtocolIdSize)
+                                throw new InvalidDataException("Invalid UDP room packet.");
+                            int length = reader.ReadByte() | reader.ReadByte() << 8 |
+                                reader.ReadByte() << 16 | reader.ReadByte() << 24;
+                            if (length < NetPacket.ProtocolIdSize || length > NetPacket.MaxBodyLength ||
+                                reader.Length != 4 + length)
+                                throw new InvalidDataException("Invalid UDP room packet.");
+                            short id = unchecked((short)(reader.ReadByte() | reader.ReadByte() << 8));
+                            var payload = new byte[length - NetPacket.ProtocolIdSize];
+                            for (int i = 0; i < payload.Length; i++) payload[i] = reader.ReadByte();
+                            pair.Value.UtpReceived(id, payload);
                         }
                         catch (IOException error) { pair.Value.UtpFailed(error); driver.Disconnect(pair.Key); break; }
                     }

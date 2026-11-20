@@ -593,7 +593,7 @@ namespace Rpg.Networking
                 activeRoomIsHost ? (Action<SwordInstanceEventDto>)(value => host.SendSkillInstanceEvent(value)) : null,
                 activeRoomIsHost ? (Func<long>)(() => initializedLoadId) : null,
                 activeRoomIsHost ? (Action<int, int, long, SkillRequestRejection>)((playerId, entityId, seq, reason) =>
-                    RejectSkillRequest(playerId, entityId, RoomSkillId.Sword, seq, reason)) : null);
+                    RejectSkillRequest(playerId, entityId, RoomSkillId.Sword, seq, reason)) : null, Monsters);
             swords.EnsurePlayers();
         }
         private void OnSwordInput(RoomPlayerIdentity actor, SwordInputDto input) => swords?.Request(actor, input);

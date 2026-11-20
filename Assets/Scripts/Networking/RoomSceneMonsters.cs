@@ -18,10 +18,24 @@ namespace Rpg.Networking
             public bool Dead;
             public ulong RemovalTick;
             public Vector2 Position;
+            public Collider2D[] Colliders;
         }
         private readonly SortedDictionary<string, SceneEntry> sceneEntries = new SortedDictionary<string, SceneEntry>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> ids = new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<int, SceneEntry> byId = new Dictionary<int, SceneEntry>();
+        private readonly Dictionary<(int, int), List<KeyValuePair<int, SceneEntry>>> spatialCells =
+            new Dictionary<(int, int), List<KeyValuePair<int, SceneEntry>>>();
+        private readonly HashSet<int> spatialSeen = new HashSet<int>();
+        private readonly List<KeyValuePair<int, SceneEntry>> spatialCandidates = new List<KeyValuePair<int, SceneEntry>>();
+        private ulong spatialTick;
+        private int spatialCount = -1;
+        private const float SpatialCellSize = 25f;
+        private readonly List<KeyValuePair<int, SceneEntry>> deathEntries = new List<KeyValuePair<int, SceneEntry>>();
+        private readonly List<MonsterSpawnDto> snapshotSpawns = new List<MonsterSpawnDto>();
+        private MonsterStatesDto stateSnapshot;
+        private MonsterInitializationDto initializationSnapshot;
+        private readonly MonsterStateDto initializationState = new MonsterStateDto();
+        private readonly MonsterAttackDto emptyInitializationAttack = new MonsterAttackDto();
         private readonly Dictionary<int, MonsterSpawnDto> dynamicSpawns = new Dictionary<int, MonsterSpawnDto>();
         private readonly HashSet<int> stalledPositionLogged = new HashSet<int>();
         private readonly Dictionary<int, long> shownSpellActions = new Dictionary<int, long>();
@@ -92,6 +106,7 @@ namespace Rpg.Networking
         {
             Enemy enemy = entry.Enemy;
             enemy.gameObject.SetActive(false);
+            entry.Colliders = enemy.GetComponentsInChildren<Collider2D>(true);
             // Keep legacy update/event/drop paths dormant. A initializes combat data for the room hit/result pipeline.
             enemy.enabled = false;
             foreach (CharaterStats stats in enemy.GetComponentsInChildren<CharaterStats>(true)) stats.enabled = false;
@@ -119,20 +134,88 @@ namespace Rpg.Networking
         {
             Enemy selected = null; float nearest = float.PositiveInfinity; int selectedId = int.MaxValue;
             if (origin == null || !IsValidPrimaryAttackTarget(origin)) return null;
-            foreach (var entry in byId.Values)
+            Vector2 center = origin.transform.position;
+            CollectSpatialCandidates(center, 25f);
+            foreach (var pair in spatialCandidates)
             {
+                var entry = pair.Value;
                 var enemy = entry.Enemy;
                 if (enemy == origin || !IsValidPrimaryAttackTarget(enemy)) continue;
                 bool inRange = false;
-                foreach (var collider in enemy.GetComponentsInChildren<Collider2D>())
-                    if (collider.enabled && ((Vector2)collider.ClosestPoint(origin.transform.position) - (Vector2)origin.transform.position).sqrMagnitude <= 25 * 25)
+                foreach (var collider in entry.Colliders)
+                    if (collider != null && collider.enabled && collider.gameObject.activeInHierarchy &&
+                        ((Vector2)collider.ClosestPoint(center) - center).sqrMagnitude <= 25 * 25)
                     { inRange = true; break; }
                 if (!inRange) continue;
-                float distance = ((Vector2)enemy.transform.position - (Vector2)origin.transform.position).sqrMagnitude;
-                int id = enemy.GetComponent<NetworkEntityIdentity>().EntityId;
+                float distance = ((Vector2)enemy.transform.position - center).sqrMagnitude;
+                int id = pair.Key;
                 if (distance < nearest || distance == nearest && id < selectedId) { selected = enemy; nearest = distance; selectedId = id; }
             }
             return selected;
+        }
+
+        public void FillBounceTargets(Vector2 center, List<Transform> targets)
+        {
+            targets.Clear();
+            if (disposed || context == null || context.IsGuest) return;
+            CollectSpatialCandidates(center, 10f);
+            spatialCandidates.Sort((a, b) => a.Key.CompareTo(b.Key));
+            foreach (var pair in spatialCandidates)
+            {
+                foreach (var collider in pair.Value.Colliders)
+                    if (collider != null && collider.enabled && collider.gameObject.activeInHierarchy &&
+                        (Physics2D.DefaultRaycastLayers & (1 << collider.gameObject.layer)) != 0 &&
+                        (Physics2D.queriesHitTriggers || !collider.isTrigger) && collider.GetComponent<Enemy>() != null &&
+                        ((Vector2)collider.ClosestPoint(center) - center).sqrMagnitude <= 100f)
+                        targets.Add(collider.transform);
+            }
+        }
+
+        private void CollectSpatialCandidates(Vector2 center, float radius)
+        {
+            RebuildSpatialCells();
+            spatialCandidates.Clear();
+            spatialSeen.Clear();
+            int minX = Mathf.FloorToInt((center.x - radius) / SpatialCellSize);
+            int maxX = Mathf.FloorToInt((center.x + radius) / SpatialCellSize);
+            int minY = Mathf.FloorToInt((center.y - radius) / SpatialCellSize);
+            int maxY = Mathf.FloorToInt((center.y + radius) / SpatialCellSize);
+            for (int x = minX; x <= maxX; x++)
+                for (int y = minY; y <= maxY; y++)
+                    if (spatialCells.TryGetValue((x, y), out var bucket))
+                        foreach (var pair in bucket)
+                            if (spatialSeen.Add(pair.Key)) spatialCandidates.Add(pair);
+        }
+
+        private void RebuildSpatialCells()
+        {
+            ulong tick = GameSimulationClock.AuthorityTick;
+            if (spatialTick == tick && spatialCount == byId.Count) return;
+            foreach (var bucket in spatialCells.Values) bucket.Clear();
+            foreach (var pair in byId)
+            {
+                var entry = pair.Value;
+                if (!entry.Active || entry.Enemy == null || !entry.Enemy.gameObject.activeInHierarchy) continue;
+                foreach (var collider in entry.Colliders)
+                {
+                    if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy) continue;
+                    Bounds bounds = collider.bounds;
+                    int minX = Mathf.FloorToInt(bounds.min.x / SpatialCellSize);
+                    int maxX = Mathf.FloorToInt(bounds.max.x / SpatialCellSize);
+                    int minY = Mathf.FloorToInt(bounds.min.y / SpatialCellSize);
+                    int maxY = Mathf.FloorToInt(bounds.max.y / SpatialCellSize);
+                    for (int x = minX; x <= maxX; x++)
+                        for (int y = minY; y <= maxY; y++)
+                        {
+                            var cell = (x, y);
+                            if (!spatialCells.TryGetValue(cell, out var bucket))
+                                spatialCells.Add(cell, bucket = new List<KeyValuePair<int, SceneEntry>>());
+                            bucket.Add(pair);
+                        }
+                }
+            }
+            spatialTick = tick;
+            spatialCount = byId.Count;
         }
 
         private void Reveal()
@@ -161,25 +244,42 @@ namespace Rpg.Networking
         public MonsterInitializationDto Capture(long loadId, ulong tick)
         {
             if (disposed || context == null || context.IsGuest) throw new InvalidOperationException("Bind A's monsters first.");
-            var list = new List<InitialMonsterDto>();
+            var snapshot = initializationSnapshot ?? (initializationSnapshot = new MonsterInitializationDto());
+            if (snapshot.monsters == null || snapshot.monsters.Length != sceneEntries.Count)
+                snapshot.monsters = new InitialMonsterDto[sceneEntries.Count];
+            int index = 0;
             foreach (var pair in sceneEntries)
             {
                 SceneEntry entry = pair.Value;
                 var stats = entry.Enemy.GetComponent<EnemyStats>();
-                if (!context.TryGetEntity(ids[pair.Key], out var healthView))
+                int id = ids[pair.Key];
+                if (!context.TryGetEntity(id, out var healthView))
                     throw new InvalidOperationException("Registered monster presentation was lost.");
                 healthView.ApplyVersionedHealth(context.RoomSessionId, tick, stats.NetworkHealthVersion, stats.currentHealth, stats.GetMaxHealthValue());
                 healthView.MarkReady();
-                var state = CaptureState(entry, ids[pair.Key], true);
-                list.Add(new InitialMonsterDto { entityId = ids[pair.Key], sceneKey = pair.Key, monsterType = entry.Type,
-                    position = state.position, facingDir = state.facingDir, targetEntityId = state.targetEntityId,
-                    active = state.active, dead = state.dead, aiState = state.aiState, moving = state.moving,
-                    attack = state.aiState == MonsterAiState.Attack ? entry.Enemy.NetworkAttack : new MonsterAttackDto(),
-                    health = stats.currentHealth,
-                    maxHealth = stats.GetMaxHealthValue(), healthVersion = stats.NetworkHealthVersion });
+                var monster = snapshot.monsters[index] ?? (snapshot.monsters[index] = new InitialMonsterDto());
+                var state = CaptureState(entry, id, true, initializationState);
+                monster.entityId = id;
+                monster.sceneKey = pair.Key;
+                monster.monsterType = entry.Type;
+                monster.position = state.position;
+                monster.facingDir = state.facingDir;
+                monster.targetEntityId = state.targetEntityId;
+                monster.active = state.active;
+                monster.dead = state.dead;
+                monster.aiState = state.aiState;
+                monster.moving = state.moving;
+                monster.attack = state.aiState == MonsterAiState.Attack ? entry.Enemy.NetworkAttack : emptyInitializationAttack;
+                monster.health = stats.currentHealth;
+                monster.maxHealth = stats.GetMaxHealthValue();
+                monster.healthVersion = stats.NetworkHealthVersion;
+                index++;
             }
-            return new MonsterInitializationDto { roomSessionId = context.RoomSessionId, loadId = loadId,
-                authorityTick = tick, stateSeq = ++nextSeq, monsters = list.ToArray() };
+            snapshot.roomSessionId = context.RoomSessionId;
+            snapshot.loadId = loadId;
+            snapshot.authorityTick = tick;
+            snapshot.stateSeq = ++nextSeq;
+            return snapshot;
         }
 
         public bool Apply(RoomPresentationContext owner, MonsterInitializationDto value)
@@ -201,13 +301,13 @@ namespace Rpg.Networking
                 var entry = sceneEntries[state.sceneKey];
                 if (!ids.ContainsKey(state.sceneKey))
                 {
-                    Bind(entry, state.entityId, new Vector2(state.position[0], state.position[1]), state.facingDir);
+                    Bind(entry, state.entityId, state.position, state.facingDir);
                     ids.Add(state.sceneKey, state.entityId); byId.Add(state.entityId, entry);
                 }
                 if (!context.TryGetEntity(state.entityId, out var presentation))
                     throw new InvalidDataException("Registered monster entity was lost: " + state.entityId);
                 if (presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
-                        new Vector2(state.position[0], state.position[1]), true, state.facingDir,
+                        state.position, true, state.facingDir,
                         state.moving ? MovementAnimationState.Move : MovementAnimationState.Idle,
                         monsterAttack: state.aiState == MonsterAiState.Attack ? state.attack : null,
                         monsterTargetEntityId: state.targetEntityId))
@@ -275,7 +375,7 @@ namespace Rpg.Networking
                 entry.Enemy.ForgetNetworkPlayer(entityId);
         }
 
-        private static MonsterStateDto CaptureState(SceneEntry entry, int id, bool initial)
+        private static MonsterStateDto CaptureState(SceneEntry entry, int id, bool initial, MonsterStateDto state = null)
         {
             Enemy enemy = entry.Enemy;
             bool defeated = entry.Dead || enemy.GetComponent<EnemyStats>().currentHealth == 0;
@@ -284,16 +384,25 @@ namespace Rpg.Networking
             if ((aiState == MonsterAiState.Chase || aiState == MonsterAiState.Attack) && enemy.NetworkTarget != null)
                 targetId = enemy.NetworkTarget.GetComponent<NetworkEntityIdentity>()?.EntityId ?? 0;
             Vector2 position = initial ? (Vector2)enemy.transform.position : enemy.rb != null ? enemy.rb.position : entry.Position;
-            return new MonsterStateDto { entityId = id, position = new[] { position.x, position.y }, facingDir = enemy.facingDir,
-                targetEntityId = targetId, aiState = aiState, moving = !defeated && enemy.anim != null && enemy.anim.GetBool("Move"),
-                counterWindow = !defeated && enemy.CounterWindowOpen, dead = entry.Dead,
-                active = entry.Active && enemy.gameObject.activeInHierarchy };
+            state ??= new MonsterStateDto();
+            state.entityId = id;
+            state.position = position;
+            state.facingDir = enemy.facingDir;
+            state.targetEntityId = targetId;
+            state.aiState = aiState;
+            state.moving = !defeated && enemy.anim != null && enemy.anim.GetBool("Move");
+            state.counterWindow = !defeated && enemy.CounterWindowOpen;
+            state.dead = entry.Dead;
+            state.active = entry.Active && enemy.gameObject.activeInHierarchy;
+            return state;
         }
 
         public void AdvanceDeaths(ulong tick, AuthorityResultSequence sequence, Action<MonsterDeathDto> publish)
         {
             if (disposed || context == null || context.IsGuest) return;
-            foreach (var pair in new List<KeyValuePair<int, SceneEntry>>(byId))
+            deathEntries.Clear();
+            foreach (var pair in byId) deathEntries.Add(pair);
+            foreach (var pair in deathEntries)
             {
                 var entry = pair.Value;
                 if (!entry.Dead && entry.Active)
@@ -315,6 +424,7 @@ namespace Rpg.Networking
                 if (entry.Dead && entry.Active && tick >= entry.RemovalTick)
                 { entry.Active = false; entry.Enemy.gameObject.SetActive(false); }
             }
+            deathEntries.Clear();
         }
 
         private void RegisterDynamicSlime(Enemy_slime child, int sourceId, int facing)
@@ -452,24 +562,50 @@ namespace Rpg.Networking
         public MonsterStatesDto CaptureStates(long loadId, ulong tick)
         {
             if (disposed || context == null || context.IsGuest) throw new InvalidOperationException("Only A publishes monster movement.");
-            var list = new List<MonsterStateDto>();
-            var attacks = new List<MonsterAttackStateDto>();
-            var spells = new List<MonsterSpellStateDto>();
+            var snapshot = stateSnapshot ?? (stateSnapshot = new MonsterStatesDto());
+            int attackCount = 0, spellCount = 0;
             foreach (var pair in byId)
             {
-                var state = CaptureState(pair.Value, pair.Key, false);
-                list.Add(state);
+                if (pair.Value.Enemy.NetworkAiState == MonsterAiState.Attack && !pair.Value.Dead &&
+                    pair.Value.Enemy.GetComponent<EnemyStats>().currentHealth != 0) attackCount++;
+                if (pair.Value.Enemy is Enemy_Boss boss && boss.NetworkSpell != null &&
+                    tick >= boss.NetworkSpell.startTick && tick - boss.NetworkSpell.startTick < 100) spellCount++;
+            }
+            if (snapshot.monsters == null || snapshot.monsters.Length != byId.Count) snapshot.monsters = new MonsterStateDto[byId.Count];
+            if (snapshot.attacks == null || snapshot.attacks.Length != attackCount) snapshot.attacks = new MonsterAttackStateDto[attackCount];
+            if (snapshot.spells == null || snapshot.spells.Length != spellCount) snapshot.spells = new MonsterSpellStateDto[spellCount];
+            if (snapshot.spawns == null || snapshot.spawns.Length != dynamicSpawns.Count) snapshot.spawns = new MonsterSpawnDto[dynamicSpawns.Count];
+            int monsterIndex = 0, attackIndex = 0, spellIndex = 0;
+            foreach (var pair in byId)
+            {
+                var state = snapshot.monsters[monsterIndex] ?? (snapshot.monsters[monsterIndex] = new MonsterStateDto());
+                CaptureState(pair.Value, pair.Key, false, state);
+                monsterIndex++;
                 if (state.aiState == MonsterAiState.Attack)
-                    attacks.Add(new MonsterAttackStateDto { entityId = state.entityId,
-                        attack = pair.Value.Enemy.NetworkAttack });
+                {
+                    var attack = snapshot.attacks[attackIndex] ?? (snapshot.attacks[attackIndex] = new MonsterAttackStateDto());
+                    attack.entityId = state.entityId;
+                    attack.attack = pair.Value.Enemy.NetworkAttack;
+                    attackIndex++;
+                }
                 if (pair.Value.Enemy is Enemy_Boss boss && boss.NetworkSpell != null &&
                     tick >= boss.NetworkSpell.startTick && tick - boss.NetworkSpell.startTick < 100)
-                    spells.Add(new MonsterSpellStateDto { entityId = state.entityId, spell = boss.NetworkSpell });
+                {
+                    var spell = snapshot.spells[spellIndex] ?? (snapshot.spells[spellIndex] = new MonsterSpellStateDto());
+                    spell.entityId = state.entityId;
+                    spell.spell = boss.NetworkSpell;
+                    spellIndex++;
+                }
             }
-            var spawns = new List<MonsterSpawnDto>(dynamicSpawns.Values);
-            spawns.Sort((a, b) => a.entityId.CompareTo(b.entityId));
-            return new MonsterStatesDto { roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = tick,
-                stateSeq = ++nextSeq, monsters = list.ToArray(), attacks = attacks.ToArray(), spells = spells.ToArray(), spawns = spawns.ToArray() };
+            snapshotSpawns.Clear();
+            snapshotSpawns.AddRange(dynamicSpawns.Values);
+            snapshotSpawns.Sort((a, b) => a.entityId.CompareTo(b.entityId));
+            snapshotSpawns.CopyTo(snapshot.spawns);
+            snapshot.roomSessionId = context.RoomSessionId;
+            snapshot.loadId = loadId;
+            snapshot.authorityTick = tick;
+            snapshot.stateSeq = ++nextSeq;
+            return snapshot;
         }
 
         public void ApplyStates(MonsterStatesDto value)
@@ -503,7 +639,7 @@ namespace Rpg.Networking
                 if (!context.TryGetEntity(state.entityId, out var presentation))
                     throw new InvalidDataException("Registered monster entity was lost: " + state.entityId);
                 if (!presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
-                    new Vector2(state.position[0], state.position[1]), !entry.Enemy.gameObject.activeSelf, state.facingDir,
+                    state.position, !entry.Enemy.gameObject.activeSelf, state.facingDir,
                     state.moving ? MovementAnimationState.Move : MovementAnimationState.Idle,
                     monsterAttack: attacks.TryGetValue(state.entityId, out var attack) ? attack : null,
                     monsterTargetEntityId: state.targetEntityId))
@@ -543,7 +679,7 @@ namespace Rpg.Networking
             foreach (var entry in byId.Values)
                 { entry.Enemy.NetworkHits?.Reset(); entry.Enemy.NetworkHits = null; }
             foreach (var registration in registrations) registration.Dispose();
-            registrations.Clear(); ids.Clear(); byId.Clear(); dynamicSpawns.Clear(); shownSpellActions.Clear(); drops.Clear(); dropRegistrations.Clear(); context = null;
+            registrations.Clear(); ids.Clear(); byId.Clear(); deathEntries.Clear(); snapshotSpawns.Clear(); spatialCells.Clear(); spatialSeen.Clear(); spatialCandidates.Clear(); stateSnapshot = null; initializationSnapshot = null; dynamicSpawns.Clear(); shownSpellActions.Clear(); drops.Clear(); dropRegistrations.Clear(); context = null;
         }
     }
 }

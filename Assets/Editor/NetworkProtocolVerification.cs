@@ -215,8 +215,8 @@ public static class NetworkProtocolVerification
         {
             roomSessionId = Guid.NewGuid().ToString("N"), loadId = 1, authorityTick = 105, stateSeq = 2,
             attacks = Array.Empty<MonsterAttackStateDto>(), monsters = new[] {
-                new MonsterStateDto { entityId = 3, position = new[] { 1f, 2f }, facingDir = -1, aiState = MonsterAiState.Patrol, moving = true, active = true },
-                new MonsterStateDto { entityId = 4, targetEntityId = 20, position = new[] { 3f, 2f }, facingDir = 1, aiState = MonsterAiState.Chase, active = true }
+                new MonsterStateDto { entityId = 3, position = new Vector2(1f, 2f), facingDir = -1, aiState = MonsterAiState.Patrol, moving = true, active = true },
+                new MonsterStateDto { entityId = 4, targetEntityId = 20, position = new Vector2(3f, 2f), facingDir = 1, aiState = MonsterAiState.Chase, active = true }
             }
         };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value));
@@ -264,8 +264,8 @@ public static class NetworkProtocolVerification
             roomSessionId = Guid.NewGuid().ToString("N"), loadId = 1, authorityTick = 100, stateSeq = 1,
             monsters = new[]
             {
-                new InitialMonsterDto { entityId = 3, sceneKey = "Skeleton[0]", monsterType = "EnemySkeleton", position = new[] { 1f, 2f }, facingDir = 1, active = true, health = 100, maxHealth = 100, healthVersion = 1 },
-                new InitialMonsterDto { entityId = 4, sceneKey = "Skeleton[1]", monsterType = "EnemySkeleton", position = new[] { 3f, 2f }, facingDir = -1, health = 100, maxHealth = 100, healthVersion = 1 }
+                new InitialMonsterDto { entityId = 3, sceneKey = "Skeleton[0]", monsterType = "EnemySkeleton", position = new Vector2(1f, 2f), facingDir = 1, active = true, health = 100, maxHealth = 100, healthVersion = 1 },
+                new InitialMonsterDto { entityId = 4, sceneKey = "Skeleton[1]", monsterType = "EnemySkeleton", position = new Vector2(3f, 2f), facingDir = -1, health = 100, maxHealth = 100, healthVersion = 1 }
             }
         };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value));
@@ -362,17 +362,18 @@ public static class NetworkProtocolVerification
             players = new[]
             {
                 new PlayerPositionDto { facingDir = -1, entityId = 20, processedInputSeq = 7,
-                    position = new[] { -2.5f, 3f }, movementState = MovementAnimationState.Fall, yVelocity = -4 },
-                new PlayerPositionDto { facingDir = 1, entityId = 10, position = new[] { 1f, -4f } }
+                    position = new Vector2(-2.5f, 3f), movementState = MovementAnimationState.Fall, yVelocity = -4 },
+                new PlayerPositionDto { facingDir = 1, entityId = 10, position = new Vector2(1f, -4f) }
             }
         };
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value));
         string json = JsonUtility.ToJson(value);
+        RequireSend(json.Contains("\"position\":{\"x\":"), "Player positions serialize as Vector2 objects");
         RequireSend(!json.Contains("\"flask\"") && !json.Contains("\"parrying\"") && !json.Contains("\"parrySucceeded\"") &&
             json.Contains("\"skillFills\""), "Periodic player positions omit confirmed flask and derived parry data but retain unconfirmed skill fills");
         var copy = (PlayerPositionsDto)RoundTrip(value, true);
         RequireSend(copy.authorityTick == 200 && copy.stateSeq == 8 && copy.loadId == 1 &&
-            ProtocolCodec.FindPosition(copy, 10).position[1] == -4, "Two entity positions share one snapshot tick/sequence, independent of array order");
+            ProtocolCodec.FindPosition(copy, 10).position.y == -4, "Two entity positions share one snapshot tick/sequence, independent of array order");
         RequireSend(ProtocolCodec.FindPosition(copy, 20).facingDir == -1 && ProtocolCodec.FindPosition(copy, 10).facingDir == 1,
             "Each entity carries its own authoritative facing");
         RequireSend(ProtocolCodec.FindPosition(copy, 20).movementState == MovementAnimationState.Fall &&
@@ -402,12 +403,10 @@ public static class NetworkProtocolVerification
         value.players[1].entityId = 10;
         foreach (float coordinate in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity })
         {
-            value.players[0].position[0] = coordinate;
+            value.players[0].position = new Vector2(coordinate, 3f);
             NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         }
-        value.players[0].position = new[] { 0f, 0f, 0f };
-        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
-        value.players[0].position = new[] { 0f, 0f };
+        value.players[0].position = Vector2.zero;
         value.authorityTick = 0;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(value, true));
         value.authorityTick = 200; value.stateSeq = 0;
@@ -483,10 +482,10 @@ public static class NetworkProtocolVerification
             roomSessionId = Guid.NewGuid().ToString("N"), loadId = 1, authorityTick = 100, stateSeq = 1,
             players = new[]
             {
-                new InitialPlayerDto { facingDir = -1, playerId = 2, entityId = 20, position = new[] { 2.5f, -1.75f }, health = 125, maxHealth = 180, healthVersion = 1,
+                new InitialPlayerDto { facingDir = -1, playerId = 2, entityId = 20, position = new Vector2(2.5f, -1.75f), health = 125, maxHealth = 180, healthVersion = 1,
                     combat = Rpg.Networking.RoomCombatConfiguration.CreateTestProfile(false),
                     movementState = MovementAnimationState.Move },
-                new InitialPlayerDto { facingDir = 1, playerId = 1, entityId = 10, position = new[] { 0f, -1.75f }, health = 125, maxHealth = 140, healthVersion = 1,
+                new InitialPlayerDto { facingDir = 1, playerId = 1, entityId = 10, position = new Vector2(0f, -1.75f), health = 125, maxHealth = 140, healthVersion = 1,
                     combat = Rpg.Networking.RoomCombatConfiguration.CreateTestProfile(true) }
             }
         };
@@ -508,16 +507,14 @@ public static class NetworkProtocolVerification
         initial.players[0].facingDir = 0;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(initial, true));
         initial.players[0].facingDir = -1;
-        NetPacketVerificationCases.Require(copy.authorityTick == 100 && ProtocolCodec.FindPlayer(copy, 2, 20).position[0] == 2.5f,
+        NetPacketVerificationCases.Require(copy.authorityTick == 100 && ProtocolCodec.FindPlayer(copy, 2, 20).position.x == 2.5f,
             "Initial state uses the shared mapping, tick and identity lookup independent of array order");
         initial.players[1].entityId = 20;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(initial, true));
         initial.players[1].entityId = 10;
-        initial.players[0].position = null;
+        initial.players[0].position = new Vector2(float.NaN, 0);
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(initial, true));
-        initial.players[0].position = new[] { float.NaN, 0 };
-        NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(initial, true));
-        initial.players[0].position = new[] { 0f, 0f };
+        initial.players[0].position = Vector2.zero;
         initial.players[0].health = 181;
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Encode(initial, true));
         NetPacketVerificationCases.Expect<InvalidDataException>(() => ProtocolCodec.Decode((short)ProtocolId.PlayerInitialization, Encoding.UTF8.GetBytes("{}"), true));

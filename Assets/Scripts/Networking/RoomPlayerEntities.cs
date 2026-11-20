@@ -34,6 +34,9 @@ namespace Rpg.Networking
         private RoomPresentationContext context;
         private RoomPlayerIdentity hostIdentity, guestIdentity;
         private long nextStateSeq, appliedStateSeq;
+        private PlayerPositionsDto positionSnapshot;
+        private PlayerInitializationDto initializationSnapshot;
+        private readonly float[] authorityHudFills = new float[5];
         private ulong appliedStateTick;
         private long initializationLoadId;
         private bool disposed;
@@ -204,29 +207,36 @@ namespace Rpg.Networking
         {
             if (context == null || context.IsGuest || !AllStarted) throw new InvalidOperationException("A must finish both actor initializations first.");
             initializationLoadId = loadId;
-            var value = new PlayerInitializationDto
-            {
-                roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = authorityTick, stateSeq = ++nextStateSeq,
-                players = new[] { Capture(hostIdentity), Capture(guestIdentity) }
-            };
+            var value = initializationSnapshot ?? (initializationSnapshot = new PlayerInitializationDto
+                { players = new[] { new InitialPlayerDto(), new InitialPlayerDto() } });
+            value.roomSessionId = context.RoomSessionId;
+            value.loadId = loadId;
+            value.authorityTick = authorityTick;
+            value.stateSeq = ++nextStateSeq;
+            Capture(hostIdentity, value.players[0]);
+            Capture(guestIdentity, value.players[1]);
             ProtocolCodec.ValidateMessage(value, true);
             return value;
         }
 
-        private InitialPlayerDto Capture(RoomPlayerIdentity identity)
+        private void Capture(RoomPlayerIdentity identity, InitialPlayerDto state)
         {
             Player player = entities[identity.EntityId];
             int maximum = player.stats.GetMaxHealthValue();
-            return new InitialPlayerDto
-            {
-                playerId = identity.PlayerId, entityId = identity.EntityId,
-                position = new[] { player.transform.position.x, player.transform.position.y },
-                facingDir = player.facingDir,
-                movementState = player.MovementAnimation, yVelocity = player.rb.linearVelocity.y,
-                health = player.stats.currentHealth, maxHealth = maximum, healthVersion = player.stats.NetworkHealthVersion, currency = player.Combat.RoomCurrency,
-                deathCause = DeathCauseFor(identity.EntityId, player),
-                combat = player.Combat.CaptureRoomConfiguration(), attack = CaptureAttack(player), flask = player.Combat.CaptureRoomFlaskState()
-            };
+            state.playerId = identity.PlayerId;
+            state.entityId = identity.EntityId;
+            state.position = player.transform.position;
+            state.facingDir = player.facingDir;
+            state.movementState = player.MovementAnimation;
+            state.yVelocity = player.rb.linearVelocity.y;
+            state.health = player.stats.currentHealth;
+            state.maxHealth = maximum;
+            state.healthVersion = player.stats.NetworkHealthVersion;
+            state.currency = player.Combat.RoomCurrency;
+            state.deathCause = DeathCauseFor(identity.EntityId, player);
+            state.combat = player.Combat.CaptureRoomConfiguration();
+            state.attack = CaptureAttack(player);
+            state.flask = player.Combat.CaptureRoomFlaskState();
         }
 
         public void ApplyInitialState(PlayerInitializationDto value)
@@ -273,6 +283,8 @@ namespace Rpg.Networking
             rootRegistration.Dispose();
             registrations.Clear(); entities.Clear(); confirmedDeaths.Clear(); deathCauses.Clear(); pendingDeathCauses.Clear();
             context = null;
+            positionSnapshot = null;
+            initializationSnapshot = null;
         }
 
         public void EnableAuthoritativeMovement()
@@ -346,29 +358,34 @@ namespace Rpg.Networking
             if (disposed || context == null || context.IsGuest || !AllStarted || appliedStateSeq == 0)
                 throw new InvalidOperationException("Only initialized A authority can capture player positions.");
             ulong tick = GameSimulationClock.AuthorityTick; // Read once for the entire snapshot.
-            return new PlayerPositionsDto
-            {
-                roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = tick, stateSeq = ++nextStateSeq,
-                players = new[] { CapturePosition(hostIdentity), CapturePosition(guestIdentity) }
-            };
+            var snapshot = positionSnapshot ?? (positionSnapshot = new PlayerPositionsDto
+                { players = new[] { new PlayerPositionDto(), new PlayerPositionDto() } });
+            snapshot.roomSessionId = context.RoomSessionId;
+            snapshot.loadId = loadId;
+            snapshot.authorityTick = tick;
+            snapshot.stateSeq = ++nextStateSeq;
+            CapturePosition(hostIdentity, snapshot.players[0]);
+            CapturePosition(guestIdentity, snapshot.players[1]);
+            return snapshot;
         }
 
-        private PlayerPositionDto CapturePosition(RoomPlayerIdentity identity)
+        private void CapturePosition(RoomPlayerIdentity identity, PlayerPositionDto state)
         {
             Player player = entities[identity.EntityId];
             Vector2 position = player.rb.position;
             var movement = player.MovementAnimation;
-            return new PlayerPositionDto
-            {
-                entityId = identity.EntityId, processedInputSeq = player.LastSimulatedMovementInputSeq,
-                position = new[] { position.x, position.y }, facingDir = player.facingDir,
-                movementState = movement, yVelocity = player.rb.linearVelocity.y, attack = CaptureAttack(player),
-                deathCause = DeathCauseFor(identity.EntityId, player),
-                deathHealthVersion = player.stats.currentHealth == 0 ? player.stats.NetworkHealthVersion : 0,
-                deathMaxHealth = player.stats.currentHealth == 0 ? player.stats.GetMaxHealthValue() : 0,
-                skillFills = RoomCombatConfiguration.HudFills(player.Combat.Skills),
-                invincible = player.stats.isInvincible
-            };
+            state.entityId = identity.EntityId;
+            state.processedInputSeq = player.LastSimulatedMovementInputSeq;
+            state.position = position;
+            state.facingDir = player.facingDir;
+            state.movementState = movement;
+            state.yVelocity = player.rb.linearVelocity.y;
+            state.attack = CaptureAttack(player);
+            state.deathCause = DeathCauseFor(identity.EntityId, player);
+            state.deathHealthVersion = player.stats.currentHealth == 0 ? player.stats.NetworkHealthVersion : 0;
+            state.deathMaxHealth = player.stats.currentHealth == 0 ? player.stats.GetMaxHealthValue() : 0;
+            RoomCombatConfiguration.FillHudFills(player.Combat.Skills, state.skillFills);
+            state.invincible = player.stats.isInvincible;
         }
 
         private static PlayerAttackDto CaptureAttack(Player player)
@@ -392,13 +409,13 @@ namespace Rpg.Networking
                     !context.TryGetEntity(state.entityId, out var presentation)) continue;
                 // Each entity's position stream decides freshness independently of health/HUD and other entities.
                 bool applied = presentation.ApplyPosition(value.roomSessionId, value.authorityTick, value.stateSeq,
-                    new Vector2(state.position[0], state.position[1]), false, state.facingDir, state.movementState, state.yVelocity, playerAttack: state.attack);
+                    state.position, false, state.facingDir, state.movementState, state.yVelocity, playerAttack: state.attack);
                 if (applied)
                 {
                     var display = player.GetComponent<RemotePlayerView>();
                     if (player.IsLocalInputOwner)
                         player.GetComponent<LocalMovementPrediction>().CompareAuthority(value.authorityTick, state.processedInputSeq,
-                            new Vector2(state.position[0], state.position[1]), state.movementState);
+                            state.position, state.movementState);
                     display.ParryActive = state.movementState == MovementAnimationState.Parry ||
                         state.movementState == MovementAnimationState.ParrySuccess;
                     display.ParrySucceeded = state.movementState == MovementAnimationState.ParrySuccess;
@@ -545,8 +562,9 @@ namespace Rpg.Networking
                 if (pair.Value != null && context.TryGetEntity(pair.Key, out var view))
                 {
                     view.ApplyFlaskState(context.RoomSessionId, GameSimulationClock.AuthorityTick, pair.Value.Combat.CaptureRoomFlaskState());
+                    RoomCombatConfiguration.FillHudFills(pair.Value.Combat.Skills, authorityHudFills);
                     view.ApplySkillFills(context.RoomSessionId, GameSimulationClock.AuthorityTick, ++nextStateSeq,
-                        RoomCombatConfiguration.HudFills(pair.Value.Combat.Skills));
+                        authorityHudFills);
                 }
         }
 
@@ -603,7 +621,7 @@ namespace Rpg.Networking
             var value = new GameObject(name).transform;
             value.SetParent(parent, false); return value;
         }
-        private static Vector3 Position(InitialPlayerDto value) => new Vector3(value.position[0], value.position[1], 0);
+        private static Vector3 Position(InitialPlayerDto value) => new Vector3(value.position.x, value.position.y, 0);
         private static void DestroyObject(GameObject value)
         {
             value.SetActive(false);

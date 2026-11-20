@@ -107,6 +107,8 @@ public class Enemy : Entity
     public bool NetworkMovementOnly { get; private set; }
     private bool runtimeReady;
     private System.Func<IEnumerable<Player>> networkPlayers;
+    private readonly List<RaycastHit2D> targetRayHits = new List<RaycastHit2D>();
+    private bool selectingLivingTarget, targetRayReady;
     public void ConfigureNetworkMovement(System.Func<IEnumerable<Player>> players)
     { networkPlayers = players; NetworkMovementOnly = true; }
 
@@ -131,9 +133,17 @@ public class Enemy : Entity
     public virtual bool DetectsLivingTarget(Transform target)
     {
         if (!IsValidLivingTarget(target)) return false;
-        if (Vector2.Distance(transform.position, target.position) < 2) return true;
+        if (((Vector2)transform.position - (Vector2)target.position).sqrMagnitude < 4f) return true;
         // Retain the original forward ray/range/mask, but consider all hits: a corpse or physics hit ordering cannot pick the target.
-        foreach (var hit in Physics2D.RaycastAll(wallCheck.position, Vector2.right * facingDir, 50, whatIsPlayer))
+        if (!selectingLivingTarget || !targetRayReady)
+        {
+            var filter = new ContactFilter2D { useLayerMask = true, layerMask = whatIsPlayer,
+                useTriggers = Physics2D.queriesHitTriggers };
+            targetRayHits.Clear();
+            Physics2D.Raycast(wallCheck.position, Vector2.right * facingDir, filter, targetRayHits, 50);
+            targetRayReady = true;
+        }
+        foreach (var hit in targetRayHits)
         {
             var player = hit.collider != null ? hit.collider.GetComponentInParent<Player>() : null;
             if (IsLivingPlayer(player) && player.transform == target) return true;
@@ -145,15 +155,22 @@ public class Enemy : Entity
     {
         Transform nearest = null; float distance = float.PositiveInfinity; int orderId = int.MaxValue;
         if (!IsAuthoritative) return null;
-        foreach (Player candidate in TargetCandidates)
+        // Candidate players share the same ray during this selection pass.
+        selectingLivingTarget = detectedOnly;
+        targetRayReady = false;
+        try
         {
-            if (!IsLivingPlayer(candidate) || detectedOnly && !DetectsLivingTarget(candidate.transform)) continue;
-            float current = ((Vector2)candidate.transform.position - (Vector2)transform.position).sqrMagnitude;
-            if (float.IsNaN(current) || float.IsInfinity(current)) continue;
-            int id = TargetOrderId(candidate);
-            if (current < distance || current == distance && id < orderId)
-            { distance = current; orderId = id; nearest = candidate.transform; }
+            foreach (Player candidate in TargetCandidates)
+            {
+                if (!IsLivingPlayer(candidate) || detectedOnly && !DetectsLivingTarget(candidate.transform)) continue;
+                float current = ((Vector2)candidate.transform.position - (Vector2)transform.position).sqrMagnitude;
+                if (float.IsNaN(current) || float.IsInfinity(current)) continue;
+                int id = TargetOrderId(candidate);
+                if (current < distance || current == distance && id < orderId)
+                { distance = current; orderId = id; nearest = candidate.transform; }
+            }
         }
+        finally { selectingLivingTarget = false; }
         return nearest;
     }
     [SerializeField] protected LayerMask whatIsPlayer;
