@@ -27559,7 +27559,7 @@ MonoBehaviour:
   battleTime: 5
   agroDistance: 2
   attackDistance: 2
-  attackCooldown: 0.5
+  attackCooldown: 0.8
   lastTimeAttacked: 0
   stunnedDuration: 1
   stunnedDir: {x: 3, y: 2}
@@ -27645,7 +27645,7 @@ MonoBehaviour:
   isChilled: 0
   isShocked: 0
   alimentDuration: 4
-  shockStrikePrefab: {fileID: 0}
+  shockStrikePrefab: {fileID: 9188914614521870509, guid: c5e0e9109d361b041b0a4995942f7a3b, type: 3}
   currentHealth: 0
   enemy: {fileID: 0}
   soulsDropAmount:

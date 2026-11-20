@@ -14,6 +14,11 @@ public class BossTeleportState : EnemyState
         base.Enter();
         enemy.stats.MakeInvincible(true);
         stateTimer = 1.1f;
+        if (enemy.NetworkMovementOnly)
+        {
+            enemy.SetVelocity(0, 0);
+            enemy.GetComponent<EntityFX>()?.MakeTransparent(true);
+        }
     }
 
     public override void Update()
@@ -21,6 +26,7 @@ public class BossTeleportState : EnemyState
         base.Update();
         if (stateTimer <= 0)
         {
+            if (enemy.NetworkMovementOnly) enemy.FindPosition();
             if(enemy.CanSpellCast()) stateMachine.ChangeState(enemy.castState);
             else stateMachine.ChangeState(enemy.battleState);
         }
@@ -30,5 +36,6 @@ public class BossTeleportState : EnemyState
     {
         base.Exit();
         enemy.stats.MakeInvincible(false);
+        if (enemy.NetworkMovementOnly) enemy.GetComponent<EntityFX>()?.MakeTransparent(false);
     }
 }

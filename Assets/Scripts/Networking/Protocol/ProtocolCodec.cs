@@ -369,7 +369,7 @@ namespace Rpg.Networking.Protocol
             return true;
         }
 
-        private static bool ValidMonsterAi(MonsterAiState state) => state >= MonsterAiState.Idle && state <= MonsterAiState.Stunned;
+        private static bool ValidMonsterAi(MonsterAiState state) => state >= MonsterAiState.Idle && state <= MonsterAiState.Cast;
         public static bool IsValidMonsterAttack(MonsterAttackDto attack, ulong tick) => attack != null && attack.actionId > 0 &&
             attack.actionNumber == 1 && attack.startTick > 0 && attack.startTick <= tick && attack.durationTicks > 0 &&
             attack.durationTicks <= 3000 && (attack.facingDir == -1 || attack.facingDir == 1);
@@ -379,7 +379,9 @@ namespace Rpg.Networking.Protocol
         private static bool ValidMonsterStates(MonsterStatesDto value)
         {
             if (!Guid.TryParseExact(value.roomSessionId, "N", out _) || value.loadId <= 0 || value.authorityTick == 0 || value.stateSeq <= 0 ||
-                value.monsters == null || value.monsters.Length > 1024 || value.attacks == null || value.attacks.Length > value.monsters.Length) return false;
+                value.monsters == null || value.monsters.Length > 1024 || value.attacks == null || value.attacks.Length > value.monsters.Length ||
+                value.spells == null || value.spells.Length > value.monsters.Length ||
+                value.spawns == null || value.spawns.Length > value.monsters.Length) return false;
             var attacks = new System.Collections.Generic.Dictionary<int, MonsterAttackDto>();
             foreach (var action in value.attacks)
                 if (action == null || action.entityId <= 0 || !IsValidMonsterAttack(action.attack, value.authorityTick) ||
@@ -395,6 +397,19 @@ namespace Rpg.Networking.Protocol
                     !ValidMonsterAction(monster.aiState, monster.moving, monster.facingDir,
                         attacks.TryGetValue(monster.entityId, out var attack) ? attack : null, value.authorityTick)) return false;
             foreach (int entityId in attacks.Keys) if (!ids.Contains(entityId)) return false;
+            var spawnedIds = new System.Collections.Generic.HashSet<int>();
+            foreach (var spawn in value.spawns)
+                if (spawn == null || spawn.entityId <= 0 || spawn.sourceEntityId <= 0 || spawn.entityId == spawn.sourceEntityId ||
+                    !ids.Contains(spawn.entityId) || !ids.Contains(spawn.sourceEntityId) || !spawnedIds.Add(spawn.entityId) ||
+                    spawn.position == null || spawn.position.Length != 2 || !ValidCoordinate(spawn.position[0]) ||
+                    !ValidCoordinate(spawn.position[1]) || (spawn.facingDir != -1 && spawn.facingDir != 1) ||
+                    !ValidHealth(spawn.health, spawn.maxHealth, spawn.healthVersion)) return false;
+            var spellIds = new System.Collections.Generic.HashSet<int>();
+            foreach (var spell in value.spells)
+                if (spell == null || spell.entityId <= 0 || !ids.Contains(spell.entityId) || !spellIds.Add(spell.entityId) ||
+                    spell.spell == null || spell.spell.actionId <= 0 || spell.spell.startTick == 0 || spell.spell.startTick > value.authorityTick ||
+                    spell.spell.position == null || spell.spell.position.Length != 2 ||
+                    !ValidCoordinate(spell.spell.position[0]) || !ValidCoordinate(spell.spell.position[1])) return false;
             return true;
         }
 

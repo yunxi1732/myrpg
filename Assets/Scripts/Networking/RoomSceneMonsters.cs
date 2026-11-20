@@ -22,12 +22,17 @@ namespace Rpg.Networking
         private readonly SortedDictionary<string, SceneEntry> sceneEntries = new SortedDictionary<string, SceneEntry>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> ids = new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<int, SceneEntry> byId = new Dictionary<int, SceneEntry>();
+        private readonly Dictionary<int, MonsterSpawnDto> dynamicSpawns = new Dictionary<int, MonsterSpawnDto>();
         private readonly HashSet<int> stalledPositionLogged = new HashSet<int>();
+        private readonly Dictionary<int, long> shownSpellActions = new Dictionary<int, long>();
         private readonly Dictionary<int, ItemObject> drops = new Dictionary<int, ItemObject>();
         private readonly Dictionary<int, RoomNetworkObjects.Registration> dropRegistrations = new Dictionary<int, RoomNetworkObjects.Registration>();
         private readonly List<RoomNetworkObjects.Registration> registrations = new List<RoomNetworkObjects.Registration>();
         private readonly RoomNetworkObjects objects;
         private RoomPresentationContext context;
+        private Func<int> allocateMonsterId;
+        private RoomPlayerEntities authorityPlayers;
+        private RoomCombatDamage damageService;
         private long nextSeq, appliedSeq;
         private ulong appliedTick;
         private bool disposed;
@@ -72,6 +77,7 @@ namespace Rpg.Networking
             if (disposed || owner == null || owner.IsGuest) throw new InvalidOperationException("Only A allocates monster IDs.");
             if (context != null) { if (!ReferenceEquals(context, owner)) throw new InvalidOperationException("Old monster room context."); return; }
             context = owner;
+            allocateMonsterId = allocateId;
             foreach (var pair in sceneEntries)
             {
                 int id = allocateId();
@@ -168,7 +174,7 @@ namespace Rpg.Networking
                 list.Add(new InitialMonsterDto { entityId = ids[pair.Key], sceneKey = pair.Key, monsterType = entry.Type,
                     position = state.position, facingDir = state.facingDir, targetEntityId = state.targetEntityId,
                     active = state.active, dead = state.dead, aiState = state.aiState, moving = state.moving,
-                    attack = state.aiState == MonsterAiState.Attack ? ((EnemySkeleton)entry.Enemy).NetworkAttack : new MonsterAttackDto(),
+                    attack = state.aiState == MonsterAiState.Attack ? entry.Enemy.NetworkAttack : new MonsterAttackDto(),
                     health = stats.currentHealth,
                     maxHealth = stats.GetMaxHealthValue(), healthVersion = stats.NetworkHealthVersion });
             }
@@ -208,6 +214,7 @@ namespace Rpg.Networking
                 {
                     entry.Active = state.active;
                     if (!state.active) entry.Enemy.gameObject.SetActive(false);
+                    entry.Enemy.GetComponent<RemotePlayerView>()?.SetMonsterAiState(state.aiState);
                 }
                 presentation.ApplyVersionedHealth(value.roomSessionId, value.authorityTick, state.healthVersion, state.health, state.maxHealth);
                 if (state.dead) ShowDeath(entry);
@@ -220,9 +227,10 @@ namespace Rpg.Networking
         public void EnableAuthorityMovement(RoomPlayerEntities players)
         {
             if (disposed || context == null || context.IsGuest) return;
+            authorityPlayers = players;
             foreach (var entry in sceneEntries.Values)
             {
-                if (!entry.Active || entry.Enemy == null || !(entry.Enemy is EnemySkeleton)) continue;
+                if (!entry.Active || entry.Enemy == null) continue;
                 entry.Enemy.ConfigureNetworkMovement(() => players.Entities.Values);
                 entry.Enemy.GetComponent<NetworkEntityIdentity>().ReleaseAuthoritativeMovement();
                 entry.Enemy.enabled = true;
@@ -232,14 +240,23 @@ namespace Rpg.Networking
         public void BindDamageService(RoomCombatDamage damage)
         {
             if (disposed || context == null || context.IsGuest || damage == null) return;
+            damageService = damage;
             foreach (var entry in byId.Values)
-                if (entry.Enemy is EnemySkeleton skeleton)
-                {
-                    if (skeleton.NetworkHits == null)
-                        skeleton.NetworkHits = new MonsterAttackHitDetection(skeleton, objects.AllocatePrimaryAttackInstanceId, damage.IsValidPlayerTarget);
-                    skeleton.NetworkHits.HitConfirmed -= damage.OnMonsterHit;
-                    skeleton.NetworkHits.HitConfirmed += damage.OnMonsterHit;
-                }
+                AttachDamage(entry.Enemy);
+        }
+
+        private void AttachDamage(Enemy enemy)
+        {
+            if (enemy == null || damageService == null) return;
+            if (enemy.NetworkHits == null)
+                enemy.NetworkHits = new MonsterAttackHitDetection(enemy, objects.AllocatePrimaryAttackInstanceId, damageService.IsValidPlayerTarget);
+            enemy.NetworkHits.HitConfirmed -= damageService.OnMonsterHit;
+            enemy.NetworkHits.HitConfirmed += damageService.OnMonsterHit;
+            if (enemy is Enemy_Boss boss)
+            {
+                boss.NetworkSpellHit -= damageService.OnBossSpellHit;
+                boss.NetworkSpellHit += damageService.OnBossSpellHit;
+            }
         }
 
         public void HoldForRoomRetry()
@@ -248,25 +265,24 @@ namespace Rpg.Networking
             {
                 entry.Enemy.enabled = false;
                 if (entry.Enemy.rb != null) entry.Enemy.rb.linearVelocity = Vector2.zero;
-                if (entry.Enemy is EnemySkeleton skeleton) skeleton.NetworkHits?.Reset();
+                entry.Enemy.NetworkHits?.Reset();
             }
         }
 
         public void ForgetPlayerTarget(int entityId)
         {
             foreach (var entry in byId.Values)
-                if (entry.Enemy is EnemySkeleton skeleton) skeleton.battleState.ForgetRoomPlayer(entityId);
+                entry.Enemy.ForgetNetworkPlayer(entityId);
         }
 
         private static MonsterStateDto CaptureState(SceneEntry entry, int id, bool initial)
         {
             Enemy enemy = entry.Enemy;
-            var skeleton = enemy as EnemySkeleton;
             bool defeated = entry.Dead || enemy.GetComponent<EnemyStats>().currentHealth == 0;
-            MonsterAiState aiState = !defeated && skeleton != null ? skeleton.NetworkAiState : MonsterAiState.Idle;
+            MonsterAiState aiState = !defeated ? enemy.NetworkAiState : MonsterAiState.Idle;
             int targetId = 0;
-            if (skeleton != null && (aiState == MonsterAiState.Chase || aiState == MonsterAiState.Attack) && skeleton.battleState.Target != null)
-                targetId = skeleton.battleState.Target.GetComponent<NetworkEntityIdentity>().EntityId;
+            if ((aiState == MonsterAiState.Chase || aiState == MonsterAiState.Attack) && enemy.NetworkTarget != null)
+                targetId = enemy.NetworkTarget.GetComponent<NetworkEntityIdentity>()?.EntityId ?? 0;
             Vector2 position = initial ? (Vector2)enemy.transform.position : enemy.rb != null ? enemy.rb.position : entry.Position;
             return new MonsterStateDto { entityId = id, position = new[] { position.x, position.y }, facingDir = enemy.facingDir,
                 targetEntityId = targetId, aiState = aiState, moving = !defeated && enemy.anim != null && enemy.anim.GetBool("Move"),
@@ -277,7 +293,7 @@ namespace Rpg.Networking
         public void AdvanceDeaths(ulong tick, AuthorityResultSequence sequence, Action<MonsterDeathDto> publish)
         {
             if (disposed || context == null || context.IsGuest) return;
-            foreach (var pair in byId)
+            foreach (var pair in new List<KeyValuePair<int, SceneEntry>>(byId))
             {
                 var entry = pair.Value;
                 if (!entry.Dead && entry.Active)
@@ -286,8 +302,10 @@ namespace Rpg.Networking
                     if (stats.IsRuntimeInitialized && stats.currentHealth == 0)
                     {
                         entry.RemovalTick = checked(tick + (ulong)Mathf.CeilToInt(5f / GameSimulationClock.FixedDeltaTime));
-                        if (entry.Enemy is EnemySkeleton skeleton) { skeleton.NetworkHits?.Reset(); skeleton.Die(); }
+                        entry.Enemy.NetworkHits?.Reset(); entry.Enemy.Die();
                         ShowDeath(entry);
+                        if (entry.Enemy is Enemy_slime slime)
+                            slime.SpawnNetworkChildren(child => RegisterDynamicSlime(child, pair.Key, slime.facingDir));
                         var result = new MonsterDeathDto { roomSessionId = context.RoomSessionId, authorityTick = tick,
                             resultId = sequence.Allocate(), entityId = pair.Key, healthVersion = stats.NetworkHealthVersion,
                             maxHealth = stats.GetMaxHealthValue() };
@@ -297,6 +315,26 @@ namespace Rpg.Networking
                 if (entry.Dead && entry.Active && tick >= entry.RemovalTick)
                 { entry.Active = false; entry.Enemy.gameObject.SetActive(false); }
             }
+        }
+
+        private void RegisterDynamicSlime(Enemy_slime child, int sourceId, int facing)
+        {
+            if (child == null || allocateMonsterId == null || authorityPlayers == null) return;
+            int id = allocateMonsterId();
+            var entry = new SceneEntry { Key = "slime:" + id, Type = child.GetType().FullName,
+                Enemy = child, Active = true, Position = child.transform.position };
+            Bind(entry, id, entry.Position, child.facingDir);
+            byId.Add(id, entry);
+            var stats = child.GetComponent<EnemyStats>();
+            dynamicSpawns.Add(id, new MonsterSpawnDto { entityId = id, sourceEntityId = sourceId,
+                position = new[] { entry.Position.x, entry.Position.y }, facingDir = child.facingDir,
+                health = stats.currentHealth, maxHealth = stats.GetMaxHealthValue(), healthVersion = stats.NetworkHealthVersion });
+            child.ConfigureNetworkMovement(() => authorityPlayers.Entities.Values);
+            AttachDamage(child);
+            child.GetComponent<NetworkEntityIdentity>().ReleaseAuthoritativeMovement();
+            child.enabled = true;
+            child.gameObject.SetActive(true);
+            child.SetupSlime(facing);
         }
 
         public int MonsterCurrency(int entityId) => byId[entityId].Enemy.GetComponent<EnemyStats>().soulsDropAmount.GetValue();
@@ -399,9 +437,16 @@ namespace Rpg.Networking
             }
             var feedback = enemy.GetComponent<NetworkHitFeedback>();
             if (feedback != null) feedback.enabled = false;
-            if (enemy is EnemySkeleton skeleton) skeleton.NetworkHits?.Reset();
+            enemy.NetworkHits?.Reset();
             enemy.cd.enabled = false;
             enemy.anim.speed = 0;
+            var healthBar = enemy.GetComponentInChildren<UI_HealthBar>(true);
+            if (healthBar != null) healthBar.gameObject.SetActive(false);
+            if (enemy is Enemy_slime)
+            {
+                var sprite = enemy.GetComponentInChildren<SpriteRenderer>(true);
+                if (sprite != null) sprite.enabled = false;
+            }
         }
 
         public MonsterStatesDto CaptureStates(long loadId, ulong tick)
@@ -409,22 +454,44 @@ namespace Rpg.Networking
             if (disposed || context == null || context.IsGuest) throw new InvalidOperationException("Only A publishes monster movement.");
             var list = new List<MonsterStateDto>();
             var attacks = new List<MonsterAttackStateDto>();
-            foreach (var pair in sceneEntries)
+            var spells = new List<MonsterSpellStateDto>();
+            foreach (var pair in byId)
             {
-                var state = CaptureState(pair.Value, ids[pair.Key], false);
+                var state = CaptureState(pair.Value, pair.Key, false);
                 list.Add(state);
                 if (state.aiState == MonsterAiState.Attack)
                     attacks.Add(new MonsterAttackStateDto { entityId = state.entityId,
-                        attack = ((EnemySkeleton)pair.Value.Enemy).NetworkAttack });
+                        attack = pair.Value.Enemy.NetworkAttack });
+                if (pair.Value.Enemy is Enemy_Boss boss && boss.NetworkSpell != null &&
+                    tick >= boss.NetworkSpell.startTick && tick - boss.NetworkSpell.startTick < 100)
+                    spells.Add(new MonsterSpellStateDto { entityId = state.entityId, spell = boss.NetworkSpell });
             }
+            var spawns = new List<MonsterSpawnDto>(dynamicSpawns.Values);
+            spawns.Sort((a, b) => a.entityId.CompareTo(b.entityId));
             return new MonsterStatesDto { roomSessionId = context.RoomSessionId, loadId = loadId, authorityTick = tick,
-                stateSeq = ++nextSeq, monsters = list.ToArray(), attacks = attacks.ToArray() };
+                stateSeq = ++nextSeq, monsters = list.ToArray(), attacks = attacks.ToArray(), spells = spells.ToArray(), spawns = spawns.ToArray() };
         }
 
         public void ApplyStates(MonsterStatesDto value)
         {
             ProtocolCodec.ValidateMessage(value, true);
             if (disposed || context == null || !context.IsGuest || value.roomSessionId != context.RoomSessionId) return;
+            foreach (var spawn in value.spawns)
+            {
+                if (byId.ContainsKey(spawn.entityId)) continue;
+                if (!byId.TryGetValue(spawn.sourceEntityId, out var source) || !(source.Enemy is Enemy_slime parent) ||
+                    parent.NetworkChildPrefab == null) throw new InvalidDataException("Unknown slime spawn source: " + spawn.sourceEntityId);
+                var child = UnityEngine.Object.Instantiate(parent.NetworkChildPrefab,
+                    new Vector3(spawn.position[0], spawn.position[1]), Quaternion.identity).GetComponent<Enemy_slime>();
+                var entry = new SceneEntry { Key = "slime:" + spawn.entityId, Type = child.GetType().FullName,
+                    Enemy = child, Active = true, Position = child.transform.position };
+                Bind(entry, spawn.entityId, entry.Position, spawn.facingDir);
+                byId.Add(spawn.entityId, entry);
+                dynamicSpawns.Add(spawn.entityId, spawn);
+                if (context.TryGetEntity(spawn.entityId, out var childView))
+                { childView.ApplyVersionedHealth(value.roomSessionId, value.authorityTick,
+                    spawn.healthVersion, spawn.health, spawn.maxHealth); childView.MarkReady(); }
+            }
             var attacks = new Dictionary<int, MonsterAttackDto>();
             foreach (var action in value.attacks) attacks.Add(action.entityId, action.attack);
             foreach (var state in value.monsters)
@@ -448,6 +515,7 @@ namespace Rpg.Networking
                 }
                 stalledPositionLogged.Remove(state.entityId);
                 var display = entry.Enemy.GetComponent<RemotePlayerView>();
+                display?.SetMonsterAiState(state.aiState);
                 bool stunned = !entry.Dead && state.aiState == MonsterAiState.Stunned;
                 if (stunned != display.MonsterStunned)
                 {
@@ -459,6 +527,13 @@ namespace Rpg.Networking
                 if (!entry.Dead) entry.Enemy.ShowCounterWindow(state.counterWindow);
                 entry.Enemy.gameObject.SetActive(state.active);
             }
+            foreach (var action in value.spells)
+            {
+                if (!byId.TryGetValue(action.entityId, out var entry) || !(entry.Enemy is Enemy_Boss boss) || entry.Dead) continue;
+                if (shownSpellActions.TryGetValue(action.entityId, out long shown) && shown >= action.spell.actionId) continue;
+                shownSpellActions[action.entityId] = action.spell.actionId;
+                boss.SpawnNetworkSpellVisual(new Vector2(action.spell.position[0], action.spell.position[1]));
+            }
         }
 
         public void Dispose()
@@ -466,9 +541,9 @@ namespace Rpg.Networking
             if (disposed) return;
             disposed = true;
             foreach (var entry in byId.Values)
-                if (entry.Enemy is EnemySkeleton skeleton) { skeleton.NetworkHits?.Reset(); skeleton.NetworkHits = null; }
+                { entry.Enemy.NetworkHits?.Reset(); entry.Enemy.NetworkHits = null; }
             foreach (var registration in registrations) registration.Dispose();
-            registrations.Clear(); ids.Clear(); byId.Clear(); drops.Clear(); dropRegistrations.Clear(); context = null;
+            registrations.Clear(); ids.Clear(); byId.Clear(); dynamicSpawns.Clear(); shownSpellActions.Clear(); drops.Clear(); dropRegistrations.Clear(); context = null;
         }
     }
 }

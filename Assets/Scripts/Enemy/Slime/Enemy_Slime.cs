@@ -5,10 +5,25 @@ using UnityEngine;
 public enum SlimeType { big, medium, small}
 public class Enemy_slime : Enemy
 {
+    public override string NetworkAttackClip => "SlimeAttack";
+    public override string NetworkMoveClip => "SlimeMove";
+    public override string NetworkIdleClip => "SlimeIdle";
+    public override string NetworkStunClip => "SlimeStunned";
+    public override string NetworkStunParameter => "Stun";
+    public override EnemyState NetworkIdleState => idleState;
+    public override EnemyState NetworkMoveState => moveState;
+    public override EnemyState NetworkBattleState => battleState;
+    public override EnemyState NetworkAttackState => attackState;
+    public override EnemyState NetworkStunnedState => stunnedState;
+    public override EnemyState NetworkDeadState => deadState;
+    public override Transform NetworkTarget => battleState?.Target;
+    public override void ForgetNetworkPlayer(int entityId) => battleState?.ForgetRoomPlayer(entityId);
+    private void OnDisable() => NetworkHits?.Reset();
     [Header("Slime spesific")]
     [SerializeField] private SlimeType slimeType;
     [SerializeField] private int slimesToCreate;
     [SerializeField] private GameObject slimePrefab;
+    public GameObject NetworkChildPrefab => slimePrefab;
     [SerializeField] private Vector2 minCreationVelocity;
     [SerializeField] private Vector2 maxCreationVelocity;
 
@@ -49,7 +64,7 @@ public class Enemy_slime : Enemy
         if (!IsAuthoritative) return;
         base.Die();
         stateMachine.ChangeState(deadState);
-        if (slimeType == SlimeType.small) return;
+        if (NetworkMovementOnly || slimeType == SlimeType.small) return;
         CreateSlimes(slimesToCreate, slimePrefab);
     }
 
@@ -59,6 +74,16 @@ public class Enemy_slime : Enemy
         {
             GameObject newSlime = Instantiate(_prefab, transform.position, Quaternion.identity);
             newSlime.GetComponent<Enemy_slime>().SetupSlime(facingDir);
+        }
+    }
+
+    public void SpawnNetworkChildren(Action<Enemy_slime> register)
+    {
+        if (!NetworkMovementOnly || slimeType == SlimeType.small || slimePrefab == null || register == null) return;
+        for (int i = 0; i < slimesToCreate; i++)
+        {
+            var child = Instantiate(slimePrefab, transform.position, Quaternion.identity).GetComponent<Enemy_slime>();
+            register(child);
         }
     }
 

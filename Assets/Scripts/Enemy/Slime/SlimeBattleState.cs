@@ -6,6 +6,15 @@ public class SlimeBattleState : SlimeGroundedState
 {
     private Transform player;
     private int moveDir;
+    public Transform Target => player;
+
+    public void ForgetRoomPlayer(int entityId)
+    {
+        if (player == null || player.GetComponent<Rpg.Networking.NetworkEntityIdentity>()?.EntityId != entityId) return;
+        player = null;
+        if (stateMachine.currentState == this || stateMachine.currentState == enemy.attackState)
+            stateMachine.ChangeState(enemy.idleState);
+    }
 
     public SlimeBattleState(Enemy _enemyBase, EnemyStateMachine _stateMachine, string _animBoolName, Enemy_slime _enemy) : base(_enemyBase, _stateMachine, _animBoolName, _enemy)
     {

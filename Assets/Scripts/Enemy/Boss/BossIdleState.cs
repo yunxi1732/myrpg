@@ -15,6 +15,7 @@ public class BossIdleState : EnemyState
     {
         base.Enter();
         stateTimer = enemy.idleTime;
+        if (enemy.NetworkMovementOnly) enemy.SetVelocity(0, rb.linearVelocity.y);
     }
 
     public override void Exit()
@@ -25,7 +26,7 @@ public class BossIdleState : EnemyState
     public override void Update()
     {
         base.Update();
-        if (enemy.SelectLivingTarget(true) != null)
+        if (enemy.bossFightBegin && enemy.SelectLivingTarget(false) != null)
         {
             stateMachine.ChangeState(enemy.battleState);
             return;

@@ -14,12 +14,18 @@ public class BossAttackState : EnemyState
     public override void Enter()
     {
         base.Enter();
-        AudioManager.instance.PlaySFX(17, enemy.transform);
+        if (enemy.NetworkMovementOnly) enemy.BeginNetworkAttack();
+        else AudioManager.instance.PlaySFX(17, enemy.transform);
         enemy.chanceToTeleport += 5;
     }
 
     public override void Exit()
     {
+        if (enemy.NetworkMovementOnly)
+        {
+            enemy.NetworkHits?.Reset();
+            enemy.anim.speed = enemy.GetComponent<Rpg.Networking.NetworkElementState>()?.NormalAnimationSpeed ?? 1;
+        }
         base.Exit();
         enemy.lastTimeAttacked = GameSimulationClock.Time;
     }
@@ -27,7 +33,15 @@ public class BossAttackState : EnemyState
     public override void Update()
     {
         base.Update();
-        if (triggerCalled)
+        enemy.SetVelocity(0, rb.linearVelocity.y);
+        bool finished = triggerCalled;
+        if (enemy.NetworkMovementOnly)
+        {
+            var attack = enemy.NetworkAttack;
+            enemy.FlipController(attack.facingDir);
+            finished = GameSimulationClock.AuthorityTick - attack.startTick >= (ulong)attack.durationTicks;
+        }
+        if (finished)
         {
             if (enemy.CanTeleport()) stateMachine.ChangeState(enemy.teleportState);
             else stateMachine.ChangeState(enemy.battleState);

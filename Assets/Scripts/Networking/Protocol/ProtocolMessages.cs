@@ -65,7 +65,7 @@ namespace Rpg.Networking.Protocol
     }
 
     public enum MovementAnimationState { Idle, Move, Jump, Fall, WallSlide, WallJump, Dash, Parry, ParrySuccess }
-    public enum MonsterAiState { Idle, Patrol, Chase, Attack, Stunned }
+    public enum MonsterAiState { Idle, Patrol, Chase, Attack, Stunned, Teleport, Cast }
 
     [Serializable]
     public sealed class PlayerAttackDto
@@ -546,12 +546,36 @@ namespace Rpg.Networking.Protocol
         public long stateSeq;
         public MonsterStateDto[] monsters;
         public MonsterAttackStateDto[] attacks;
+        public MonsterSpellStateDto[] spells = Array.Empty<MonsterSpellStateDto>();
+        public MonsterSpawnDto[] spawns = Array.Empty<MonsterSpawnDto>();
     }
     [Serializable]
     public sealed class MonsterAttackStateDto
     {
         public int entityId;
         public MonsterAttackDto attack;
+    }
+    [Serializable]
+    public sealed class MonsterSpellDto
+    {
+        public long actionId;
+        public ulong startTick;
+        public float[] position;
+    }
+    [Serializable]
+    public sealed class MonsterSpellStateDto
+    {
+        public int entityId;
+        public MonsterSpellDto spell;
+    }
+    [Serializable]
+    public sealed class MonsterSpawnDto
+    {
+        public int entityId, sourceEntityId;
+        public float[] position;
+        public int facingDir;
+        public int health, maxHealth;
+        public long healthVersion;
     }
     [Serializable]
     public sealed class MonsterStateDto

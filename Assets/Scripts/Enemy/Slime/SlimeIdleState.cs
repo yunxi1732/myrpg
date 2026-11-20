@@ -15,6 +15,7 @@ public class SlimeIdleState : EnemyState
     {
         base.Enter();
         stateTimer = enemy.idleTime;
+        if (enemy.NetworkMovementOnly) enemy.SetVelocity(0, rb.linearVelocity.y);
     }
 
     public override void Exit()

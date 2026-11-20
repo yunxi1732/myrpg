@@ -73,7 +73,7 @@ namespace Rpg.Networking
             return true;
         }
 
-        public bool TryParry(Player player, EnemySkeleton enemy)
+        public bool TryParry(Player player, Enemy enemy)
         {
             if (disposed || context.IsGuest || player.counterAttackState.Succeeded ||
                 player.stateMachine.currentState != player.counterAttackState || !IsValidPlayerTarget(player) ||
@@ -111,6 +111,22 @@ namespace Rpg.Networking
                 !hit.Attack.TryConsumeDamageHit(hit.SegmentId, hit.TargetEntityId)) return;
             if (TryParry(hit.Target, hit.Source)) return;
             ResolveDirectHit(hit.Source, hit.Target, targetView, hit.Attack, hit.SegmentId, hit.AuthorityTick);
+        }
+
+        public void OnBossSpellHit(Enemy_Boss boss, Player target)
+        {
+            if (disposed || context.IsGuest || boss == null || target == null ||
+                !monsters.IsValidPrimaryAttackTarget(boss) || !IsValidPlayerTarget(target)) return;
+            var sourceId = EntityRuntimePermissions.Identity(boss);
+            var targetId = EntityRuntimePermissions.Identity(target);
+            if (sourceId == null || targetId == null || !context.TryGetEntity(targetId.EntityId, out var targetView)) return;
+            ulong tick = GameSimulationClock.AuthorityTick;
+            var attack = new PrimaryAttackInstance(context.RoomSessionId, 0, sourceId.EntityId,
+                objects.AllocatePrimaryAttackInstanceId(), 0, tick, checked(tick + 1),
+                new PrimaryAttackTiming(0, 1, new PrimaryHitSegmentTiming(0, 1)));
+            if (attack.TryRegisterHit(1, targetId.EntityId, tick) && attack.TryConsumeDamageHit(1, targetId.EntityId))
+                ResolveDirectHit(boss, target, targetView, attack, 1, tick);
+            attack.Close();
         }
 
         private void ResolveDirectHit(Entity source, Entity targetEntity, RoomEntityPresentation targetView, PrimaryAttackInstance attack, int segment, ulong tick,

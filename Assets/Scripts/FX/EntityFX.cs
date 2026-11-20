@@ -157,6 +157,7 @@ public class EntityFX : MonoBehaviour
 
     public void MakeTransparent(bool _isTransparent)
     {
+        if (sr == null) sr = GetComponentInChildren<SpriteRenderer>(true);
         if (sr != null) sr.color = _isTransparent ? Color.clear : Color.white;
         if (myHealthBar == null)
             myHealthBar = GetComponentInChildren<UI_HealthBar>(true)?.gameObject;
@@ -186,11 +187,10 @@ public class EntityFX : MonoBehaviour
         foreach (Coroutine routine in colorRoutines) if (routine != null) StopCoroutine(routine);
         colorRoutines.Clear();
         CancelInvoke();
-        sr.color = Color.white;
-
-        igniteFX.Stop(); igniteFX.gameObject.SetActive(false);
-        chillFX.Stop(); chillFX.gameObject.SetActive(false);
-        shockFX.Stop(); shockFX.gameObject.SetActive(false);
+        if (sr != null) sr.color = Color.white;
+        if (igniteFX != null) { igniteFX.Stop(); igniteFX.gameObject.SetActive(false); }
+        if (chillFX != null) { chillFX.Stop(); chillFX.gameObject.SetActive(false); }
+        if (shockFX != null) { shockFX.Stop(); shockFX.gameObject.SetActive(false); }
     }
 
     public void ChillFxFor(float _seconds)

@@ -4,12 +4,30 @@ using UnityEngine;
 
 public class Enemy_Boss : Enemy
 {
+    public override string NetworkAttackClip => "BossAttack";
+    public override string NetworkMoveClip => "BossMove";
+    public override string NetworkIdleClip => "BossIdle";
+    public override EnemyState NetworkIdleState => idleState;
+    public override EnemyState NetworkMoveState => moveState;
+    public override EnemyState NetworkBattleState => battleState;
+    public override EnemyState NetworkAttackState => attackState;
+    public override EnemyState NetworkDeadState => deadState;
+    public override Transform NetworkTarget => battleState?.Target;
+    public override void ForgetNetworkPlayer(int entityId) => battleState?.ForgetRoomPlayer(entityId);
+    public override bool NetworkMovementReady => bossFightBegin;
+    public override Rpg.Networking.Protocol.MonsterAiState NetworkAiState =>
+        stateMachine?.currentState == teleportState ? Rpg.Networking.Protocol.MonsterAiState.Teleport :
+        stateMachine?.currentState == castState ? Rpg.Networking.Protocol.MonsterAiState.Cast : base.NetworkAiState;
+    private void OnDisable() => NetworkHits?.Reset();
     public bool bossFightBegin { get; private set; }
     [Header("Spell Cast details")]
     [SerializeField] private GameObject spellPrefab;
     public int amountOfSpells;
     public float spellCooldown;
     private float lastTimeCast;
+    private long nextNetworkSpellId;
+    public Rpg.Networking.Protocol.MonsterSpellDto NetworkSpell { get; private set; }
+    public event Action<Enemy_Boss, Player> NetworkSpellHit;
     [SerializeField] private float spellStateCooldown;
 
     [Header("Teleport details")]
@@ -51,15 +69,8 @@ public class Enemy_Boss : Enemy
         if (!bossFightBegin && arena != null)
         {
             foreach (Player candidate in Player.ActivePlayers)
-            {
-                if (candidate == null || !IsValidLivingTarget(candidate.transform)) continue;
-                Collider2D playerCollider = candidate.GetComponent<Collider2D>();
-                if (playerCollider != null && arena.bounds.Intersects(playerCollider.bounds))
-                {
-                    bossFightBegin = true;
-                    break;
-                }
-            }
+                if (candidate != null && IsValidLivingTarget(candidate.transform) && arena.OverlapPoint(candidate.transform.position))
+                { bossFightBegin = true; break; }
         }
         if (bossFightBegin) base.Update();
     }
@@ -100,12 +111,27 @@ public class Enemy_Boss : Enemy
 
     public void CastSpell()
     {
-        Player player = PlayerManager.instance.player;
+        Transform target = NetworkMovementOnly ? SelectLivingTarget(false) : PlayerManager.instance.player?.transform;
+        if (target == null) return;
+        Player player = target.GetComponent<Player>();
         float xOffset = 0;
         if (player.rb.linearVelocity.x != 0) xOffset = player.facingDir * 3;
-        Vector3 spellPos = new Vector3(player.transform.position.x, player.transform.position.y + 1);
+        Vector3 spellPos = new Vector3(target.position.x + xOffset, target.position.y + 1);
         GameObject newSpell = Instantiate(spellPrefab, spellPos, Quaternion.identity);
-        newSpell.GetComponent<BossSpell_Controller>().SetupSpell(stats);
+        var controller = newSpell.GetComponent<BossSpell_Controller>();
+        if (NetworkMovementOnly)
+        {
+            NetworkSpell = new Rpg.Networking.Protocol.MonsterSpellDto { actionId = ++nextNetworkSpellId,
+                startTick = GameSimulationClock.AuthorityTick, position = new[] { spellPos.x, spellPos.y } };
+            controller.SetupNetworkSpell(victim => NetworkSpellHit?.Invoke(this, victim));
+        }
+        else controller.SetupSpell(stats);
+    }
+
+    public void SpawnNetworkSpellVisual(Vector2 position)
+    {
+        GameObject spell = Instantiate(spellPrefab, position, Quaternion.identity);
+        spell.GetComponent<BossSpell_Controller>().SetupVisualSpell();
     }
 
     public void FindPosition()

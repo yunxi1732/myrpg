@@ -231,7 +231,8 @@ namespace Rpg.Networking
             // Preserve map/camera visuals only. Do not start preplaced single-player actors, managers or HUD.
             foreach (GameObject root in scene.GetRootGameObjects())
             {
-                bool staticView = root.GetComponentInChildren<Camera>(true) != null || root.GetComponent<Grid>() != null || root.name == "Background";
+                bool staticView = root.GetComponentInChildren<Camera>(true) != null || root.GetComponent<Grid>() != null ||
+                    root.name == "Background" || root.name == "GroundInfo";
                 if (!staticView) { root.SetActive(false); continue; }
                 foreach (Entity entity in root.GetComponentsInChildren<Entity>(true)) entity.gameObject.SetActive(false);
                 foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
@@ -239,13 +240,12 @@ namespace Rpg.Networking
             }
             if (host.IsListening)
                 foreach (GameObject root in scene.GetRootGameObjects())
-                {
-                    var zone = root.GetComponent<DeadZone>();
-                    if (zone == null) continue;
-                    zone.enabled = false;
-                    root.SetActive(true);
-                    root.AddComponent<RoomDeadZoneTrigger>().Bind(this, zone);
-                }
+                    foreach (DeadZone zone in root.GetComponentsInChildren<DeadZone>(true))
+                    {
+                        zone.enabled = false;
+                        zone.gameObject.SetActive(true);
+                        zone.gameObject.AddComponent<RoomDeadZoneTrigger>().Bind(this, zone);
+                    }
             preparedSceneHandle = scene.handle;
             try
             {

@@ -6,9 +6,10 @@ using UnityEngine;
 public class EnemyState
 {
     public bool CanSimulate => enemyBase.IsAuthoritative && Rpg.Networking.EntityRuntimePermissions.Identity(enemyBase)?.MovementHeld != true &&
-        (!enemyBase.NetworkMovementOnly || enemyBase is EnemySkeleton skeleton &&
-            (this == skeleton.idleState || this == skeleton.moveState || this == skeleton.battleState ||
-                this == skeleton.attackState || this == skeleton.stunnedState || this == skeleton.deadState));
+        (!enemyBase.NetworkMovementOnly || this == enemyBase.NetworkIdleState || this == enemyBase.NetworkMoveState ||
+            this == enemyBase.NetworkBattleState || this == enemyBase.NetworkAttackState ||
+            this == enemyBase.NetworkStunnedState || this == enemyBase.NetworkDeadState ||
+            enemyBase is Enemy_Boss boss && (this == boss.teleportState || this == boss.castState));
     protected Enemy enemyBase;
     protected EnemyStateMachine stateMachine;
     protected Rigidbody2D rb;

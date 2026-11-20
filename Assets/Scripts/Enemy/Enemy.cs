@@ -10,6 +10,99 @@ using UnityEngine;
 [RequireComponent(typeof(ItemDrop))]
 public class Enemy : Entity
 {
+    private long nextNetworkAttackId;
+    private ulong counterOpenTick, counterCloseTick;
+    public Rpg.Networking.Protocol.MonsterAttackDto NetworkAttack { get; private set; }
+    public Rpg.Networking.MonsterAttackHitDetection NetworkHits { get; internal set; }
+    public virtual string NetworkAttackClip => null;
+    public virtual string NetworkMoveClip => null;
+    public virtual string NetworkIdleClip => null;
+    public virtual string NetworkStunClip => null;
+    public virtual string NetworkStunParameter => null;
+    public virtual EnemyState NetworkIdleState => null;
+    public virtual EnemyState NetworkMoveState => null;
+    public virtual EnemyState NetworkBattleState => null;
+    public virtual EnemyState NetworkAttackState => null;
+    public virtual EnemyState NetworkStunnedState => null;
+    public virtual EnemyState NetworkDeadState => null;
+    public virtual bool NetworkMovementReady => true;
+    public virtual Transform NetworkTarget => null;
+    public virtual void ForgetNetworkPlayer(int entityId) { }
+    public virtual Rpg.Networking.Protocol.MonsterAiState NetworkAiState =>
+        stateMachine?.currentState == null || stats != null && stats.IsRuntimeInitialized && stats.currentHealth <= 0 ?
+        Rpg.Networking.Protocol.MonsterAiState.Idle : stateMachine.currentState == NetworkAttackState ?
+        Rpg.Networking.Protocol.MonsterAiState.Attack : NetworkStunnedState != null && stateMachine.currentState == NetworkStunnedState ?
+        Rpg.Networking.Protocol.MonsterAiState.Stunned : stateMachine.currentState == NetworkBattleState ?
+        Rpg.Networking.Protocol.MonsterAiState.Chase : stateMachine.currentState == NetworkMoveState ?
+        Rpg.Networking.Protocol.MonsterAiState.Patrol : Rpg.Networking.Protocol.MonsterAiState.Idle;
+
+    public static bool TryNetworkAttackTiming(Animator animator, string clipName, out Rpg.Networking.PrimaryAttackTiming timing)
+    {
+        timing = null;
+        if (animator == null || animator.runtimeAnimatorController == null) return false;
+        foreach (var clip in animator.runtimeAnimatorController.animationClips)
+        {
+            if (clip.name != clipName) continue;
+            float finish = clip.length;
+            var hits = new List<float>();
+            foreach (var marker in clip.events)
+            {
+                if (marker.functionName == "AnimationTrigger") finish = Mathf.Min(finish, marker.time);
+                if (marker.functionName == "AttackTrigger") hits.Add(marker.time);
+            }
+            return Rpg.Networking.PrimaryAttackTiming.TryCreate(0, finish, clip.frameRate, GameSimulationClock.FixedDeltaTime, hits.ToArray(), out timing);
+        }
+        return false;
+    }
+
+    public static float AttackClipDuration(Animator animator, string clipName, out float finishTime)
+    {
+        float length = 1.2f;
+        finishTime = length;
+        if (animator == null || animator.runtimeAnimatorController == null) return length;
+        foreach (var clip in animator.runtimeAnimatorController.animationClips)
+        {
+            if (clip.name != clipName) continue;
+            length = clip.length; finishTime = length;
+            foreach (var marker in clip.events)
+                if (marker.functionName == "AnimationTrigger") { finishTime = marker.time; break; }
+            return length;
+        }
+        return length;
+    }
+
+    public void BeginNetworkAttack()
+    {
+        if (!IsAuthoritative || !NetworkMovementOnly || string.IsNullOrEmpty(NetworkAttackClip)) return;
+        AttackClipDuration(anim, NetworkAttackClip, out float finishTime);
+        if (NetworkHits != null)
+        {
+            if (TryNetworkAttackTiming(anim, NetworkAttackClip, out var timing)) NetworkHits.Begin(GameSimulationClock.AuthorityTick, facingDir, timing);
+            else { NetworkHits.Reset(); Debug.LogError($"[MonsterHit] Invalid {NetworkAttackClip} hit markers; damage window is closed."); }
+        }
+        NetworkAttack = new Rpg.Networking.Protocol.MonsterAttackDto { actionId = ++nextNetworkAttackId, actionNumber = 1,
+            startTick = GameSimulationClock.AuthorityTick, facingDir = facingDir,
+            durationTicks = Mathf.Max(1, Mathf.CeilToInt(finishTime / GameSimulationClock.FixedDeltaTime)) };
+        counterOpenTick = counterCloseTick = 0;
+        foreach (var clip in anim.runtimeAnimatorController.animationClips)
+            if (clip.name == NetworkAttackClip)
+                foreach (var marker in clip.events)
+                {
+                    if (marker.functionName == "OpenCounterWindow") counterOpenTick = NetworkAttack.startTick + (ulong)Mathf.CeilToInt(marker.time / GameSimulationClock.FixedDeltaTime);
+                    if (marker.functionName == "CloseCounterWindow") counterCloseTick = NetworkAttack.startTick + (ulong)Mathf.CeilToInt(marker.time / GameSimulationClock.FixedDeltaTime);
+                }
+        anim.fireEvents = false;
+        anim.speed = 1;
+        anim.Play("Base Layer." + NetworkAttackClip, 0, 0);
+    }
+
+    public void AdvanceNetworkCounterWindow(ulong tick)
+    {
+        bool open = counterOpenTick > 0 && counterCloseTick >= counterOpenTick &&
+            NetworkAiState == Rpg.Networking.Protocol.MonsterAiState.Attack && tick >= counterOpenTick && tick <= counterCloseTick;
+        if (open && !CounterWindowOpen) OpenCounterAttackWindow();
+        else if (!open && CounterWindowOpen) CloseCounterAttackWindow();
+    }
     // Adapted network AI/actions only; legacy damage, counter windows, stats and drops stay gated.
     public bool NetworkMovementOnly { get; private set; }
     private bool runtimeReady;
@@ -113,26 +206,20 @@ public class Enemy : Entity
     {
         if (NetworkMovementOnly && IsAuthoritative &&
             GetComponent<Rpg.Networking.NetworkHitFeedback>()?.AdvanceAuthorityKnockback(GameSimulationClock.AuthorityTick) == true)
-        { if (this is EnemySkeleton knocked) knocked.NetworkHits?.Step(GameSimulationClock.AuthorityTick); return; }
+        { NetworkHits?.Step(GameSimulationClock.AuthorityTick); return; }
         if (NetworkMovementOnly && IsAuthoritative && stats != null && stats.IsRuntimeInitialized && stats.currentHealth <= 0)
         {
-            if (this is EnemySkeleton dead)
-            {
-                dead.NetworkHits?.Reset();
-                if (stateMachine.currentState == dead.deadState) stateMachine.currentState.Update();
-                else HoldNetworkAtZeroHealth();
-            }
+            NetworkHits?.Reset();
+            if (stateMachine.currentState == NetworkDeadState) stateMachine.currentState.Update();
+            else HoldNetworkAtZeroHealth();
             return;
         }
-        if (NetworkMovementOnly && IsAuthoritative && runtimeReady &&
+        if (NetworkMovementOnly && IsAuthoritative && runtimeReady && NetworkMovementReady &&
             Rpg.Networking.EntityRuntimePermissions.Identity(this)?.MovementHeld != true)
         {
             stateMachine.currentState?.Update();
-            if (this is EnemySkeleton skeleton)
-            {
-                skeleton.AdvanceNetworkCounterWindow(GameSimulationClock.AuthorityTick);
-                skeleton.NetworkHits?.Step(GameSimulationClock.AuthorityTick);
-            }
+            AdvanceNetworkCounterWindow(GameSimulationClock.AuthorityTick);
+            NetworkHits?.Step(GameSimulationClock.AuthorityTick);
         }
     }
 

@@ -42,7 +42,7 @@ public class PlayerCounterAttackState : PlayerState
             if (!Succeeded)
                 foreach (var hit in Physics2D.OverlapCircleAll(player.attackCheck.position, player.attackCheckRadius))
                 {
-                    var enemy = hit.GetComponent<EnemySkeleton>();
+                    var enemy = hit.GetComponent<Enemy>();
                     if (enemy != null && RoomDamage.TryParry(player, enemy)) break;
                 }
             if (stateTimer < 0 || triggerCalled) stateMachine.ChangeState(player.idleState);

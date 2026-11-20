@@ -5,13 +5,22 @@ public class BossBattleState : BossGroundedState
 
     private Transform player;
     private int moveDir;
+    public Transform Target => player;
+
+    public void ForgetRoomPlayer(int entityId)
+    {
+        if (player == null || player.GetComponent<Rpg.Networking.NetworkEntityIdentity>()?.EntityId != entityId) return;
+        player = null;
+        if (stateMachine.currentState == this || stateMachine.currentState == enemy.attackState)
+            stateMachine.ChangeState(enemy.idleState);
+    }
     public BossBattleState(Enemy_Boss enemy, EnemyStateMachine stateMachine, string animBoolName) : base(enemy, stateMachine, animBoolName, enemy) { }
 
 
     public override void Enter()
     {
         base.Enter();
-        Transform selected = enemy.SelectLivingTarget(true);
+        Transform selected = enemy.SelectLivingTarget(false);
         if (selected != null && selected != player)
             enemy.FlipController(selected.position.x - enemy.transform.position.x);
         player = selected;
@@ -33,16 +42,17 @@ public class BossBattleState : BossGroundedState
             moveDir = enemy.facingDir;
         enemy.FlipController(moveDir);
 
+        if (enemy.IsTargetInAttackRange(player))
+        {
+            stateTimer = enemy.battleTime;
+            enemy.SetVelocity(0, rb.linearVelocity.y);
+            if (CanAttack()) stateMachine.ChangeState(enemy.attackState);
+            return;
+        }
+
         if (sensed != null)
         {
             stateTimer = enemy.battleTime;
-            if (enemy.IsTargetInAttackRange(player))
-            {
-                enemy.SetVelocity(0, rb.linearVelocity.y);
-                if (CanAttack()) stateMachine.ChangeState(enemy.attackState);
-                else stateMachine.ChangeState(enemy.idleState);
-                return;
-            }
         }
 
         if (!enemy.IsGroundAhead(moveDir))

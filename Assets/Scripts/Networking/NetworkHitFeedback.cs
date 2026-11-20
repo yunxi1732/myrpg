@@ -68,13 +68,15 @@ namespace Rpg.Networking
         internal bool ApplyReactionAnimation(double tick)
         {
             if (!IsReactingAt(tick)) { ReleaseReactionAnimation(); return false; }
-            if (animator == null || !animator.isActiveAndEnabled || animator.runtimeAnimatorController == null || GetComponent<EnemySkeleton>() == null) return false;
+            var monster = GetComponent<Enemy>();
+            if (animator == null || !animator.isActiveAndEnabled || animator.runtimeAnimatorController == null ||
+                monster == null || string.IsNullOrEmpty(monster.NetworkStunClip)) return false;
             if (!holdingAnimation) { savedSpeed = animator.speed; holdingAnimation = true; }
             animator.fireEvents = false;
-            animator.SetBool("Stunned", true);
+            animator.SetBool(monster.NetworkStunParameter, true);
             animator.speed = 0;
             // Reuse the existing hurt pose, without entering the counter/stun gameplay state or invoking its velocity/FX.
-            animator.Play("Base Layer.SkeletonStunned", 0, Mathf.Clamp01((float)((tick - startTick) / reactionTicks)));
+            animator.Play("Base Layer." + monster.NetworkStunClip, 0, Mathf.Clamp01((float)((tick - startTick) / reactionTicks)));
             animator.Update(0);
             return true;
         }
@@ -84,16 +86,18 @@ namespace Rpg.Networking
             if (!holdingAnimation) return;
             if (animator != null)
             {
-                animator.speed = GetComponent<NetworkElementState>()?.PlaybackAnimationSpeed ?? savedSpeed; animator.SetBool("Stunned", false);
+                animator.speed = GetComponent<NetworkElementState>()?.PlaybackAnimationSpeed ?? savedSpeed;
+                var monster = GetComponent<Enemy>();
+                if (monster != null && !string.IsNullOrEmpty(monster.NetworkStunParameter)) animator.SetBool(monster.NetworkStunParameter, false);
                 if (gameObject.activeInHierarchy && animator.isActiveAndEnabled && identity != null && identity.IsAuthoritative &&
-                    GetComponent<EnemySkeleton>() is EnemySkeleton skeleton)
+                    monster != null)
                 {
-                    var attack = skeleton.NetworkAttack;
-                    bool attacking = skeleton.NetworkAiState == MonsterAiState.Attack && attack != null &&
+                    var attack = monster.NetworkAttack;
+                    bool attacking = monster.NetworkAiState == MonsterAiState.Attack && attack != null &&
                         GameSimulationClock.AuthorityTick >= attack.startTick && GameSimulationClock.AuthorityTick - attack.startTick < (ulong)attack.durationTicks;
                     float phase = attacking ? Mathf.Clamp((GameSimulationClock.AuthorityTick - attack.startTick) * GameSimulationClock.FixedDeltaTime /
-                        EnemySkeleton.AttackClipDuration(animator, out _), 0, .99999f) : 0;
-                    animator.Play("Base Layer." + (attacking ? "SkeletonAttack" : animator.GetBool("Move") ? "SkeletonMove" : "SkeletonIdle"), 0, phase);
+                        Enemy.AttackClipDuration(animator, monster.NetworkAttackClip, out _), 0, .99999f) : 0;
+                    animator.Play("Base Layer." + (attacking ? monster.NetworkAttackClip : animator.GetBool("Move") ? monster.NetworkMoveClip : monster.NetworkIdleClip), 0, phase);
                     animator.Update(0);
                 }
             }

@@ -6,26 +6,26 @@ namespace Rpg.Networking
 {
     public sealed class MonsterAttackConfirmedHit
     {
-        public EnemySkeleton Source { get; }
+        public Enemy Source { get; }
         public PrimaryAttackInstance Attack { get; }
         public int SegmentId { get; }
         public Player Target { get; }
         public int TargetEntityId { get; }
         public ulong AuthorityTick { get; }
-        internal MonsterAttackConfirmedHit(EnemySkeleton source, PrimaryAttackInstance attack, int segment, Player target, int id, ulong tick)
+        internal MonsterAttackConfirmedHit(Enemy source, PrimaryAttackInstance attack, int segment, Player target, int id, ulong tick)
         { Source = source; Attack = attack; SegmentId = segment; Target = target; TargetEntityId = id; AuthorityTick = tick; }
     }
 
     /// <summary>Monster windows use the same immutable segment ledger as player attacks; no client animation callback enters here.</summary>
     public sealed class MonsterAttackHitDetection
     {
-        private readonly EnemySkeleton source;
+        private readonly Enemy source;
         private readonly Func<long> allocateInstance;
         private readonly Func<Player, bool> validTarget;
         private readonly List<(Player target, int id)> candidates = new List<(Player, int)>();
         public PrimaryAttackInstance Current { get; private set; }
         public event Action<MonsterAttackConfirmedHit> HitConfirmed;
-        public MonsterAttackHitDetection(EnemySkeleton source, Func<long> allocateInstance, Func<Player, bool> validTarget)
+        public MonsterAttackHitDetection(Enemy source, Func<long> allocateInstance, Func<Player, bool> validTarget)
         {
             this.source = source != null ? source : throw new ArgumentNullException(nameof(source));
             this.allocateInstance = allocateInstance ?? throw new ArgumentNullException(nameof(allocateInstance));

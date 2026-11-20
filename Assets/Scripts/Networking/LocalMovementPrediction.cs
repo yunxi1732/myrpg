@@ -193,6 +193,13 @@ namespace Rpg.Networking
             if (player.InputData.CurrentAxis == 0 && releaseInputSeq == 0) releaseInputSeq = lastSentInputSeq;
         }
 
+        private void ApplyWallSlideGravity()
+        {
+            float damping = Mathf.Pow(0.8f, GameSimulationClock.DeltaTime / GameSimulationClock.FixedDeltaTime);
+            float terminalSpeed = Mathf.Abs(Physics2D.gravity.y * originalGravityScale * GameSimulationClock.FixedDeltaTime) * 4f;
+            jumpVelocityY = Mathf.Max(jumpVelocityY * damping, -terminalSpeed);
+        }
+
         private void LateUpdate()
         {
             if (!identity.CanCollectMovementInput || identity.Role != NetworkEntityRole.Display || player.stats.currentHealth <= 0)
@@ -218,6 +225,7 @@ namespace Rpg.Networking
             }
             float displacement = dashing ? dashDirection * player.dashSpeed * dashStep :
                 (jumping ? jumpHorizontalVelocity : axis * player.moveSpeed) * GameSimulationClock.DeltaTime;
+            bool wallContact = display.AuthorityMovementState == MovementAnimationState.WallSlide;
             if (displacement != 0)
             {
                 float requestedDistance = Mathf.Abs(displacement);
@@ -229,7 +237,11 @@ namespace Rpg.Networking
                     (Vector2)transform.TransformVector(body.offset);
                 RaycastHit2D hit = Physics2D.CapsuleCast(origin, size, body.direction, transform.eulerAngles.z,
                     direction, distance, player.AttackBlockingLayers);
-                if (hit.collider != null) distance = Mathf.Max(0, hit.distance - 0.01f);
+                if (hit.collider != null)
+                {
+                    distance = Mathf.Max(0, hit.distance - 0.01f);
+                    wallContact |= hit.normal.x * direction.x < -0.5f;
+                }
                 predictedX += direction.x * distance;
                 if (dashing && distance < requestedDistance) dashRemaining = 0;
             }
@@ -253,12 +265,22 @@ namespace Rpg.Networking
                         if (step < 0) { jumping = awaitingAuthorityLanding = false; display.EndPredictedJump(); }
                     }
                 }
-                if (jumping) jumpVelocityY += Physics2D.gravity.y * originalGravityScale * GameSimulationClock.DeltaTime;
+                if (jumping)
+                {
+                    jumpVelocityY += Physics2D.gravity.y * originalGravityScale * GameSimulationClock.DeltaTime;
+                    if (wallContact && jumpVelocityY < 0)
+                    {
+                        ApplyWallSlideGravity();
+                        jumping = awaitingAuthorityLanding = false;
+                        display.EndPredictedJump();
+                    }
+                }
                 display.SetPredictedJumpVelocity(jumpVelocityY);
             }
             else if (!dashing && !holdSettledY)
             {
                 jumpVelocityY += Physics2D.gravity.y * originalGravityScale * GameSimulationClock.DeltaTime;
+                if (wallContact && jumpVelocityY < 0) ApplyWallSlideGravity();
                 float fall = Mathf.Max(0, -jumpVelocityY * GameSimulationClock.DeltaTime);
                 float lift = player.GroundCheckDistance;
                 Vector2 scale = transform.lossyScale;

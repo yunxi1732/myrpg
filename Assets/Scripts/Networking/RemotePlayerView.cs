@@ -52,12 +52,23 @@ namespace Rpg.Networking
         public bool ParryActive { get; internal set; }
         public bool ParrySucceeded { get; internal set; }
         public bool MonsterStunned { get; internal set; }
+        private MonsterAiState monsterAiState;
+
+        internal void SetMonsterAiState(MonsterAiState state)
+        {
+            if (monsterAiState == state) return;
+            bool wasTeleporting = monsterAiState == MonsterAiState.Teleport;
+            monsterAiState = state;
+            if (GetComponent<Enemy_Boss>() != null && (wasTeleporting || state == MonsterAiState.Teleport))
+                GetComponent<EntityFX>()?.MakeTransparent(state == MonsterAiState.Teleport);
+        }
 
         internal void Bind(NetworkEntityIdentity owner)
         {
             if (!ReferenceEquals(identity, owner))
             {
                 positions.Clear(); ReleasePlayerAttack();
+                monsterAiState = MonsterAiState.Idle;
                 localAttackRequestSeq = 0; localAttackAnimating = false; localAttackExecution = null; finishedLocalAttackInstanceId = 0;
                 localSwordActionSeq = 0; localSwordAiming = localSwordThrowing = false;
                 SwordActionActive = false;
@@ -74,7 +85,8 @@ namespace Rpg.Networking
                     for (int i = 0; i < 3; i++) if (clip.name == "PlayerAttack" + (i + 1)) playerClipLengths[i] = clip.length;
                     if (clip.name == "PlayerThrowSword") swordThrowClipLength = clip.length;
                 }
-            if (GetComponent<EnemySkeleton>() != null) monsterAttackClipLength = EnemySkeleton.AttackClipDuration(animator, out _);
+            var monster = GetComponent<Enemy>();
+            if (monster != null) monsterAttackClipLength = Enemy.AttackClipDuration(animator, monster.NetworkAttackClip, out _);
         }
 
         public bool ApplyState(ulong tick, long sequence, Vector2 position, bool reset = false, int facingDir = 1,
@@ -325,17 +337,25 @@ namespace Rpg.Networking
                 }
                 var attack = positions.MonsterAttack;
                 double elapsedTicks = attack == null ? 0 : System.Math.Max(0, positions.RenderTick - attack.startTick);
-                bool attacking = attack != null && elapsedTicks < attack.durationTicks;
-                animator.SetBool("Idle", !attacking && !MonsterStunned && state == MovementAnimationState.Idle);
-                animator.SetBool("Move", !attacking && !MonsterStunned && state == MovementAnimationState.Move);
-                animator.SetBool("Attack", attacking); animator.SetBool("Stunned", MonsterStunned);
-                if (attacking)
+                bool attacking = monsterAiState == MonsterAiState.Attack;
+                bool special = monsterAiState == MonsterAiState.Teleport || monsterAiState == MonsterAiState.Cast;
+                animator.SetBool("Idle", !attacking && !special && !MonsterStunned && state == MovementAnimationState.Idle);
+                animator.SetBool("Move", !attacking && !special && !MonsterStunned && state == MovementAnimationState.Move);
+                animator.SetBool("Attack", attacking);
+                var monster = GetComponent<Enemy>();
+                if (!string.IsNullOrEmpty(monster.NetworkStunParameter)) animator.SetBool(monster.NetworkStunParameter, MonsterStunned);
+                if (monster is Enemy_Boss)
+                {
+                    animator.SetBool("Teleport", monsterAiState == MonsterAiState.Teleport);
+                    animator.SetBool("SpellCast", monsterAiState == MonsterAiState.Cast);
+                }
+                if (attacking && attack != null && elapsedTicks < attack.durationTicks)
                 {
                     if (!holdingAttackAnimation) { savedAnimationSpeed = animator.speed; holdingAttackAnimation = true; }
                     animator.speed = 0;
                     float phase = Mathf.Clamp((float)(elapsedTicks * GameSimulationClock.FixedDeltaTime / monsterAttackClipLength), 0, .99999f);
                     // Evaluate this action at A's display tick. Repeated packets never restart it at frame zero.
-                    animator.Play("Base Layer.SkeletonAttack", 0, phase);
+                    animator.Play("Base Layer." + monster.NetworkAttackClip, 0, phase);
                     animator.Update(0);
                 }
                 else ReleaseAttackAnimation();

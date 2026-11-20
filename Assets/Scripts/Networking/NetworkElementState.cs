@@ -15,7 +15,7 @@ namespace Rpg.Networking
         {
             get
             {
-                var p = GetComponent<Player>(); var s = GetComponent<EnemySkeleton>();
+                var p = GetComponent<Player>(); var s = GetComponent<Enemy>();
                 bool authority = GetComponent<NetworkEntityIdentity>()?.IsAuthoritative == true;
                 return authority && (p != null && p.stateMachine?.currentState != null && p.stateMachine.currentState == p.primaryAttackState ||
                     s != null && s.NetworkAiState == MonsterAiState.Attack) ? 1 : NormalAnimationSpeed;

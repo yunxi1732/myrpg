@@ -14,11 +14,23 @@ public class SlimeAttackState : EnemyState
     public override void Enter()
     {
         base.Enter();
+        if (enemy.NetworkMovementOnly)
+        {
+            enemy.anim.SetBool("Idle", false);
+            enemy.BeginNetworkAttack();
+            return;
+        }
         AudioManager.instance.PlaySFX(17, enemy.transform);
     }
 
     public override void Exit()
     {
+        if (enemy.NetworkMovementOnly)
+        {
+            enemy.NetworkHits?.Reset();
+            enemy.CloseCounterAttackWindow();
+            enemy.anim.speed = enemy.GetComponent<Rpg.Networking.NetworkElementState>()?.NormalAnimationSpeed ?? 1;
+        }
         base.Exit();
         enemy.lastTimeAttacked = GameSimulationClock.Time;
     }
@@ -27,6 +39,14 @@ public class SlimeAttackState : EnemyState
     {
         base.Update();
         enemy.SetVelocity(0, 0);
+        if (enemy.NetworkMovementOnly)
+        {
+            var attack = enemy.NetworkAttack;
+            enemy.FlipController(attack.facingDir);
+            if (GameSimulationClock.AuthorityTick - attack.startTick >= (ulong)attack.durationTicks)
+                stateMachine.ChangeState(enemy.battleState);
+            return;
+        }
         if (triggerCalled) stateMachine.ChangeState(enemy.battleState);
     }
 }
