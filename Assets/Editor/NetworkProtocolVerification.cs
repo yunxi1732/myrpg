@@ -16,8 +16,12 @@ public static class NetworkProtocolVerification
         string text = "中文验证🙂\n引号\"与反斜杠\\";
         var echo = (VerificationEchoDto)RoundTrip(new VerificationEchoDto { text = text });
         NetPacketVerificationCases.Require(echo.text == text, "UTF-8 JSON DTO round trip");
-        var hello = (HandshakeHelloDto)RoundTrip(new HandshakeHelloDto { schemaVersion = ProtocolSchema.SchemaVersion });
+        var hello = (HandshakeHelloDto)RoundTrip(new HandshakeHelloDto
+        {
+            schemaVersion = ProtocolSchema.SchemaVersion, resourceVersion = "test-resource-v1"
+        });
         NetPacketVerificationCases.Require(hello.schemaVersion == ProtocolSchema.SchemaVersion, "Single schema version round trip");
+        NetPacketVerificationCases.Require(hello.resourceVersion == "test-resource-v1", "Resource version round trip");
         // Codec validates the bootstrap shape; version compatibility is decided by 4-08.
         hello = (HandshakeHelloDto)RoundTrip(new HandshakeHelloDto { schemaVersion = ProtocolSchema.SchemaVersion + 1 });
         NetPacketVerificationCases.Require(hello.schemaVersion == ProtocolSchema.SchemaVersion + 1, "Incompatible version reaches handshake handler");

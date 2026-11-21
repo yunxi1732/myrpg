@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using Rpg.Networking.Protocol;
+using Rpg.HotUpdate;
 using System.IO;
 
 namespace Rpg.Networking
@@ -372,7 +373,11 @@ namespace Rpg.Networking
                     };
                     State = RoomConnectionState.Handshaking;
                     handshakeClock = Stopwatch.StartNew();
-                    Connection.Send(new HandshakeHelloDto { schemaVersion = ProtocolSchema.SchemaVersion });
+                    Connection.Send(new HandshakeHelloDto
+                    {
+                        schemaVersion = ProtocolSchema.SchemaVersion,
+                        resourceVersion = ResourceUpdateController.ActiveVersion
+                    });
             }
             catch (Exception error) { FailHandshake(Describe(error)); return; }
             StateChanged?.Invoke();
@@ -395,10 +400,16 @@ namespace Rpg.Networking
                 FailHandshake("Protocol version mismatch");
                 return;
             }
+            if (result.accepted && result.resourceVersion != ResourceUpdateController.ActiveVersion)
+            {
+                FailHandshake("Resource version mismatch");
+                return;
+            }
             if (!result.accepted)
             {
                 FailHandshake(result.rejection == HandshakeRejection.RoomFull ? "Room is full" :
-                    result.rejection == HandshakeRejection.VersionMismatch ? "Protocol version mismatch" : "Handshake rejected");
+                    result.rejection == HandshakeRejection.VersionMismatch ? "Protocol version mismatch" :
+                    result.rejection == HandshakeRejection.ResourceVersionMismatch ? "Resource version mismatch" : "Handshake rejected");
                 return;
             }
             RoomSessionId = result.roomSessionId;

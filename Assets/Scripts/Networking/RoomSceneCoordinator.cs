@@ -1,7 +1,10 @@
 using System;
 using System.Collections;
 using Rpg.Networking.Protocol;
+using Rpg.HotUpdate;
 using UnityEngine;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
 namespace Rpg.Networking
@@ -27,7 +30,7 @@ namespace Rpg.Networking
         private bool roomDeathActive, hostRetryReady, guestRetryReady, restarting;
         private bool quitting;
         private int preparedSceneHandle = -1;
-        private AsyncOperation inFlightLoad;
+        private AsyncOperationHandle<SceneInstance> inFlightLoad;
         public bool IsSceneSession => ReferenceEquals(Active, this);
         public RoomPresentationContext Presentation { get; private set; }
         private NetworkScenePresentation presentationBinding;
@@ -176,23 +179,29 @@ namespace Rpg.Networking
 
         private IEnumerator LoadAndPrepare(bool authority, long loadId, long token, bool reload = false)
         {
-            AsyncOperation load = null;
+            AsyncOperationHandle<SceneInstance>? load = null;
             string failure = null;
-            if (!Application.CanStreamedLevelBeLoaded(RoomScene.Name)) failure = "MainScene is missing from Build Settings";
-            else if (reload || SceneManager.GetActiveScene().name != RoomScene.Name)
+            if (reload || SceneManager.GetActiveScene().name != RoomScene.Name)
             {
                 try
                 {
-                    load = inFlightLoad != null && !inFlightLoad.isDone ? inFlightLoad :
-                        SceneManager.LoadSceneAsync(RoomScene.Name, LoadSceneMode.Single);
-                    inFlightLoad = load;
+                    load = inFlightLoad.IsValid() && !inFlightLoad.IsDone ? inFlightLoad : HotUpdateScenes.LoadGame();
+                    inFlightLoad = load.Value;
                 }
                 catch (Exception error) { failure = error.Message; }
-                if (load == null && failure == null) failure = "Scene loading did not start";
+                if (!load.HasValue && failure == null) failure = "Scene loading did not start";
             }
             if (failure != null) { Fail(authority, failure); yield break; }
-            if (load != null) yield return load;
-            if (ReferenceEquals(load, inFlightLoad)) inFlightLoad = null;
+            if (load.HasValue)
+            {
+                yield return load.Value;
+                if (load.Value.Status != AsyncOperationStatus.Succeeded)
+                {
+                    Fail(authority, "MainScene load failed: " + load.Value.OperationException);
+                    yield break;
+                }
+                if (inFlightLoad.IsValid() && load.Value.Equals(inFlightLoad)) inFlightLoad = default;
+            }
             yield return null; // Scene-loaded gate and the enabled static scene components must finish first.
             double delayEnd = MonotonicClock.Now + validationReadyDelaySeconds;
             while (token == operation && !returning && MonotonicClock.Now < delayEnd) yield return null;

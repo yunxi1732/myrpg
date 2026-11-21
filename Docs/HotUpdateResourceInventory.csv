@@ -1,0 +1,1046 @@
+﻿path,extension,serialized_reachability,planned_location
+Assets/_Recovery/0.unity,.unity,not_reached_from_player_scenes,review_not_published
+Assets/AddressableAssetsData/AddressableAssetSettings.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Default Local Group.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/RPG Remote Runtime Assets.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/RPG Remote Scene.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Schemas/Default Local Group_BundledAssetGroupSchema.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Schemas/Default Local Group_ContentUpdateGroupSchema.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Schemas/RPG Remote Runtime Assets_BundledAssetGroupSchema.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Schemas/RPG Remote Runtime Assets_ContentUpdateGroupSchema.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Schemas/RPG Remote Scene_BundledAssetGroupSchema.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroups/Schemas/RPG Remote Scene_ContentUpdateGroupSchema.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/AssetGroupTemplates/Packed Assets.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/DataBuilders/BuildScriptFastMode.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/DataBuilders/BuildScriptPackedMode.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/DataBuilders/BuildScriptPackedPlayMode.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/DefaultObject.asset,.asset,addressables_editor_config,not_published
+Assets/AddressableAssetsData/Windows/addressables_content_state.bin,.bin,addressables_editor_config,not_published
+Assets/Animations/Animations/Blackhole/BlackholeFX.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossAttack.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossCast.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossCastEnd.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossCastStart.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossEnter.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossExit.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/BossMove.anim,.anim,game,remote
+Assets/Animations/Animations/Boss/Spell.anim,.anim,game,remote
+Assets/Animations/Animations/Checkpoint/Active.anim,.anim,game,remote
+Assets/Animations/Animations/Checkpoint/NotActive.anim,.anim,game,remote
+Assets/Animations/Animations/Crystal/CrystalExplode.anim,.anim,game,remote
+Assets/Animations/Animations/Crystal/CrystalIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Skeleton/SkeletonAttack.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Skeleton/SkeletonIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Skeleton/SkeletonMove.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Skeleton/SkeletonStunned.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Slime/SlimeAttack.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Slime/SlimeIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Slime/SlimeMove.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Slime/SlimeStunned.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Slime/SlimeStunnedBegin.anim,.anim,game,remote
+Assets/Animations/Animations/Enemy/Slime/SlimeStunnedOver.anim,.anim,game,remote
+Assets/Animations/Animations/HitFX/HitFX_00.anim,.anim,game,remote
+Assets/Animations/Animations/HitFX/HitFX_Critical.anim,.anim,game,remote
+Assets/Animations/Animations/IceAndFire/IceAndFireIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerAimSword.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerAttack1.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerAttack2.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerAttack3.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerCatchSword.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerCounterAttack.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerDash.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerDie.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerFall.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerJump.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerMove.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerSuccessfulCounterAttack.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerThrowSword.anim,.anim,game,remote
+Assets/Animations/Animations/Player/PlayerWallSlide.anim,.anim,game,remote
+Assets/Animations/Animations/ShockStrike/ShockStrikeHit.anim,.anim,game,remote
+Assets/Animations/Animations/ShockStrike/ShockStrikeIdle.anim,.anim,game,remote
+Assets/Animations/Animations/Sword/SwordFlip.anim,.anim,game,remote
+Assets/Animations/Animations/Sword/SwordIdle.anim,.anim,game,remote
+Assets/Animations/Animations/ThunderStrike/ThunderStrikeIdle.anim,.anim,game,remote
+Assets/Animations/Animations/UI/DarkScreen/FadeIn.anim,.anim,menu_and_game,menu_client_and_game_remote
+Assets/Animations/Animations/UI/DarkScreen/FadeOut.anim,.anim,menu_and_game,menu_client_and_game_remote
+Assets/Animations/Animations/UI/YouDie/Youdie.anim,.anim,game,remote
+Assets/Animations/Controllers/Checkpoint_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Clone_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Ctystal_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Enemy/Boss_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Enemy/Skeleton_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Enemy/Slime_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Enemy/Spell_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/FX/BlackholeFX_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/FX/HitFX_00_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/FX/HitFxCritical_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/IceAndFire_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Player_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/ShockStrike_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/Sword_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/ThunderStrike_AC.controller,.controller,game,remote
+Assets/Animations/Controllers/UI/DarkScreen_AC.controller,.controller,menu_and_game,menu_client_and_game_remote
+Assets/Animations/Controllers/UI/Youdie_AC.controller,.controller,game,remote
+Assets/Audio/bgm/bgm_battle.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/bgm/bgm_piece.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/bgm/bgm_street.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_attack1.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_attack2.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_attack3.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_checkpoint.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_click.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_dash.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_die.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_enemyattack.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_enemywalk.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_fire.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_footsteps.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_heal.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_jump.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_parry.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_pickupitem.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_run.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_throwsword.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/Audio/sfx/sfx_thunder.mp3,.mp3,menu_and_game,menu_client_and_game_remote
+Assets/AudioMixer.mixer,.mixer,menu_and_game,menu_client_and_game_remote
+Assets/Data/Item Effects/Armor Buff.asset,.asset,game,remote
+Assets/Data/Item Effects/Evasion on taking hit.asset,.asset,game,remote
+Assets/Data/Item Effects/Fire Buff.asset,.asset,game,remote
+Assets/Data/Item Effects/Fire damage on hit buff.asset,.asset,game,remote
+Assets/Data/Item Effects/Flask heal.asset,.asset,game,remote
+Assets/Data/Item Effects/Freeze enemies Effect.asset,.asset,game,remote
+Assets/Data/Item Effects/Heal on Hit.asset,.asset,game,remote
+Assets/Data/Item Effects/Ice and Fire effect.asset,.asset,game,remote
+Assets/Data/Item Effects/Thunder strike effect.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Amulet/Amulet of God.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Amulet/Golden ring.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Amulet/The book.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Armor/Blue wolf Armor.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Armor/Plate Armor.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Armor/Rogue's Jacket.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Flask/Armor Flask.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Flask/Fire Flask.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Flask/Healing Flask.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Weapon/Dracula's Sword.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Weapon/Ice And Fire.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Weapon/Stolen Sword.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Weapon/Thunder Claw.asset,.asset,game,remote
+Assets/Data/Items/Equipment/Weapon/Wooden Sword.asset,.asset,game,remote
+Assets/Data/Items/Materials/Animal Skin.asset,.asset,game,remote
+Assets/Data/Items/Materials/Iron.asset,.asset,game,remote
+Assets/Data/SampleDialogue.asset,.asset,game,remote
+Assets/Editor/CiCompileCheck.cs,.cs,editor_only,not_published
+Assets/Editor/DamageResultVerification.cs,.cs,editor_only,not_published
+Assets/Editor/DialogueAssetEditor.cs,.cs,editor_only,not_published
+Assets/Editor/MonsterAttackDamageVerification.cs,.cs,editor_only,not_published
+Assets/Editor/NetPacketVerificationCases.cs,.cs,editor_only,not_published
+Assets/Editor/NetworkProtocolVerification.cs,.cs,editor_only,not_published
+Assets/Editor/NetworkSimulationTimeVerification.cs,.cs,editor_only,not_published
+Assets/Editor/PlayerAttackPresentationVerification.cs,.cs,editor_only,not_published
+Assets/Editor/PlayerCombatContextVerification.cs,.cs,editor_only,not_published
+Assets/Editor/PrimaryAttackVerification.cs,.cs,editor_only,not_published
+Assets/Editor/PrimaryHitDedupVerification.cs,.cs,editor_only,not_published
+Assets/Editor/PrimaryHitWindowVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RoomCraftVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RoomEquipmentVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RoomFlaskVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RoomObjectCleanupVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RoomSkillUnlockVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RoomStatsPanelVerification.cs,.cs,editor_only,not_published
+Assets/Editor/RpgResourceUpdateSetup.cs,.cs,editor_only,not_published
+Assets/Graphics/Enemies/Briner of Death/Bringer-of-Death-SpritSheet.png,.png,game,remote
+Assets/Graphics/Enemies/Necro/Necromancer_creativekind-Sheet.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Night born/NightBorne.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Night born/NightBorne_attack.gif,.gif,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Night born/NightBorne_death..gif,.gif,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Night born/NightBorne_hurt.gif,.gif,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Night born/NightBorne_idle.gif,.gif,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Night born/NightBorne_run.gif,.gif,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Red Hood/red hood itch free Copy-Sheet.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Skeleton/Skeleton Attack.png,.png,game,remote
+Assets/Graphics/Enemies/Skeleton/Skeleton Dead.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Skeleton/Skeleton Hit.png,.png,game,remote
+Assets/Graphics/Enemies/Skeleton/Skeleton Idle.png,.png,game,remote
+Assets/Graphics/Enemies/Skeleton/Skeleton React.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Enemies/Skeleton/Skeleton Walk.png,.png,game,remote
+Assets/Graphics/Enemies/Slime/slime-Sheet.png,.png,game,remote
+Assets/Graphics/Font/NerkoOne-Regular SDF.asset,.asset,menu_and_game,menu_client_and_game_remote
+Assets/Graphics/Font/NerkoOne-Regular.ttf,.ttf,menu_and_game,menu_client_and_game_remote
+Assets/Graphics/Font/SyneMono-Regular SDF.asset,.asset,menu_and_game,menu_client_and_game_remote
+Assets/Graphics/Font/SyneMono-Regular.ttf,.ttf,menu_and_game,menu_client_and_game_remote
+Assets/Graphics/FX/Animation Pack/explosioneffect.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Animation Pack/Hit Effect.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Animation Pack/Magic Mirror.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Ball/EnergyBall.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Ball/energyBallImpact.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Beam/projetilNew.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt/bolt1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt/bolt2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt/bolt3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt/bolt4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt_2/spark-preview1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt_2/spark-preview2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt_2/spark-preview3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt_2/spark-preview4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Bolt_2/spark-preview5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Charged_Bolt/charged1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Charged_Bolt/charged2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Charged_Bolt/charged3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Charged_Bolt/charged4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Charged_Bolt/charged5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Charged_Bolt/charged6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Pulse/pulse1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Pulse/pulse2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Pulse/pulse3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Pulse/pulse4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Wave/waveform1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Wave/waveform2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Wave/waveform3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Arcane/Arcane_Wave/waveform4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust Particle.png,.png,game,remote
+Assets/Graphics/FX/Dust_LeftToRight/FX033_01.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_02.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_03.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_04.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_05.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_06.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_07.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_08.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_09.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Dust_LeftToRight/FX033_10.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Fire/Burn.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Fire/Line of fire.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Fire/Shine.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_0/SP103_01.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_0/SP103_02.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_0/SP103_03.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_0/SP103_04.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_1/hits-1-1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_1/hits-1-2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_1/hits-1-3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_1/hits-1-4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_1/hits-1-5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_2/hits-2-7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_3/hits-3-1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_3/hits-3-2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_3/hits-3-3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_3/hits-3-4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_3/hits-3-5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/hits_4/hits-4-1.png,.png,game,remote
+Assets/Graphics/FX/Hit/hits_4/hits-4-2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/hits_4/hits-4-3.png,.png,game,remote
+Assets/Graphics/FX/Hit/hits_4/hits-4-4.png,.png,game,remote
+Assets/Graphics/FX/Hit/hits_4/hits-4-5.png,.png,game,remote
+Assets/Graphics/FX/Hit/hits_4/hits-4-6.png,.png,game,remote
+Assets/Graphics/FX/Hit/hits_4/hits-4-7.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_5/hits-5-1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_5/hits-5-2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_5/hits-5-3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_5/hits-5-4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_5/hits-5-5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_5/hits-5-6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_5/hits-5-7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_6/hits-6-preview7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Hit/Hits_7/FX024_1.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_7/FX024_2.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_7/FX024_3.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_7/FX024_4.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_7/FX024_5.png,.png,game,remote
+Assets/Graphics/FX/Hit/Hits_7/FX024_6.png,.png,game,remote
+Assets/Graphics/FX/Ice/Ball of ice.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Ice/Burst of ice.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Ice_Fire_Projectole/crossed1.png,.png,game,remote
+Assets/Graphics/FX/Ice_Fire_Projectole/crossed2.png,.png,game,remote
+Assets/Graphics/FX/Ice_Fire_Projectole/crossed3.png,.png,game,remote
+Assets/Graphics/FX/Ice_Fire_Projectole/crossed4.png,.png,game,remote
+Assets/Graphics/FX/Ice_Fire_Projectole/crossed5.png,.png,game,remote
+Assets/Graphics/FX/Ice_Fire_Projectole/crossed6.png,.png,game,remote
+Assets/Graphics/FX/MiniTornado/SFX401_01.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/MiniTornado/SFX401_02.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/MiniTornado/SFX401_03.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/MiniTornado/SFX401_04.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/MiniTornado/SFX401_05.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/MiniTornado/SFX401_06.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/MiniTornado/SFX401_07.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Thunder/Thunder Splash/Thunder splash w blur.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Thunder/Thunder Splash/Thunder splash wo blur.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Thunder/Thunder Strike/Thunderstrike w blur.png,.png,game,remote
+Assets/Graphics/FX/Thunder/Thunder Strike/Thunderstrike wo blur.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/FX/Thunder/Thunder Strike 2/Thunder.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_0.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_10.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_12.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_14.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_16.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_18.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_2.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_20.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_22.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_24.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_26.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_28.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_4.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_6.png,.png,game,remote
+Assets/Graphics/FX/Void_Backlight/renwubaij_8.png,.png,game,remote
+Assets/Graphics/Icons/#2 - Transparent Icons & Drop Shadow.png,.png,game,remote
+Assets/Graphics/Icons/BG 3c.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Icons/BG 6.png,.png,game,remote
+Assets/Graphics/Icons/BG 7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/MainCharacter/Crystal.png,.png,game,remote
+Assets/Graphics/MainCharacter/Sword+Aim+Throw.png,.png,game,remote
+Assets/Graphics/MainCharacter/SwordSpin.png,.png,game,remote
+Assets/Graphics/MainCharacter/Warrior_Sheet-Effect.png,.png,game,remote
+Assets/Graphics/Surroundings/Forest_Bg/background_layer_1.png,.png,menu,client
+Assets/Graphics/Surroundings/Forest_Bg/background_layer_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Forest_Bg/background_layer_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Background/layer_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Background/layer_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Background/layer_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_small/candelabrum_small_nofire.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_3.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_4.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_5.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_6.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/candelabrum_tall_nofire.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candelabrum_tall/Materials/candelabrum_tall_nofire.mat,.mat,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_1/candle_1_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_1/candle_1_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_1/candle_1_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_1/candle_1_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_1/candle_1_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_1/candle_1_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_2/candle_2_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_2/candle_2_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_2/candle_2_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_2/candle_2_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_2/candle_2_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_2/candle_2_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_3/candle_3_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_3/candle_3_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_3/candle_3_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_3/candle_3_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_3/candle_3_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_3/candle_3_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_1/candle_blue_1_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_1/candle_blue_1_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_1/candle_blue_1_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_1/candle_blue_1_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_1/candle_blue_1_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_1/candle_blue_1_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_2/candle_blue_2_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_2/candle_blue_2_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_2/candle_blue_2_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_2/candle_blue_2_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_2/candle_blue_2_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_2/candle_blue_2_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_3/candle_blue_3_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_3/candle_blue_3_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_3/candle_blue_3_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_3/candle_blue_3_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_3/candle_blue_3_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/candle_blue_3/candle_blue_3_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/chest/chest_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/chest/chest_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/chest/chest_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/chest/chest_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/chest/chest_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/chest/chest_damaged.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_floor/lever_floor_7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_wall/lever_wall_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_wall/lever_wall_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_wall/lever_wall_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_wall/lever_wall_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_wall/lever_wall_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/lever_wall/lever_wall_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big/torch_big_background.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_big_blue/torch_big_blue_background.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small/torch_small_background.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated Decorations/torch_small_blue/torch_small_blue_background.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/axe.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/bag_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/bag_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/barrel.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/barrel_damaged.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/books.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/bookshelf_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/bookshelf_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/chair_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/chair_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/crate_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/crate_1_damaged.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/crate_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/crate_2_damaged.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/crate_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/crate_3_damaged.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/curtain_blue_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/curtain_blue_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/curtain_red_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/curtain_red_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/door.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/flag_blue.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/flag_red.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/langdebeve.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/pole_axe.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/potion_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/potion_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/potion_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/potion_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/potions_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/potions_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/scroll_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/scroll_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/sword_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/sword_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/table_noshadow.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/table_shadow.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/weapon_rack.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/wood_plank_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/wood_plank_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Decorations/wood_plank_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/HUD/bar.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/HUD/bar_background.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/HUD/health_bar.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/HUD/weapon_icon.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/arch_7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/blank.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_10.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_11.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_12.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_13.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_14.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_15.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_16.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_3.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_4.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_5.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_6.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_7.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_8.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_9.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_side_left_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_side_left_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_side_right_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_side_right_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_corner_left.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_corner_right.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_transparent_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/ceiling_transparent_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/column_8.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/damaged_brick_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/damaged_brick_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/damaged_brick_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/damaged_brick_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_3.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_4.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_4.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_corner_left.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_corner_right.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_transition_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_transition_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_corner_left.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_corner_right.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_wood_carpet_transition_1.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_wood_carpet_transition_2.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_wood_transition_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_wood_transition_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_corner_left.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_corner_right.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_transition_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_carpet_transition_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_corner_left.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_wood_corner_right.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_10.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_11.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_12.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_8.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/lion_column_9.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/merlons_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/merlons_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/merlons_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/merlons_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/merlons_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_shadow.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_wall_connection_left.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/platform_wall_connection_right.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/spikes.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_carpet_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_carpet_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_carpet_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_tile_carpet_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_carpet_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_carpet_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_carpet_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/stairs_wood_carpet_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_5.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_6.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/arch_7.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/blank.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_1.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_10.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_11.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_12.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_13.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_14.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_15.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_16.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_2.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_3.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_4.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_5.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_6.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_7.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_8.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_9.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_side_left_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_side_left_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_side_right_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_side_right_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_corner_left.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_corner_right.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_transparent_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/ceiling_transparent_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_5.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_6.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_7.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/column_8.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/damaged_brick_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/damaged_brick_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/damaged_brick_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/damaged_brick_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_1.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_2.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_3.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_4.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_1.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_2.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_4.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_corner_left.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_corner_right.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_transition_1.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_transition_2.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_corner_left.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_corner_right.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_wood_carpet_transition_1.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_wood_carpet_transition_2.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_wood_carpet_corner_left.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_wood_carpet_corner_right.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/lion_column_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/lion_column_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/lion_column_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/lion_column_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/lion_column_5.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/lion_column_6.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/merlons_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/merlons_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/merlons_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/merlons_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/spikes.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/tile_side_left.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/tile_side_right.asset,.asset,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_10.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_11.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_13.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_14.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_15.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_16.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_17.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_18.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_5.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_6.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_7.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_8.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/wall_9.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_big_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_big_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_big_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_big_4.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_big_5.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_big_6.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_glass_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_glass_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_glass_tall_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_glass_tall_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_glass_tall_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_small_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_small_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_tall_1.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_tall_2.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/window_tall_3.asset,.asset,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/tile_side_left.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/tile_side_right.png,.png,game,remote
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_10.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_11.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_12.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_13.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_14.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_15.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_16.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_17.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_18.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_7.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_8.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/wall_9.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_big_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_big_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_big_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_big_4.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_big_5.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_big_6.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_glass_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_glass_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_glass_tall_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_glass_tall_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_glass_tall_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_small_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_small_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_tall_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_tall_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Medieval_Castle/Tiles/window_tall_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/fence_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/fence_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/grass_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/grass_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/grass_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/lamp.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/rock_1.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/rock_2.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/rock_3.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/shop.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/shop_anim.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/Surroundings/Valley_Decor/sign.png,.png,game,remote
+Assets/Graphics/UI/Cursor_Normal.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/artdecoUI_PIPO_brown.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/artdecoUI_PIPO_red.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/artdecoUI_PIPO_tr.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/UIartdeco_PIPO_pack2_blue.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/UIartdeco_PIPO_pack2_brown.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/UIartdeco_PIPO_pack2_green.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/Extra/UIartdeco_PIPO_pack2_red.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Graphics/UI/UI_background.png,.png,menu_and_game,menu_client_and_game_remote
+Assets/Graphics/UI/UI_Green_Transperent.png,.png,menu_and_game,menu_client_and_game_remote
+Assets/Graphics/UI/UI_HealthBar.png,.png,game,remote
+Assets/Graphics/UI/UI_SkillTree.png,.png,game,remote
+Assets/Graphics/UI/UI_White_Blue.png,.png,game,remote
+Assets/Graphics/UI/UI_White_Transperent.png,.png,game,remote
+Assets/Graphics/Warrior_Sheet-Effect.png,.png,game,remote
+Assets/Materials/FlashFXMat.mat,.mat,game,remote
+Assets/Materials/SlipperyMat.physicsMaterial2D,.physicsmaterial2d,not_reached_from_player_scenes,review_not_published
+Assets/Prefabs/BossSpellController.prefab,.prefab,game,remote
+Assets/Prefabs/Checkpoint.prefab,.prefab,game,remote
+Assets/Prefabs/Dialogue/DialogOption.prefab,.prefab,game,remote
+Assets/Prefabs/Dialogue/DialogueBox.prefab,.prefab,game,remote
+Assets/Prefabs/Dialogue/InteractionOption.prefab,.prefab,game,remote
+Assets/Prefabs/Dialogue/InteractionPrompts.prefab,.prefab,game,remote
+Assets/Prefabs/Dialogue/SourceAssets/62fa2f45f1f11b3ee0b4ed4263accd8c.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Prefabs/Dialogue/SourceAssets/cropped.png,.png,game,remote
+Assets/Prefabs/Dialogue/SourceAssets/QingNiaoHuaGuangJianMeiHei-2.ttf,.ttf,game,remote
+Assets/Prefabs/Dialogue/SourceAssets/yuan.png,.png,game,remote
+Assets/Prefabs/Enemy Skeleton.prefab,.prefab,game,remote
+Assets/Prefabs/Enemy_Slime_Big.prefab,.prefab,game,remote
+Assets/Prefabs/Enemy_Slime_Medium.prefab,.prefab,game,remote
+Assets/Prefabs/Enemy_Slime_Small.prefab,.prefab,game,remote
+Assets/Prefabs/FX/AfterImageFX.prefab,.prefab,game,remote
+Assets/Prefabs/FX/DustFX.prefab,.prefab,game,remote
+Assets/Prefabs/FX/FireSnowFX.prefab,.prefab,not_reached_from_player_scenes,review_not_published
+Assets/Prefabs/FX/HitFX_00.prefab,.prefab,game,remote
+Assets/Prefabs/FX/HitFX_Critical.prefab,.prefab,game,remote
+Assets/Prefabs/FX/PopUpText.prefab,.prefab,game,remote
+Assets/Prefabs/IceAndFire.prefab,.prefab,game,remote
+Assets/Prefabs/Item Object - No Data.prefab,.prefab,game,remote
+Assets/Prefabs/LostCurrency.prefab,.prefab,game,remote
+Assets/Prefabs/Managers/AudioManager.prefab,.prefab,menu_and_game,menu_client_and_game_remote
+Assets/Prefabs/Managers/SaveManager.prefab,.prefab,menu_and_game,menu_client_and_game_remote
+Assets/Prefabs/ShockStrike.prefab,.prefab,game,remote
+Assets/Prefabs/Skills/AimDots.prefab,.prefab,game,remote
+Assets/Prefabs/Skills/Blackhole Hotkey.prefab,.prefab,game,remote
+Assets/Prefabs/Skills/Blackhole.prefab,.prefab,game,remote
+Assets/Prefabs/Skills/Clone.prefab,.prefab,game,remote
+Assets/Prefabs/Skills/Crystal.prefab,.prefab,game,remote
+Assets/Prefabs/Skills/Sword.prefab,.prefab,game,remote
+Assets/Prefabs/ThunderStrike.prefab,.prefab,game,remote
+Assets/Prefabs/UI/CraftSlot.prefab,.prefab,game,remote
+Assets/Prefabs/UI/DarkScreen.prefab,.prefab,menu_and_game,menu_client_and_game_remote
+Assets/Prefabs/UI/ItemSlot.prefab,.prefab,game,remote
+Assets/Scenes/MainMenu.unity,.unity,menu,client
+Assets/Scenes/MainScene.unity,.unity,game,remote
+Assets/Scripts/Checkpoint.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/IceandFireController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/ShockStrikeController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/SkillController/BlackholeHotkeyController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/SkillController/BlackholeSkillController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/SkillController/CloneSkillController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/SkillController/CrystalSkillController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/SkillController/SwordSkillController.cs,.cs,code,client_assembly
+Assets/Scripts/Controllers/ThunderStrikeController.cs,.cs,code,client_assembly
+Assets/Scripts/DeadZone.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossAttackState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossAttackTrigger.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossBattleState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossCastState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossDeadState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossGroundedState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossIdleState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossMoveState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossSpellController.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/BossTeleportState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Boss/Enemy_Boss.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Enemy.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/EnemyState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/EnemyStateMachine.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/EnemyAnimatorTriggers.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/EnemySkeleton.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonAttackState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonBattleState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonDeadState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonGroundedState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonIdleState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonMoveState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Skeleton/SkeletonStunnedState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/Enemy_Slime.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeAttackState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeBattleState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeDeadState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeGroundedState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeIdleState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeMoveState.cs,.cs,code,client_assembly
+Assets/Scripts/Enemy/Slime/SlimeStunnedState.cs,.cs,code,client_assembly
+Assets/Scripts/Entity.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/Architecture.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/ArchitectureHost.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/GameEventSystem.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/IArchitecture.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/IModel.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/INeedInit.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/IOCContainer.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/ISystem.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/IUpdateModule.cs,.cs,code,client_assembly
+Assets/Scripts/Framework/IUtility.cs,.cs,code,client_assembly
+Assets/Scripts/FX/AfterImageFx.cs,.cs,code,client_assembly
+Assets/Scripts/FX/EntityFX.cs,.cs,code,client_assembly
+Assets/Scripts/FX/HitEffectFX.cs,.cs,code,client_assembly
+Assets/Scripts/FX/ParallaxBackground.cs,.cs,code,client_assembly
+Assets/Scripts/FX/PlayerFX.cs,.cs,code,client_assembly
+Assets/Scripts/FX/PooledTemporaryEffect.cs,.cs,code,client_assembly
+Assets/Scripts/FX/PopUpTextFX.cs,.cs,code,client_assembly
+Assets/Scripts/FX/TemporaryEffectPool.cs,.cs,code,client_assembly
+Assets/Scripts/HotUpdate/HotUpdateScenes.cs,.cs,code,client_assembly
+Assets/Scripts/HotUpdate/ResourceUpdateController.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Effects/BuffEffect.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Effects/FreezeEnemyEffect.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Effects/HealEffect.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Effects/IceAndFireEffect.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Effects/ItemEffect.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Effects/ThunderStrikeEffect.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/Inventory.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/InventoryItem.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/InventoryModel.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/InventorySystem.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/ItemData.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/ItemData_Equipment.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/ItemObject.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/ItemObjectTrigger.cs,.cs,code,client_assembly
+Assets/Scripts/Item and Inventory/PlayerItemDrop.cs,.cs,code,client_assembly
+Assets/Scripts/ItemDrop.cs,.cs,code,client_assembly
+Assets/Scripts/LostCurrencyController.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/AudioManager.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/GameManager.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/GameplayControlLock.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/GameSimulationClock.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/GameSimulationDriver.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/InteractionManager.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/InteractionOptionData.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/NpcInteractable.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/NpcInteractionRange.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/PlayerManager.cs,.cs,code,client_assembly
+Assets/Scripts/Managers/SimulationLifetime.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/AuthorityMeleeQuery.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/AuthorityPositionBuffer.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/AuthorityResults.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/EntityRuntimePermissions.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/LocalMovementPrediction.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/MonotonicClock.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/MonsterAttackHitDetection.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/MovementInputSender.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetConnection.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetPacket.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetworkElementState.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetworkEntityIdentity.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetworkHitFeedback.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetworkScenePresentation.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetworkSkillObject.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/NetworkSystem.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/PrimaryAttackHitDetection.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/PrimaryAttackRuntime.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/Protocol/ProtocolCodec.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/Protocol/ProtocolMessages.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RemotePlayerView.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomBlackholeNetwork.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCloneNetwork.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCombatConfiguration.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCombatDamage.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCombatElements.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCombatShock.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCraftCatalog.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomCrystalNetwork.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomDeadZoneTrigger.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomExitEvent.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomFlaskCatalog.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomHandshakePeer.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomMessageMetrics.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomNetworkObject.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomNetworkObjects.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomPlayerEntities.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomPresentationContext.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomSceneCoordinator.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomSceneMonsters.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomSkillTreeCatalog.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/RoomSwordNetwork.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/TcpRoomClient.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/TcpRoomHost.cs,.cs,code,client_assembly
+Assets/Scripts/Networking/UtpRoomTransport.cs,.cs,code,client_assembly
+Assets/Scripts/Player/Player.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerAimSwordState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerAirState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerAnimationTriggers.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerBlackholeState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerCatchSwordState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerCombatContext.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerCounterAttackState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerDashState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerDeadState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerGroundedState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerIdleState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerInputData.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerJumpState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerMoveState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerPrimaryAttack.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerRoomCrafting.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerRoomFlask.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerRoomInventory.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerRoomSkillTree.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerStateMachine.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerWallJumpState.cs,.cs,code,client_assembly
+Assets/Scripts/Player/PlayerWallSlideState.cs,.cs,code,client_assembly
+Assets/Scripts/Save and Load/FileDataHandler.cs,.cs,code,client_assembly
+Assets/Scripts/Save and Load/GameData.cs,.cs,code,client_assembly
+Assets/Scripts/Save and Load/InventorySaveMapper.cs,.cs,code,client_assembly
+Assets/Scripts/Save and Load/ISaveManager.cs,.cs,code,client_assembly
+Assets/Scripts/Save and Load/SaveManager.cs,.cs,code,client_assembly
+Assets/Scripts/Save and Load/SerializableDictionary.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/BlackholeSkill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/CloneSkill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/CrystalSkill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/DashSkill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/DodgeSkill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/ParrySkill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/Skill.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/SkillManager.cs,.cs,code,client_assembly
+Assets/Scripts/Skill/SwordSkill.cs,.cs,code,client_assembly
+Assets/Scripts/Stats/CharaterStats.cs,.cs,code,client_assembly
+Assets/Scripts/Stats/DamageCalculations.cs,.cs,code,client_assembly
+Assets/Scripts/Stats/EnemyStats.cs,.cs,code,client_assembly
+Assets/Scripts/Stats/PlayerStats.cs,.cs,code,client_assembly
+Assets/Scripts/Stats/Stat.cs,.cs,code,client_assembly
+Assets/Scripts/UI/BasePanel.cs,.cs,code,client_assembly
+Assets/Scripts/UI/DialogueAsset.cs,.cs,code,client_assembly
+Assets/Scripts/UI/DialogueOptionView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/DialogueRunner.cs,.cs,code,client_assembly
+Assets/Scripts/UI/DialogueView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/IBasePanel.cs,.cs,code,client_assembly
+Assets/Scripts/UI/InteractionListView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/InteractionOptionView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/InventoryChanged.cs,.cs,code,client_assembly
+Assets/Scripts/UI/InventoryStatsView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/InventoryView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/InventoryViewLifecycle.cs,.cs,code,client_assembly
+Assets/Scripts/UI/MenuControlLock.cs,.cs,code,client_assembly
+Assets/Scripts/UI/NetworkCraftPanel.cs,.cs,code,client_assembly
+Assets/Scripts/UI/NetworkInventoryView.cs,.cs,code,client_assembly
+Assets/Scripts/UI/NetworkSkillTreePanel.cs,.cs,code,client_assembly
+Assets/Scripts/UI/NetworkStatsPanel.cs,.cs,code,client_assembly
+Assets/Scripts/UI/RoomPanel.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_CraftList.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_CraftSlot.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_CraftWindow.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_EquipmentSlot.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_FadeScreen.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_HealthBar.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_InGame.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_ItemSlot.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_ItemTooltip.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_MainMenu.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_Options.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_SkillTooltip.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_SkillTreeSlot.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_StatSlot.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_StatTooltip.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_Tooltip.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UI_VolumeSlider.cs,.cs,code,client_assembly
+Assets/Scripts/UI/UISystem.cs,.cs,code,client_assembly
+Assets/TextMesh Pro/Documentation/TextMesh Pro User Guide 2016.pdf,.pdf,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt,.txt,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Fonts/LiberationSans.ttf,.ttf,menu_and_game,menu_client_and_game_remote
+Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Drop Shadow.mat,.mat,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset,.asset,menu_and_game,client_resources
+Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Outline.mat,.mat,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset,.asset,menu_and_game,client_resources
+Assets/TextMesh Pro/Resources/LineBreaking Following Characters.txt,.txt,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Resources/LineBreaking Leading Characters.txt,.txt,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Resources/Sprite Assets/EmojiOne.asset,.asset,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Resources/Style Sheets/Default Style Sheet.asset,.asset,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Resources/TMP Settings.asset,.asset,not_reached_from_player_scenes,client_resources
+Assets/TextMesh Pro/Shaders/SDFFunctions.hlsl,.hlsl,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_Bitmap-Custom-Atlas.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_Bitmap-Mobile.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_Bitmap.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF Overlay.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF SSD.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-HDRP LIT.shadergraph,.shadergraph,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-HDRP UNLIT.shadergraph,.shadergraph,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Masking.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile SSD.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile-2-Pass.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader,.shader,menu_and_game,menu_client_and_game_remote
+Assets/TextMesh Pro/Shaders/TMP_SDF-Surface-Mobile.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-Surface.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-URP Lit.shadergraph,.shadergraph,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF-URP Unlit.shadergraph,.shadergraph,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMP_SDF.shader,.shader,menu_and_game,menu_client_and_game_remote
+Assets/TextMesh Pro/Shaders/TMP_Sprite.shader,.shader,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMPro.cginc,.cginc,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMPro_Mobile.cginc,.cginc,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMPro_Properties.cginc,.cginc,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Shaders/TMPro_Surface.cginc,.cginc,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Sprites/EmojiOne Attribution.txt,.txt,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Sprites/EmojiOne.json,.json,not_reached_from_player_scenes,review_not_published
+Assets/TextMesh Pro/Sprites/EmojiOne.png,.png,not_reached_from_player_scenes,review_not_published
+Assets/Tile Palette/Tile Set.prefab,.prefab,not_reached_from_player_scenes,review_not_published

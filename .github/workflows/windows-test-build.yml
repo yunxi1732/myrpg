@@ -17,6 +17,17 @@ jobs:
         with:
           lfs: true
 
+      - name: Prepare Addressables content for the client
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: 6000.3.10f1
+          targetPlatform: StandaloneWindows64
+          buildMethod: Rpg.Editor.RpgResourceUpdateSetup.BuildForCi
+
       - name: Build Windows client
         uses: game-ci/unity-builder@v4
         env:

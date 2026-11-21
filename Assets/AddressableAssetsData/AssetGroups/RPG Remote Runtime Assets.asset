@@ -1,0 +1,1976 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: RPG Remote Runtime Assets
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: RPG Remote Runtime Assets
+  m_GUID: 350ff0e87ba637e469c38397ccafdb62
+  m_SerializeEntries:
+  - m_GUID: 012466a9e66c54641a0e88e0b5d4d33d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 02f4afd7629ed6f4fb92c33334f7b2de
+    m_Address: Assets/Audio/sfx/sfx_die.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 03908a51768fb704f97ed96a700bee41
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 040f48108d434e942aa051e194f7af7a
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 043ee30d709b2244a8232965e08e1c4b
+    m_Address: Assets/Animations/Animations/Enemy/Skeleton/SkeletonMove.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 05128f98536341f499f280396e65854c
+    m_Address: Assets/Graphics/FX/Hit/hits_4/hits-4-5.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 05cde80bbd6c9484e9d631b053c1e502
+    m_Address: Assets/Graphics/UI/UI_White_Blue.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 06242265b20b362428c8796ac7c38c58
+    m_Address: Assets/Graphics/FX/Hit/hits_4/hits-4-6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 067c788b0a07323489759ba215d1deda
+    m_Address: Assets/Animations/Animations/Boss/BossAttack.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 068eb4caa53357a4e9c7592321e7aea7
+    m_Address: Assets/Animations/Controllers/Ctystal_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0782319e1b8fb16448d055baeaefba59
+    m_Address: Assets/Audio/sfx/sfx_run.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 078ad953961744a4386afbda66ee9c80
+    m_Address: Assets/Animations/Animations/Player/PlayerIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0a691d592ecfd4142af58dfcd8c242b0
+    m_Address: Assets/Graphics/FX/Ice_Fire_Projectole/crossed1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0b8de4022280c7044bc25c91c09ccc44
+    m_Address: Assets/Graphics/FX/Hit/Hits_7/FX024_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0b99b743b0ef75244afa5753212640a1
+    m_Address: Assets/Animations/Animations/ShockStrike/ShockStrikeIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0c4fb954f24cb9c40899d1ba7530c680
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_16.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0c76cf42010dea54c826702cc8c25f8d
+    m_Address: Assets/Data/Items/Equipment/Weapon/Dracula's Sword.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0dce44a12f3fb5843821562be830ef31
+    m_Address: Assets/Data/Items/Materials/Iron.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0e4e9e307a6097a4cbd21f66b7bdf986
+    m_Address: Assets/Graphics/Enemies/Briner of Death/Bringer-of-Death-SpritSheet.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0f0ec0e391b0151479d3608c12a6c5e5
+    m_Address: Assets/Graphics/FX/Hit/Hits_0/SP103_04.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0f2d35081db8b2746aed901899e27f62
+    m_Address: Assets/Graphics/MainCharacter/Crystal.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 108940e9d7de9f9489f753578ff58b08
+    m_Address: Assets/Animations/Animations/IceAndFire/IceAndFireIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 10ab72c7bff26aa4db1c0177bc2cecfa
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_0.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 10cbcf6de1e5d944e9ec5c7eca828155
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_5.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 13fc327fb78b1ee4aad48c6f18545915
+    m_Address: Assets/Audio/sfx/sfx_checkpoint.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 15202f78b789d324e8545fd729598571
+    m_Address: Assets/Data/Item Effects/Evasion on taking hit.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 15ce633a895fcfe4c8c0fbc5e23f9485
+    m_Address: Assets/Animations/Animations/Boss/BossCastEnd.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1690c00a0782ddc46bd5579e9b7c819b
+    m_Address: Assets/Prefabs/Dialogue/SourceAssets/QingNiaoHuaGuangJianMeiHei-2.ttf
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 18a592694db3eb84da2d68d9d43a7431
+    m_Address: Assets/Animations/Animations/Enemy/Slime/SlimeIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1a6a6ae2cc6e3414da6daaaf2fa35359
+    m_Address: Assets/Graphics/Enemies/Skeleton/Skeleton Hit.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1c4f3fa7154e4964cba58c5c06784f16
+    m_Address: Assets/Audio/bgm/bgm_street.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1cfb71d4d29ea434f82ad40c4491cd73
+    m_Address: Assets/Animations/Controllers/Enemy/Skeleton_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d024acf37f18b8418541de8f9ece470
+    m_Address: Assets/Prefabs/Enemy_Slime_Small.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d04b95471ec403c8e025a8d1729c785
+    m_Address: Assets/Prefabs/Dialogue/DialogOption.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d66ce7f972fce54996e63590f465254
+    m_Address: Assets/Animations/Controllers/Enemy/Boss_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1e1c07c9e10e39146978c2384474da86
+    m_Address: Assets/Animations/Animations/ThunderStrike/ThunderStrikeIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1e9599d8b87b57747abecedf7c558ad9
+    m_Address: Assets/Animations/Animations/Crystal/CrystalIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1eda10a211da401994eff086105e9805
+    m_Address: Assets/Prefabs/Dialogue/DialogueBox.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1f038efaafd8bff4194e5ef38be4e67b
+    m_Address: Assets/Graphics/UI/UI_SkillTree.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1fc53cf22f551714f945c2467e8edd0e
+    m_Address: Assets/Graphics/FX/Ice_Fire_Projectole/crossed3.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 20962e54c30f6704b8fdb76a376bd212
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_18.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 23b2f779c57706942a00bce63f48640f
+    m_Address: Assets/Graphics/FX/Ice_Fire_Projectole/crossed5.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2455bf13a23e9d9449ea8f9cd4e42edb
+    m_Address: Assets/Audio/sfx/sfx_attack1.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2457fb1eb4bffc440abf13dca4fb9f61
+    m_Address: Assets/Graphics/FX/Hit/hits_4/hits-4-3.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 24ff249242d2c4a47a126dcf3f1d3ae1
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2587f2264e391c24d92f8446cadc22c6
+    m_Address: Assets/Animations/Animations/Player/PlayerThrowSword.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 26075e6099ebb844aaf0a6405ebb02f6
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2655dd57f8a7d874ebe12fcad3d00c42
+    m_Address: Assets/Graphics/FX/Hit/Hits_0/SP103_03.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 26c0f71c830e9bd42805085798b0fc2c
+    m_Address: Assets/Animations/Controllers/ThunderStrike_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2711308236b0eec4dad8d69405d2b748
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_1.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 277b82bd2ab46e240ab2fcbdd18ff279
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_20.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 288775d1aa25875418a3f3fd7acb01f5
+    m_Address: Assets/Graphics/UI/UI_Green_Transperent.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2a3a8044959fa0c4fa0d7d8e43daca74
+    m_Address: Assets/Prefabs/UI/DarkScreen.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2a4228dae45be7549b38273b9a2a5aea
+    m_Address: Assets/Graphics/FX/Hit/Hits_7/FX024_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2a8f76533509b9943b711699eeff2bf8
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_2.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2fa0758a560995b47be88c80e0df9ddd
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_28.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2fbcb17fbf768d14c89ac7b8ab6c1180
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_3.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2fd1a19f85620b14dac610bdccab9e88
+    m_Address: Assets/Animations/Animations/Player/PlayerAttack1.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 30e067ac12922c9459f43420a1a9b784
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 326c8912d99f78a4c953f7188d794ef1
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_transition_2.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 36b587d5f28416b46aa3e5ffbe72596e
+    m_Address: Assets/Animations/Animations/Boss/Spell.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 371a2e9e02b88e348a2d855fcc047c86
+    m_Address: Assets/Data/Items/Equipment/Flask/Healing Flask.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3846663a2da0f684e9fc677d44b7bd90
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/blank.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3974f5f2313e81646945f8bdf76f688d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3a73f9cffd1296d4d84a286a9a394b49
+    m_Address: Assets/Data/Items/Materials/Animal Skin.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3b7a9cf52426b0543b89c41ce2bc0a89
+    m_Address: Assets/Animations/Controllers/Player_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3ed6ffbbfe652fa488970df8b0549935
+    m_Address: Assets/Animations/Animations/Player/PlayerJump.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3fd368567d5c5a44594d7634aa13ebac
+    m_Address: Assets/Animations/Animations/Enemy/Slime/SlimeAttack.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 403761abfc1a78a4d81c84175e05433d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_10.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4100a999fbe4c284bb1845ba8be0f1c5
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 41264cd85b0ee4f48a9fb760b4ef2732
+    m_Address: Assets/Animations/Animations/Boss/BossEnter.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4283951784519e34881c9ee0efd93b88
+    m_Address: Assets/Graphics/FX/Hit/Hits_0/SP103_01.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 42b4ab0313ed7344598f94460d918be9
+    m_Address: Assets/Graphics/Font/SyneMono-Regular.ttf
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 430f454ed027a2c46a9e2fb6ce1ea96a
+    m_Address: Assets/Animations/Animations/Player/PlayerAttack2.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4509734409304c84b8f787528d855437
+    m_Address: Assets/Graphics/Enemies/Skeleton/Skeleton Walk.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 477fbcb2676a30a4c97ce8f35098d25f
+    m_Address: Assets/Animations/Controllers/Enemy/Spell_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4983af24db2a3784fb2275cce6745226
+    m_Address: Assets/Data/Items/Equipment/Amulet/Golden ring.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4a3856daac7219147ad0274f9e5a683c
+    m_Address: Assets/Graphics/Surroundings/Valley_Decor/sign.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4be2c34154b4b20429143bf5a0400d64
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4ce5ab5dc2586c14786c5fbd044c87df
+    m_Address: Assets/Graphics/Font/NerkoOne-Regular SDF.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4d969abadb1aa8c4fb460844f327f20d
+    m_Address: Assets/Animations/Animations/Player/PlayerSuccessfulCounterAttack.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4ea03877aab6b534185adf6e5e649a59
+    m_Address: Assets/Graphics/FX/Ice_Fire_Projectole/crossed6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 502ddd7bcb152424fb53b52ac278bbcc
+    m_Address: Assets/Data/Item Effects/Fire damage on hit buff.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5097b0ea3b9da474e8e9fbfd46234bb3
+    m_Address: Assets/Animations/Animations/UI/DarkScreen/FadeIn.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 51876bb3a1aff4a45b1cb31e01b28d70
+    m_Address: Assets/Prefabs/BossSpellController.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 538aed2d25afdc84c8b4b4a1af936d09
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 541a6af55935740498aa63ae9f6a3403
+    m_Address: Assets/Animations/Animations/Enemy/Slime/SlimeStunnedOver.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 54b700e10cb23c34c9dddb2c19bbd313
+    m_Address: Assets/Data/Items/Equipment/Weapon/Stolen Sword.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5505a4b3965eb4540a5913e52c126c41
+    m_Address: Assets/Animations/Animations/Player/PlayerDash.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 55174320726fb1141b3bf32f9f837c72
+    m_Address: Assets/Audio/sfx/sfx_throwsword.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 566022a13cd07704f901df875de4f01d
+    m_Address: Assets/Data/Item Effects/Armor Buff.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5880c8d8bd3543248b565bce4f2bf259
+    m_Address: Assets/Prefabs/FX/AfterImageFX.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 58b62cf51718e5f48be7fcab33c55120
+    m_Address: Assets/Animations/Controllers/FX/HitFX_00_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5921000c711b46946a2505c3708b5c60
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_4.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 594ff60a47cd29b4894b94a77ca9c7f5
+    m_Address: Assets/Animations/Controllers/UI/Youdie_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5a2c3061353634f46818543d7613a2d9
+    m_Address: Assets/Prefabs/FX/DustFX.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5b37f7e31a19796489c254db0005907c
+    m_Address: Assets/Graphics/Enemies/Slime/slime-Sheet.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5c1c5609474696743b45cae65eee5711
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_12.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5fbea46ec8b0e444e983745a0594b210
+    m_Address: Assets/Data/Items/Equipment/Armor/Blue wolf Armor.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6006c0c10ebec7e448d5fd8ba3c14227
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/tile_side_right.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6192cea30133ad343900062a8ae5c9fd
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_transition_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 61b55ca6b70c73d41ac57cbbeacb0575
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_3.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 61c6ffbf4ec10284ca8b666a9112bf45
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_wood_carpet_transition_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 63899952d16801348a1883f8cb1fd45e
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_wood_carpet_transition_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 639fa5620d2b27e42a7b92940b994bbb
+    m_Address: Assets/Data/Items/Equipment/Amulet/The book.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 63ef48a2e0c644e4fa397f5bb22bfaab
+    m_Address: Assets/Animations/Animations/ShockStrike/ShockStrikeHit.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6567bdccccf39a444b5744231476c73e
+    m_Address: Assets/Animations/Animations/Player/PlayerCounterAttack.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 662e57ae24af8554896b636e6df146a9
+    m_Address: Assets/Graphics/FX/Ice_Fire_Projectole/crossed4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 666f03b135de3bd45bfd88cf56a82fbc
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/tile_side_left.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 66a0a7a9793e5f644951ca9969a6e8a6
+    m_Address: Assets/Animations/Animations/Blackhole/BlackholeFX.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 68050f38e2de5074fa243d4bef1dc081
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_26.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 687df074731fbf744b668d2275dbb675
+    m_Address: Assets/Graphics/Enemies/Skeleton/Skeleton Idle.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 68e6db2ebdc24f95958faec2be5558d6
+    m_Address: Assets/TextMesh Pro/Shaders/TMP_SDF.shader
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6a606a31abfac874b90cca672eaa600e
+    m_Address: Assets/Audio/sfx/sfx_thunder.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6a9dcb6ab5c948c4690037600855520e
+    m_Address: Assets/Animations/Animations/Checkpoint/NotActive.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6c20524f5eaf68742b265232141c8034
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_transition_1.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6ca4f2763568fe84b8b898ce48a7c371
+    m_Address: Assets/Audio/sfx/sfx_enemywalk.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6e82221b61cce3847ba45fa9ef1e9f3a
+    m_Address: Assets/Animations/Animations/Player/PlayerCatchSword.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7365dce33644f064e8c1bff7c058cf2c
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 73bec98b5512150479fe2ddc7b40d4d3
+    m_Address: Assets/Graphics/Warrior_Sheet-Effect.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 743064e3458dfdc40b25b4335d18c5e9
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 743948d676f380045a4d553112a18e00
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_6.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 74661a95ecbbd114d907b55e47564d6a
+    m_Address: Assets/Graphics/Font/NerkoOne-Regular.ttf
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 751d4eb174c69bb4882080c27dbd4cd9
+    m_Address: Assets/Animations/Controllers/ShockStrike_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 75a7614ef84a40c42a6e61b9d23ad74e
+    m_Address: Assets/Audio/sfx/sfx_enemyattack.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 75e779f123702d64cbfabb2e9a002661
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_7.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 76f71310ecfa098478e16ca8dd7e76b0
+    m_Address: Assets/Graphics/FX/Hit/hits_4/hits-4-1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 76fc3ecd247b1e049a125e5eeef95ec0
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_9.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 770ce598dd85ddc4096ee635a731e71c
+    m_Address: Assets/Graphics/FX/Hit/hits_4/hits-4-7.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 775f3ad4e1857bb45b13d373398d7440
+    m_Address: Assets/Animations/Controllers/IceAndFire_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7927c3b1cb797d648a8c37d03f78b47f
+    m_Address: Assets/Graphics/FX/Hit/Hits_7/FX024_5.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7b3151e2a733f87459083bc8d47f49e9
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_11.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7b96e82df073069419a0f8271ecb5690
+    m_Address: Assets/Data/Items/Equipment/Weapon/Ice And Fire.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7bae39282af46fa449bb7fd77041f40d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/blank.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7cb69dc4cd7df9145b7bb8276c19d3a3
+    m_Address: Assets/Animations/Animations/Sword/SwordFlip.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7e60f51a7eb7e2e4bb9a21821727daf5
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_12.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7e9b292a88d44b5438cb21260c79a524
+    m_Address: Assets/Data/Items/Equipment/Armor/Rogue's Jacket.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7f1c70acd3a44df4594d7d5a99659736
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7fbf738bdc908bf45b813691405de018
+    m_Address: Assets/Data/Item Effects/Fire Buff.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7fc8184838747014aba78da47e35d9fc
+    m_Address: Assets/Animations/Animations/Enemy/Skeleton/SkeletonAttack.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8111b7a7df8529c48848f48101b512f1
+    m_Address: Assets/Animations/Animations/Boss/BossIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 821b4cd692e01d340b8a923390dec9e8
+    m_Address: Assets/Prefabs/Skills/AimDots.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 84bdc42b70bb5e54aa18bb33c1fa834e
+    m_Address: Assets/Graphics/Font/SyneMono-Regular SDF.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 85a16f8e24914b6fb10eddb3f4f0d575
+    m_Address: Assets/Data/SampleDialogue.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 85be1dce0299c4648a5579365f7b7043
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 85c3dac9d11cee24eb4221ac4aac70c0
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_wood_carpet_transition_1.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 86022e92c97e2874cb150576a1fb4dec
+    m_Address: Assets/Data/Items/Equipment/Weapon/Wooden Sword.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 868a95a478f92d243b6e086a34f65b5e
+    m_Address: Assets/Animations/Animations/Player/PlayerDie.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 874da03a312c28e4f852426f7ece780b
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_3.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 88960ca326c5a2341ab2d0acdce0fb8c
+    m_Address: Assets/Animations/Animations/Player/PlayerAttack3.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 88cf464c4ced75549a0fd5262125aa06
+    m_Address: Assets/Prefabs/Enemy_Slime_Big.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8978026a459d0774997c2af78eab2c7e
+    m_Address: Assets/Animations/Animations/Boss/BossExit.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b17009522fdec948b4e40317076223e
+    m_Address: Assets/Animations/Animations/HitFX/HitFX_Critical.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b2dae4b25926354ca548a6cb2020762
+    m_Address: Assets/Animations/Animations/Boss/BossCast.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8ba552f1d98c54a4a8fd5c138036c8bf
+    m_Address: Assets/Audio/sfx/sfx_jump.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8cf78924dce683f41b02bb43c07b6665
+    m_Address: Assets/Prefabs/Enemy Skeleton.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8d520db65d417a845952e74123e6824a
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_1.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8fc4a4b2a63cfef48970ecca08644d77
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_22.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 900a1527ede688546b67b9c82b8f4715
+    m_Address: Assets/Graphics/UI/UI_background.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 90d10d4ec25a7e54f9becdea0c8dfef1
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/tile_side_right.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 91bb73a1a3dfbb247ac968f4b4a04ebd
+    m_Address: Assets/Audio/sfx/sfx_pickupitem.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 92460e16a61b47f44a2e19865d69656c
+    m_Address: Assets/Animations/Animations/Boss/BossCastStart.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9364afbb7720dc444a5d383fb1a00c97
+    m_Address: Assets/Data/Items/Equipment/Flask/Fire Flask.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 942906f33b37b8241895ef3c47dcbc8f
+    m_Address: Assets/Prefabs/Dialogue/SourceAssets/cropped.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 958bde66562256543884ca8f3a507b30
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_10.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 96aeec0df8d9a9c41b6ad67ce63a900a
+    m_Address: Assets/Graphics/FX/Thunder/Thunder Strike 2/Thunder.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 988397adcc911d6469b1ee89ef0f8b0d
+    m_Address: Assets/Audio/sfx/sfx_dash.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 99a4a23701ec66e4f993efdcb794e764
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Background/layer_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 99b51a3320383424f92a4147e10dca6d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_12.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9badd4967ff7ac54dafb540f41e5d8a7
+    m_Address: Assets/Animations/Controllers/Enemy/Slime_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9bbbc2c0257722f488c02db11d65d033
+    m_Address: Assets/Graphics/FX/Hit/Hits_7/FX024_6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9c219e936a4117a4b9658c1e40f8bc84
+    m_Address: Assets/Graphics/UI/UI_White_Transperent.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9d436364b307e7b48b5651e33d4626c3
+    m_Address: Assets/Data/Items/Equipment/Amulet/Amulet of God.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9d746550cfa0ae74389d61f7ca11431b
+    m_Address: Assets/Data/Item Effects/Heal on Hit.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9da6f2520bbbf6b438eea10f4fc25a5c
+    m_Address: Assets/Graphics/FX/Dust Particle.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9e6c2c224003ae748b50c28deaedf011
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_10.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9f87d4a1445d1bd42ba4721e85abd885
+    m_Address: Assets/Prefabs/Skills/Sword.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9fa70640455aabb468ff7d76aa58dab8
+    m_Address: Assets/Prefabs/FX/HitFX_00.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a3645a609b9120f4eaa5d9ef017c0f7d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_1.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a3d0d8b0b47b867448b6561f582a2f65
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_4.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a40b45f8786bd994bb8ecbb71e362ee4
+    m_Address: Assets/Audio/bgm/bgm_battle.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a512f0106d57be74680bee8709fef08c
+    m_Address: Assets/Data/Item Effects/Freeze enemies Effect.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7024e838552ffd41b3935e96995a636
+    m_Address: Assets/Graphics/FX/Hit/Hits_0/SP103_02.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a969cb6e363c0d84d804b778a5a84ef2
+    m_Address: Assets/Animations/Animations/Player/PlayerAimSword.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a9ca9a41598dd2e44b125928045c518f
+    m_Address: Assets/Graphics/Icons/BG 6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a9f2c39e92ad4974caf2302ee4101a33
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_3.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: aadc745ba3b0fb34a97092f358d94d59
+    m_Address: Assets/Animations/Animations/Enemy/Slime/SlimeStunned.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ac5e5981fa5affe4b8d0c5f3781f35e1
+    m_Address: Assets/Prefabs/UI/ItemSlot.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: acd92147682b4f928b392a8f2354fef1
+    m_Address: Assets/Prefabs/Dialogue/InteractionPrompts.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ad2da9190c92bd04a97b91da587fc108
+    m_Address: Assets/Graphics/FX/Hit/Hits_7/FX024_3.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ae72133dacba6ec4eb33ecde48f50e56
+    m_Address: Assets/Graphics/MainCharacter/Warrior_Sheet-Effect.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: aecf78587c9be7f4b84e234e0e2454a4
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_wood_carpet_transition_2.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: afdae31bc81d124438bb1f81eae6040c
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_3.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: afe81f347eefa0a46b73aa061be8a8ca
+    m_Address: Assets/Graphics/FX/Thunder/Thunder Strike/Thunderstrike w blur.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b61b80457cffebe48b9c4749c6294ae5
+    m_Address: Assets/Prefabs/UI/CraftSlot.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b6c1c14a43b6fc548aad0c2d34270d06
+    m_Address: Assets/Prefabs/Skills/Crystal.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b734e413e9459164fbe133e972afe8bd
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_nofire.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b740ad9e5ac95054681a452972dbfab2
+    m_Address: Assets/Prefabs/Managers/SaveManager.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b74cd7c92b66ff949804935b8e1b2a2a
+    m_Address: Assets/Graphics/UI/UI_HealthBar.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-runtime
+    - rpg-ui
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ba7903d45f43db442af7cce024621158
+    m_Address: Assets/Materials/FlashFXMat.mat
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bcb3c6ceb32c96040b458b0c53572091
+    m_Address: Assets/Animations/Animations/HitFX/HitFX_00.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: be55291aae08d434db3da3b59db3ab4a
+    m_Address: Assets/Graphics/Icons/#2 - Transparent Icons & Drop Shadow.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: be6bc5c2879afdf45b071c0525b13bf9
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_6.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: be8c9daed4a4fed4cbc669e1c42e6de0
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Background/layer_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bee670f35f559614a93d63b7a67dffb6
+    m_Address: Assets/Data/Item Effects/Flask heal.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: beedb24c63f147889a9eb92f0b9014f8
+    m_Address: Assets/Prefabs/Dialogue/InteractionOption.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bfe106a5f7b9bd54ea47aa6e724f2246
+    m_Address: Assets/Graphics/FX/Hit/Hits_7/FX024_4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c0422f004137bbb4c810fca17be17af3
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_2.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c1ecb27b0199a2c48a90d052e467f35a
+    m_Address: Assets/Animations/Animations/Boss/BossMove.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c23adbe3d28c10c4ca57b6b33f1e5c77
+    m_Address: Assets/Prefabs/FX/HitFX_Critical.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c278c35fc6d4e4147999bc596a9cdef8
+    m_Address: Assets/Audio/sfx/sfx_attack2.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c31df5b7cdf61b144a3dc92762cf263e
+    m_Address: Assets/Prefabs/FX/PopUpText.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c3af24f797e5dbf4294ca71b73824406
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_9.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c421e263b60729f4bab431fff8d3e228
+    m_Address: Assets/Prefabs/Checkpoint.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c50e4411515737e4faa847e15416007f
+    m_Address: Assets/Animations/Animations/Enemy/Skeleton/SkeletonIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c5e0e9109d361b041b0a4995942f7a3b
+    m_Address: Assets/Prefabs/ShockStrike.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c6177298f360d314495bba27f9950671
+    m_Address: Assets/Graphics/MainCharacter/Sword+Aim+Throw.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c62b4605018c56545a45f16fcb4b6ee4
+    m_Address: Assets/Prefabs/ThunderStrike.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ca9d68f911d3f174185e1543abee53b5
+    m_Address: Assets/Audio/sfx/sfx_parry.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cc71415bc56e07742a0bede3d4be6d2f
+    m_Address: Assets/Graphics/Enemies/Skeleton/Skeleton Attack.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd401c83a410f384cbf4997f0ca841b3
+    m_Address: Assets/Prefabs/Skills/Blackhole.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd97007569e154a489992c31bbd67a5e
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_5.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ce6ca20392bf7d545abf56b98817b810
+    m_Address: Assets/Data/Items/Equipment/Flask/Armor Flask.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cf70664145b456748859d222af77ec29
+    m_Address: Assets/Animations/Controllers/Clone_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cf938624c36764e41beb4f4485cf62ee
+    m_Address: Assets/Animations/Animations/Player/PlayerMove.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d09faba1615d60444b5d90e3266f3af4
+    m_Address: Assets/Prefabs/IceAndFire.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d24ed68f171dd194798cc3b36fc7b227
+    m_Address: Assets/Animations/Controllers/Checkpoint_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d33234c48850b3448b80a1775dc6c8fd
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_8.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d4b105e46a065154db97ffba36b59018
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d596ca9ad1650574d94dfe28b7f56db2
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_transition_1.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d651a5a5eefa15d4983b0c7a01357f94
+    m_Address: Assets/Animations/Animations/Enemy/Slime/SlimeMove.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d6d02bd9e36bef84cba47745dcdc1265
+    m_Address: Assets/Animations/Controllers/FX/BlackholeFX_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d71019cc67aee9649908a3ec00481116
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/brick_7.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d76b9edbaf637f244bb4de05d2e58ef8
+    m_Address: Assets/Animations/Animations/Checkpoint/Active.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d8410b5183f3f4f459f4643a8d4fdf26
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_8.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: db28f2c231e76bf42b7eb2675586fb1c
+    m_Address: Assets/Audio/sfx/sfx_fire.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: db900cec022e17e4385647c50c13c054
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_24.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dcc97b890309403439f34cc67e4704eb
+    m_Address: Assets/Animations/Controllers/UI/DarkScreen_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dd048f003e1ce22469bbd35ad6bc1735
+    m_Address: Assets/Prefabs/Dialogue/SourceAssets/yuan.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: de623000770f15746bed0af9c1547146
+    m_Address: Assets/Animations/Animations/Enemy/Slime/SlimeStunnedBegin.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: de92bb99d9ece394892a5823f319be11
+    m_Address: Assets/Prefabs/Skills/Clone.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dfe4cef070589ab44b008a07761b7d64
+    m_Address: Assets/Prefabs/Skills/Blackhole Hotkey.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e22f9cd5483c30f4e93072dc306a3591
+    m_Address: Assets/Audio/sfx/sfx_heal.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e2774b8e35d28094d9f7c001e4e2e545
+    m_Address: Assets/Audio/sfx/sfx_footsteps.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e3265ab4bf004d28a9537516768c1c75
+    m_Address: Assets/TextMesh Pro/Fonts/LiberationSans.ttf
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e3a49cdbbf8bf3d4eb5e5149598a0506
+    m_Address: Assets/Data/Item Effects/Ice and Fire effect.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e5db2e6269cab6942b3c1a074c187b31
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/tile_side_left.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e6a4ad7ed2ab4e440a6aaecc7c511a7a
+    m_Address: Assets/Prefabs/Managers/AudioManager.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e725348a72bab2842be03e374ecc3b19
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Decorations/Animated
+      Decorations/candelabrum_tall/candelabrum_tall_5.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e7599f6e79628a24a81a84acba9827a5
+    m_Address: Assets/Data/Items/Equipment/Armor/Plate Armor.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e76e9db89729d804a962877ee8ab1646
+    m_Address: Assets/Graphics/FX/Hit/hits_4/hits-4-4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e79ef1c6efcccf0448d7a95b4c42721a
+    m_Address: Assets/Animations/Animations/Enemy/Skeleton/SkeletonStunned.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ea4ce6b8a226f1840858d23b40ff51f7
+    m_Address: Assets/Prefabs/Enemy_Slime_Medium.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ead986015de8a3d4587f4b0fdba325d4
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_carpet_2.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ecd5ca5f18de0f54587718eec6549901
+    m_Address: Assets/Audio/bgm/bgm_piece.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ecf1e3bb4476d2d4f95d6bbf9bf41d15
+    m_Address: Assets/AudioMixer.mixer
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ee229ccf8d861b74f92b6fc295a3fe86
+    m_Address: Assets/Animations/Controllers/FX/HitFxCritical_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f0cffcd9ce7066e4a836547161338bfd
+    m_Address: Assets/Graphics/FX/Void_Backlight/renwubaij_14.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f0d66d55240a0f5438f00559f32948d1
+    m_Address: Assets/Audio/sfx/sfx_attack3.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f2bda1752d2e3854aa84f9bd2b278cae
+    m_Address: Assets/Animations/Animations/UI/YouDie/Youdie.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f379aa737c7694b4f8b30f0e8dbbce4f
+    m_Address: Assets/Animations/Animations/Player/PlayerFall.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f4bfa0e3db0d30442a9fe8e6d94ae3da
+    m_Address: Assets/Audio/sfx/sfx_click.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-audio
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f4cc04a8fb2da474cacba9bef96fc10f
+    m_Address: Assets/Animations/Controllers/Sword_AC.controller
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f586ec04610c94c439dca12d98b34fdd
+    m_Address: Assets/Data/Item Effects/Thunder strike effect.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f6b296ee51c42564abe9c05f1c502ecd
+    m_Address: Assets/Graphics/MainCharacter/SwordSpin.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f6f49ceeea8ebd745b273a0cc81b744e
+    m_Address: Assets/Data/Items/Equipment/Weapon/Thunder Claw.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-data
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f720bc20244f28149ac292af7a4ed7df
+    m_Address: Assets/Prefabs/Item Object - No Data.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f8581e605f3a7514abaee1b0f2d3c672
+    m_Address: Assets/Animations/Animations/UI/DarkScreen/FadeOut.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f942b746238c48e4cb7f1457e819e374
+    m_Address: Assets/Animations/Animations/Sword/SwordIdle.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f9c3ea60ab11fd940b76892888fa7816
+    m_Address: Assets/Prefabs/LostCurrency.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-prefabs
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f9d169c79d966d4498601c89b1e2ad2a
+    m_Address: Assets/Animations/Animations/Player/PlayerWallSlide.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f9fa29bed0a3bf8408c37a13d0ea2141
+    m_Address: Assets/Animations/Animations/Crystal/CrystalExplode.anim
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-animations
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fb3a2d00864850749809a0562c5872d6
+    m_Address: Assets/Graphics/FX/Ice_Fire_Projectole/crossed2.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fb94501e677859642a47669aaa1affcd
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_8.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fba344cd9c2ca2b45ac363ebc39af54d
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/brick_11.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fccdb70464ffbcb4295df5286e947b35
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/Tile Assets/floor_tile_4.asset
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fdf2a184fc9b8344e82fabdfdcc989f6
+    m_Address: Assets/Graphics/Surroundings/Medieval_Castle/Tiles/floor_tile_carpet_4.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-graphics
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fe393ace9b354375a9cb14cdbbc28be4
+    m_Address: Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile.shader
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - rpg-other
+    - rpg-runtime
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 3c78c5c3a103cfa4887b9b2a79b7585f, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 2bb5a40861a53514bb9445d766c428b4, type: 2}
+    - {fileID: 11400000, guid: 09a0001451250a746b067223528d995f, type: 2}

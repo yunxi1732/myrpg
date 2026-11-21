@@ -7,7 +7,7 @@ namespace Rpg.Networking.Protocol
     {
         // Sole version source. Increment for incompatible DTO or semantic changes.
         // Periodic monster attacks use a sparse list; player positions omit confirmed flask state and derived parry flags.
-        public const int SchemaVersion = 61;
+        public const int SchemaVersion = 62;
     }
 
     public enum ProtocolId : short
@@ -627,9 +627,10 @@ namespace Rpg.Networking.Protocol
     public sealed class HandshakeHelloDto
     {
         public int schemaVersion;
+        public string resourceVersion;
     }
 
-    public enum HandshakeRejection { None, VersionMismatch, RoomFull, InvalidRequest }
+    public enum HandshakeRejection { None, VersionMismatch, RoomFull, InvalidRequest, ResourceVersionMismatch }
 
     [Serializable]
     public sealed class HeartbeatDto
@@ -801,6 +802,7 @@ namespace Rpg.Networking.Protocol
     public sealed class HandshakeResultDto
     {
         public int schemaVersion;
+        public string resourceVersion;
         public bool accepted;
         public HandshakeRejection rejection;
         public string roomSessionId;

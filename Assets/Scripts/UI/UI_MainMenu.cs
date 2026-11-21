@@ -6,6 +6,8 @@ using UnityEngine.UI;
 using System;
 using Rpg.Networking;
 using UnityEngine.EventSystems;
+using Rpg.HotUpdate;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class UI_MainMenu : MonoBehaviour
 {
@@ -29,9 +31,13 @@ public class UI_MainMenu : MonoBehaviour
     private RoomSceneCoordinator sceneCoordinator;
     private bool networkSceneView;
     private int appliedTestDelayMs, appliedTestJitterMs, appliedTestLossPercent;
+    private ResourceUpdateController resourceUpdate;
 
     private void Awake()
     {
+        HotUpdateScenes.ReleaseCurrent();
+        resourceUpdate = GetComponent<ResourceUpdateController>();
+        if (resourceUpdate == null) resourceUpdate = gameObject.AddComponent<ResourceUpdateController>();
         if (roomPanel == null || onlineButton == null) return;
         appliedTestDelayMs = roomTestSendDelayMs;
         appliedTestJitterMs = roomTestSendJitterMs;
@@ -96,6 +102,7 @@ public class UI_MainMenu : MonoBehaviour
 
     public void OpenRoomPanel()
     {
+        if (resourceUpdate == null || !resourceUpdate.Ready) return;
         if (roomOpen || roomPanel == null || !roomPanel.IsReady || !panels.OpenPanel(UIPanelId.Room)) return;
         roomOpen = true;
         previousButtonVisibility = new bool[mainMenuButtons.Length];
@@ -272,17 +279,19 @@ public class UI_MainMenu : MonoBehaviour
 
     private bool BlockSinglePlayerEntry()
     {
+        if (resourceUpdate == null || !resourceUpdate.Ready) return true;
         if (roomHost == null || !roomHost.IsListening && (roomClient == null || roomClient.Connection == null)) return false;
         OpenRoomPanel();
         roomPanel.ShowStatus("Exit room before single-player");
         return true;
     }
 
-    private void Start()
+    private IEnumerator Start()
     {
         if (SaveManager.instance.HaveSavedData() == false)
             continueButton.SetActive(false);
         string entryMessage = RoomSceneCoordinator.TakeEntryMessage();
+        while (resourceUpdate != null && !resourceUpdate.Ready) yield return null;
         if (!string.IsNullOrEmpty(entryMessage))
         {
             OpenRoomPanel();
@@ -317,6 +326,12 @@ public class UI_MainMenu : MonoBehaviour
 
         yield return GameSimulationClock.Wait(_delay);
 
-        SceneManager.LoadScene(sceneName);
+        var load = HotUpdateScenes.LoadGame();
+        yield return load;
+        if (load.Status != AsyncOperationStatus.Succeeded)
+        {
+            Debug.LogError("[HotUpdate] Cannot enter " + sceneName + ": " + load.OperationException);
+            fadeScreen.FadeIn();
+        }
     }
 }

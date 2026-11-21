@@ -343,7 +343,7 @@ namespace Rpg.Networking.Protocol
             if (dto is HandshakeResultDto result && result.schemaVersion > 0)
             {
                 if (!result.accepted && result.rejection >= HandshakeRejection.VersionMismatch &&
-                    result.rejection <= HandshakeRejection.InvalidRequest) return;
+                    result.rejection <= HandshakeRejection.ResourceVersionMismatch) return;
                 if (result.accepted && result.rejection == HandshakeRejection.None &&
                     Guid.TryParseExact(result.roomSessionId, "N", out _) && result.hostPlayerId > 0 &&
                     result.hostEntityId > 0 && result.guestPlayerId > 0 && result.guestEntityId > 0 &&

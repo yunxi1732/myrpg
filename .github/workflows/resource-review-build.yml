@@ -1,0 +1,76 @@
+name: Resource review build
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_content_state_run_id:
+        description: 'Original released content build run ID; leave empty for the first full build'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  content:
+    if: github.repository == 'yunxi1732/myrpg' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download original content state for an update
+        if: inputs.base_content_state_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.base_content_state_run_id }}
+          pattern: rpg-resource-*
+          path: previous-content
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select original content state
+        if: inputs.base_content_state_run_id != ''
+        shell: pwsh
+        run: |
+          $state = Get-ChildItem -LiteralPath 'previous-content' -Filter 'addressables_content_state.bin' -File -Recurse |
+            Select-Object -First 1
+          if ($null -eq $state) { throw 'Original addressables_content_state.bin was not found.' }
+          "RPG_CONTENT_STATE_FILE=$($state.FullName)" >> $env:GITHUB_ENV
+          "RPG_BASE_RELEASE_ID=$($state.Directory.Name)" >> $env:GITHUB_ENV
+
+      - name: Build Addressables review content
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: 6000.3.10f1
+          targetPlatform: StandaloneWindows64
+          buildMethod: Rpg.Editor.RpgResourceUpdateSetup.BuildForCi
+
+      - name: Stage manifest and checksums
+        id: package
+        shell: pwsh
+        run: |
+          $releaseId = "ci-$env:GITHUB_RUN_ID-$($env:GITHUB_SHA.Substring(0, 8))"
+          if ($env:RPG_CONTENT_STATE_FILE) {
+            python Tools/package_resource_release.py --release-id $releaseId --base-release-id $env:RPG_BASE_RELEASE_ID --content-state $env:RPG_CONTENT_STATE_FILE
+          } else {
+            python Tools/package_resource_release.py --release-id $releaseId
+          }
+          "release_id=$releaseId" >> $env:GITHUB_OUTPUT
+
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpg-resource-${{ steps.package.outputs.release_id }}
+          path: |
+            ServerData/releases/${{ steps.package.outputs.release_id }}/
+            Build/ResourceRelease/${{ steps.package.outputs.release_id }}/
+          if-no-files-found: error
+          retention-days: 90

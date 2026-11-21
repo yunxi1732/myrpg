@@ -3,6 +3,7 @@ using System.Net;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Rpg.Networking.Protocol;
+using Rpg.HotUpdate;
 using System.IO;
 
 namespace Rpg.Networking
@@ -266,7 +267,8 @@ namespace Rpg.Networking
 
         private static HandshakeResultDto Rejection(HandshakeRejection reason) => new HandshakeResultDto
         {
-            schemaVersion = ProtocolSchema.SchemaVersion, rejection = reason
+            schemaVersion = ProtocolSchema.SchemaVersion, resourceVersion = ResourceUpdateController.ActiveVersion,
+            rejection = reason
         };
 
         private void AcceptHello(HandshakeHelloDto hello)
@@ -277,12 +279,19 @@ namespace Rpg.Networking
                 RejectGuest(HandshakeRejection.VersionMismatch);
                 return;
             }
+            if (string.IsNullOrEmpty(ResourceUpdateController.ActiveVersion) ||
+                hello.resourceVersion != ResourceUpdateController.ActiveVersion)
+            {
+                RejectGuest(HandshakeRejection.ResourceVersionMismatch);
+                return;
+            }
             GuestIdentity = AllocateIdentity();
             try
             {
                 Guest.Send(new HandshakeResultDto
                 {
-                    schemaVersion = ProtocolSchema.SchemaVersion, accepted = true, roomSessionId = RoomSessionId,
+                    schemaVersion = ProtocolSchema.SchemaVersion, resourceVersion = ResourceUpdateController.ActiveVersion,
+                    accepted = true, roomSessionId = RoomSessionId,
                     hostPlayerId = HostIdentity.PlayerId, hostEntityId = HostIdentity.EntityId,
                     guestPlayerId = GuestIdentity.PlayerId, guestEntityId = GuestIdentity.EntityId
                 });

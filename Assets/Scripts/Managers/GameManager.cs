@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Rpg.HotUpdate;
 
 public class GameManager : MonoBehaviour, ISaveManager
 {
@@ -47,7 +48,7 @@ public class GameManager : MonoBehaviour, ISaveManager
         if (Rpg.Networking.RoomSceneCoordinator.ProtectSaves) return;
         SaveManager.instance.SaveGame();
         Scene scene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(scene.name);
+        HotUpdateScenes.LoadGame();
     }
 
     public void LoadData(GameData _data)
