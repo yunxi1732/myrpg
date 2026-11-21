@@ -27,6 +27,7 @@ jobs:
           unityVersion: 6000.3.10f1
           targetPlatform: StandaloneWindows64
           buildMethod: Rpg.Editor.RpgResourceUpdateSetup.BuildForCi
+          customParameters: -rpgReleaseId windows-${{ github.run_id }}-${{ github.sha }}
 
       - name: Build Windows client
         uses: game-ci/unity-builder@v4

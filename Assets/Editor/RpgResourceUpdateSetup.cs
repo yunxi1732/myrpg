@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Build;
@@ -96,13 +97,21 @@ namespace Rpg.Editor
         // GameCI calls this method. It produces an artifact but never publishes it.
         public static void BuildForCi()
         {
-            string state = Environment.GetEnvironmentVariable("RPG_CONTENT_STATE_FILE");
-            string run = Environment.GetEnvironmentVariable("GITHUB_RUN_ID");
-            string sha = Environment.GetEnvironmentVariable("GITHUB_SHA");
-            string id = !string.IsNullOrEmpty(run) && !string.IsNullOrEmpty(sha)
-                ? "ci-" + run + "-" + sha.Substring(0, Math.Min(8, sha.Length))
-                : NewReleaseId();
+            string id = CommandLineValue("-rpgReleaseId");
+            string state = CommandLineValue("-rpgContentStatePath");
+            if (string.IsNullOrEmpty(id) || !Regex.IsMatch(id, "^[A-Za-z0-9_-]{1,80}$"))
+                throw new InvalidOperationException("GameCI must pass a valid -rpgReleaseId through customParameters.");
             BuildReviewContent(state, id);
+        }
+
+        private static string CommandLineValue(string option)
+        {
+            string[] arguments = Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < arguments.Length; i++)
+                if (string.Equals(arguments[i], option, StringComparison.Ordinal) &&
+                    !arguments[i + 1].StartsWith("-", StringComparison.Ordinal))
+                    return arguments[i + 1];
+            return null;
         }
 
         private static string NewReleaseId() => DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
