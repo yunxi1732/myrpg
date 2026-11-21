@@ -1,6 +1,6 @@
 # Windows 客户端：CI、资源热更新与代码热更新计划
 
-状态：第 0 步已验收；第 1 步的本地工作流已准备，待使用者 push 并在 GitHub 上运行验收。每次只执行下面一个编号步骤；该步验收通过后再开始下一步。此文件是计划，不代表后续功能已经实现或测试通过。
+状态：第 0、1 步已验收；下一步为第 2 步。每次只执行下面一个编号步骤；该步验收通过后再开始下一步。此文件是计划，不代表后续功能已经实现或测试通过。
 
 ## 已确认的范围
 
@@ -38,13 +38,15 @@
 
 **验收**：一次正常 `main` push 后，GitHub Actions 显示通过，日志出现 `[CI] Unity script compilation completed.`；工作流不依赖本机 `Library` 或 `Build` 目录。若自然发生编译错误，应显示失败并保留日志。临时分支故意制造错误的演练不属于本步，因为使用者只授权 `main` push 自动触发且工作流使用 Unity 授权 Secrets。
 
-**当前进度**：使用者已自行配置三个 Actions Secrets。新增 `.github/workflows/unity-compile.yml`，仅 `main` 的 push 自动运行；使用 GameCI 在 Windows 运行器调用 `Assets/Editor/CiCompileCheck.cs` 的静态入口，Unity 完成脚本编译后输出 `[CI] Unity script compilation completed.`。不构建客户端、不发布。助手未运行 GitHub 或 Unity；实际授权、包导入和编译结果仍待使用者验收。
+**验收记录（2026-11-21）**：使用者已自行配置三个 Actions Secrets。`.github/workflows/unity-compile.yml` 仅在 `main` push 时自动运行；GameCI 在 Windows 运行器调用 `Assets/Editor/CiCompileCheck.cs` 的静态入口，不构建客户端、不发布。使用者推送提交 `2a33bbd` 后提供截图，显示 `Unity compile #1` 在 `main` 上绿色成功、用时约 10 分 10 秒，并确认该次运行日志出现 `[CI] Unity script compilation completed.`。据此确认首次云端 Unity 导入、编译和入口调用通过；未演练故意编译错误的失败路径。助手未运行 GitHub 或 Unity。
 
 ### 2. 自动运行一个现有的确定性验证
 
 **本步工作**：审查 `Assets/Editor` 中已有的菜单验证，选择一个无需人工点击、结果稳定的入口，封装为可在批处理模式运行且失败时返回非零退出码的检查。只接入这一个验证。
 
-**验收**：正常结果通过；故意破坏该验证的临时分支让 CI 失败；恢复后通过。保存验证日志。后续每次只在有实际回归价值时增加一个检查。
+**验收**：`main` push 后 CI 成功，日志同时出现 `[PrimaryAttackRequests] PASS` 和 `[CI] Primary attack verification completed.`；保留该次 GitHub Actions 日志。使用者选择本步暂不演练故意失败路径，不将异常时返回非零的行为标为实测通过。后续每次只在有实际回归价值时增加一个检查。
+
+**当前进度**：选用现有 `PrimaryAttackVerification.Verify()`，它在非 Play Mode 预览场景中检查攻击请求去重、执行复核、拒绝与取消、冷却和房间实例 ID。`CiCompileCheck.RunPrimaryAttackVerification()` 在原编译成功标记后调用该方法；验证抛异常时记录异常并调用 `EditorApplication.Exit(1)`。工作流仍只由 `main` push 自动触发，不新增测试分支或手动触发入口，不构建客户端。助手未运行 GitHub 或 Unity；待使用者 push 并核对日志。
 
 ## 阶段二：自动构建测试客户端
 
