@@ -1,6 +1,6 @@
 # Windows 客户端：CI、资源热更新与代码热更新计划
 
-状态：第 0、1 步已验收；下一步为第 2 步。每次只执行下面一个编号步骤；该步验收通过后再开始下一步。此文件是计划，不代表后续功能已经实现或测试通过。
+状态：第 0、1、2 步已验收；第 3 步的本地手动构建工作流已准备，待使用者在 GitHub 运行并验收。每次只执行下面一个编号步骤；该步验收通过后再开始下一步。此文件是计划，不代表后续功能已经实现或测试通过。
 
 ## 已确认的范围
 
@@ -46,7 +46,7 @@
 
 **验收**：`main` push 后 CI 成功，日志同时出现 `[PrimaryAttackRequests] PASS` 和 `[CI] Primary attack verification completed.`；保留该次 GitHub Actions 日志。使用者选择本步暂不演练故意失败路径，不将异常时返回非零的行为标为实测通过。后续每次只在有实际回归价值时增加一个检查。
 
-**当前进度**：选用现有 `PrimaryAttackVerification.Verify()`，它在非 Play Mode 预览场景中检查攻击请求去重、执行复核、拒绝与取消、冷却和房间实例 ID。`CiCompileCheck.RunPrimaryAttackVerification()` 在原编译成功标记后调用该方法；验证抛异常时记录异常并调用 `EditorApplication.Exit(1)`。工作流仍只由 `main` push 自动触发，不新增测试分支或手动触发入口，不构建客户端。助手未运行 GitHub 或 Unity；待使用者 push 并核对日志。
+**验收记录（2026-11-21）**：选用现有 `PrimaryAttackVerification.Verify()`，它在非 Play Mode 预览场景中检查攻击请求去重、执行复核、拒绝与取消、冷却和房间实例 ID。`CiCompileCheck.RunPrimaryAttackVerification()` 在原编译成功标记后调用该方法；验证抛异常时记录异常并调用 `EditorApplication.Exit(1)`。工作流仍只由 `main` push 自动触发，不新增测试分支或手动触发入口，不构建客户端。使用者推送提交 `fe7e11d` 后提供截图，显示 `Unity compile #2` 在 `main` 上成功、用时约 11 分 9 秒，并确认日志同时出现 `[PrimaryAttackRequests] PASS` 与 `[CI] Primary attack verification completed.`。本步正常路径通过；按使用者选择未演练故意失败路径，因此异常时返回非零尚无实际 CI 证据。助手未运行 GitHub 或 Unity。
 
 ## 阶段二：自动构建测试客户端
 
@@ -55,6 +55,8 @@
 **本步工作**：在前两步成功后，自动构建 Windows 客户端并上传为 CI 产物。先使用手动触发或明确的测试分支触发，避免每次备份式 push 都执行耗时构建。产物标明 Git 提交和构建时间。
 
 **验收**：从 CI 下载产物，在 Windows 上启动并进入原有场景；与本机手动构建的关键流程一致。失败构建不得被当作可测试产物。
+
+**当前进度**：已核对 `ProjectSettings/EditorBuildSettings.asset`，`MainMenu.unity` 和 `MainScene.unity` 均启用。新增 `.github/workflows/windows-test-build.yml`，仅能手动触发，且构建 job 只接受仓库 `yunxi1732/myrpg` 的 `main`；使用现有三个 Unity Actions Secrets 和 GameCI 构建 `StandaloneWindows64`。只有 GameCI 成功并找到 Windows `.exe` 与匹配的 `_Data` 目录后，才写入 `build-info.txt`（Git 提交及 UTC 构建时间）并上传产物；产物名也包含提交和 UTC 时间，保留 14 天。不部署、不改资源或玩法。助手未运行 GitHub 或 Unity；待使用者先确认该提交的编译 CI 为绿色，再手动运行此构建并下载验收。
 
 ## 阶段三：最小资源热更新
 

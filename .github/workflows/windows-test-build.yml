@@ -1,0 +1,50 @@
+name: Windows test build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'yunxi1732/myrpg' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Build Windows client
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: 6000.3.10f1
+          targetPlatform: StandaloneWindows64
+
+      - name: Record build identity
+        id: identity
+        shell: pwsh
+        run: |
+          $root = 'build/StandaloneWindows64'
+          $player = Get-ChildItem -LiteralPath $root -Filter '*.exe' -File -Recurse |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.DirectoryName ($_.BaseName + '_Data')) } |
+            Select-Object -First 1
+          if ($null -eq $player) { throw 'Windows player executable and matching Data folder were not found.' }
+          $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+          "timestamp=$stamp" >> $env:GITHUB_OUTPUT
+          @("commit=$env:GITHUB_SHA", "built_at_utc=$stamp") |
+            Set-Content -LiteralPath (Join-Path $root 'build-info.txt')
+
+      - name: Upload Windows test client
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpg-windows-${{ github.sha }}-${{ steps.identity.outputs.timestamp }}
+          path: build/StandaloneWindows64/
+          if-no-files-found: error
+          retention-days: 14
