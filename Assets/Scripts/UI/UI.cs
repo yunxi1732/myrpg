@@ -73,9 +73,26 @@ public class UI : MonoBehaviour, ISaveManager
         // End-screen objects have their own lifecycle, outside the menu group.
         if (endText != null) endText.SetActive(false);
         if (restartButton != null) restartButton.SetActive(false);
-        SwitchTo(skillTreeUI);
+        // The HUD is selected in Start. Opening a menu here can leave the game
+        // paused if scene initialization stops before Start.
+        panels.CloseMenuGroup();
+        ResolveFadeScreen();
+    }
 
-        fadeScreen.gameObject.SetActive(true);
+    private void ResolveFadeScreen()
+    {
+        if (fadeScreen == null)
+        {
+            foreach (Animator animator in GetComponentsInChildren<Animator>(true))
+            {
+                if (animator.gameObject.name != "DarkScreen") continue;
+                fadeScreen = animator.GetComponent<UI_FadeScreen>();
+                if (fadeScreen == null) fadeScreen = animator.gameObject.AddComponent<UI_FadeScreen>();
+                break;
+            }
+        }
+        if (fadeScreen != null) fadeScreen.gameObject.SetActive(true);
+        else Debug.LogError("[UI] DarkScreen fade component was not found.", this);
     }
 
     private void RegisterScenePanel(UIPanelId id, GameObject scenePanel)
@@ -183,7 +200,7 @@ public class UI : MonoBehaviour, ISaveManager
             }
             if (!panels.ShowExclusive(id)) return;
             SetBlankMenuLock(false);
-            AudioManager.instance.PlaySFX(4, null);
+            AudioManager.TryPlaySFX(4, null);
         }
     }
 
@@ -235,7 +252,7 @@ public class UI : MonoBehaviour, ISaveManager
 
     public void SwitchOnEndScreen()
     { 
-        fadeScreen.FadeOut();
+        if (fadeScreen != null) fadeScreen.FadeOut();
         endScreenRoutine = StartCoroutine(EndScreenCorutione());
     }
 
@@ -243,7 +260,8 @@ public class UI : MonoBehaviour, ISaveManager
     {
         if (networkRoomDeathShowing) return;
         networkRoomDeathShowing = true;
-        for (Transform path = fadeScreen.transform; path != null; path = path.parent) path.gameObject.SetActive(true);
+        if (fadeScreen != null)
+            for (Transform path = fadeScreen.transform; path != null; path = path.parent) path.gameObject.SetActive(true);
         var label = endText.GetComponent<TMP_Text>();
         label.text = "You Died"; label.raycastTarget = false;
         restartButton.GetComponent<UnityEngine.UI.Button>().interactable = true;
@@ -280,7 +298,7 @@ public class UI : MonoBehaviour, ISaveManager
             Rpg.Networking.RoomSceneCoordinator.Active.RequestLocalRetry();
             return;
         }
-        AudioManager.instance.PlaySFX(4, null);
+        AudioManager.TryPlaySFX(4, null);
         GameManager.instance.RestartScene();
     }
 

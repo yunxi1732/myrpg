@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Build;
 using UnityEditor.AddressableAssets.Settings;
@@ -101,6 +102,18 @@ namespace Rpg.Editor
             string state = CommandLineValue("-rpgContentStatePath");
             if (string.IsNullOrEmpty(id) || !Regex.IsMatch(id, "^[A-Za-z0-9_-]{1,80}$"))
                 throw new InvalidOperationException("GameCI must pass a valid -rpgReleaseId through customParameters.");
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.StandaloneWindows64)
+                throw new InvalidOperationException("The review build currently supports Windows 64-bit only.");
+            if (PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone) != ScriptingImplementation.IL2CPP)
+                throw new InvalidOperationException("Set the Standalone scripting backend to IL2CPP before CI builds.");
+            if (!HybridCLR.SettingsUtil.Enable ||
+                !HybridCLR.SettingsUtil.HotUpdateAssemblyNamesExcludePreserved.Contains("Rpg.HotUpdate"))
+                throw new InvalidOperationException("HybridCLR must be enabled with Rpg.HotUpdate as a hot-update assembly.");
+
+            var installer = new HybridCLR.Installer.InstallerController();
+            if (!installer.HasInstalledHybridCLR() || installer.PackageVersion != installer.InstalledLibil2cppVersion)
+                installer.InstallDefaultHybridCLR();
+            HybridCLR.Commands.PrebuildCommand.GenerateAll();
             BuildReviewContent(state, id);
         }
 

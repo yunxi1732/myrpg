@@ -334,3 +334,19 @@
 ## 2026-11-20
 - **网络快照与 UDP 分配优化**：容量检查复用最终发送的编码包，UDP 接收只复制一次入队 payload；怪物死亡遍历复用列表，玩家/怪物周期与初始化快照复用 DTO 和容器，技能 HUD 填充值写入复用数组。玩家和怪物快照位置改为 `Vector2`，双端校验与编辑器验证同步调整，`SchemaVersion` 从 60 升至 61。逐包分配调试日志已撤销；`git diff --check` 通过，Unity 编译、双端运行及 Profiler GC 采样待验证。
 - **敌人索敌与技能范围查询优化**：骷髅、史莱姆、敌人近距检测、水晶、飞剑到达判断及技能最近敌人选择改用平方距离；敌人一次选目标最多查询一次射线，射线与飞剑旋转命中均复用物理查询结果列表。联机电击链和飞剑弹射按怪物碰撞体边界查询空间哈希网格，网格每权威固定步长最多重建一次，新增怪物时重建；电击保留精确距离和实体 ID 选目标，弹射改按实体 ID 稳定排序。同一步内网格位置可能稍旧。运行时 C# 构建通过（0 警告、0 错误），Unity 双端命中与性能效果待验证。
+
+## 2026-11-21
+- **资源热更新迁移**：接入 Addressables `2.9.1`，以 MainMenu 为随包首场景，将 MainScene 及当前运行依赖配置为 279 个远程资源条目；两个 TextMesh Pro `Resources` 字体依赖保留本地。新增资源清单与配置脚本，替换场景及相关联机加载入口；未使用素材和 Editor 内容不发布。C# 静态编译通过，Unity 完成内容与 Windows 客户端构建。
+- **客户端更新与联机版本门禁**：加入版本清单和 Catalog 校验、下载进度、失败重试、首次下载后的离线缓存与上一资源版本回退；联机双方须使用相同资源版本。固定 `Build/HotUpdateTest/rpg.exe` 未重建，从 `20261121T130816Z` 更新到 `20261121T133911Z` 后显示新的 Dodge 图标；使用者确认在线、离线、回退、同版本连接和不同版本拒绝。空缓存且 HTTP 停止时失败，恢复服务后 Retry 成功。战斗、背包、存档、动画和音频完整回归仍待验收。
+- **资源审核与手动发布**：构建脚本保存 `addressables_content_state.bin`、Build Layout、SHA-256 校验记录和待审核 `latest.json`；资源放在 `ServerData/releases/<releaseId>/StandaloneWindows64/`，人工审核后才更新 HTTP 根目录的 `latest.json`。本机两个版本已按此流程发布测试；日常 push 不发布资源。
+- **CI 审核构建修复**：首次手动运行 `44912579900` 因 Unity 进程未收到 releaseId 而在清单打包步骤失败；改用 GameCI `customParameters` 显式传入 releaseId 及可选的内容状态路径。提交 `4a68273` 的 [Resource review build #2](https://github.com/yunxi1732/myrpg/actions/runs/44914497120) 已成功构建并上传审核产物 `rpg-resource-ci-44914497120-4a68273ce25df1aa9eca83324d5dcf8674fe9849`；产物下载审核与固定旧客户端复测尚未完成，CI 未自动发布。
+
+## 2026-11-22
+- **代码热更新边界预拆分**：保留内置菜单引用的 SaveManager、AudioManager 组件及原脚本 GUID，将 SaveManager 的存档规则移至 SaveManagerRuntime、音效距离规则移至 AudioSourceAudibility；GameData、ISaveManager、SerializableDictionary 与运行时注册接口进入 Bootstrap。现有 MenuRuntimeEntry 在编辑器启动时注册，未来 DLL 加载器需显式调用。基础、游戏及 Editor C# 静态编译通过（仅现有 System.Net.Http 版本冲突警告）；Unity 菜单、存档及联机运行尚待验证。
+- **NewGame 音频单例修复**：MainMenu 与 MainScene 各实例化 AudioManager，旧 Awake 销毁前一个实例却未把静态 instance 更新为新实例，使敌人状态切换调用已销毁 AudioSource。现由新实例接管，销毁时只清除自身注册，并对切场景时的音源访问做空值与索引检查。静态编译通过；Unity 中 NewGame 与联机切场景音效待验证。
+- **单例生命周期检查**：核对 AudioManager、SaveManager、PlayerManager、SkillManager、GameManager、Inventory、RoomSceneCoordinator 与 TemporaryEffectPool 的注册和销毁路径。PlayerManager、SkillManager 原来也会销毁旧实例但不更新静态 instance，现由新实例接管，销毁时仅清除自身注册。Inventory 的重复实例策略是保留旧实例，GameManager 等已有正确交接或清理。静态编译通过；Unity 场景切换和联机回归待验证。
+- **Continue 旧资源包脚本兼容修复**：此前将 AudioManager、SaveManager 组件移入 Bootstrap，导致已缓存 MainScene 资源包仍按 Assembly-CSharp 查找组件，单例在菜单卸载后可能为空。已将两个组件连同原 GUID 放回 Assembly-CSharp，热更侧 SaveManagerRuntime 和 AudioSourceAudibility 拆分仍保留；全部 27 处音效调用改经安全入口，在缺少管理器时只记录一次警告并跳过声音。基础、游戏及 Editor 静态编译通过；Unity 使用现有缓存的 Continue/NewGame 和音效待验证。后续迁入新程序集需与新资源包及客户端版本一起发布。
+- **单机技能树解锁即时生效**：UI_SkillTreeSlot 成功扣费并标记解锁后调用 SkillManager.RefreshUnlocks，统一同步七类技能缓存状态；移除技能脚本各自的按钮监听，避免点击顺序覆盖刷新结果。SwordSkill 在类型变化时重算重力，DodgeSkill 的已有幂等保护继续避免重复叠加闪避属性；已解锁节点不再重复扣费。基础、游戏和 Editor 静态编译通过，Unity 中新解锁后立即使用及 Continue 读档回归待验证。
+- **代码热更程序集边界**：建立 Assets/Scripts/Rpg.HotUpdate.asmdef，211 个游戏运行脚本归入 Rpg.HotUpdate，Bootstrap 保留菜单入口及 AudioManager、SaveManager 组件和稳定存档契约；保留原脚本 GUID。MainScene 与四个敌人预制体的 48 处显式旧程序集类型标记改为 Rpg.HotUpdate，内置 MainMenu 及其预制体只引用 4 个 Bootstrap 项目脚本。资源清单增加 scriptAssemblyVersion=1，旧缓存清单因缺少此字段被新客户端拒绝；资源打包脚本同步生成字段。基础与受限依赖热更工程静态编译通过；Unity 导入编译、Addressables 重建、IL2CPP 客户端、DLL 加载与游戏运行均未执行，需用户在 Unity 中操作。
+- **新客户端版本选择**：使用者选择 Version `1.1.0`，旧客户端仍为 `1.0`。需由使用者在 Unity Player Settings 中设置并重建资源与客户端；打包脚本拒绝在新脚本程序集布局下继续使用 `1.0`，避免旧客户端领取新资源。
+- **旧资源清单报错说明**：当前 ServerData/latest.json 仍为客户端 1.0、协议 62 的旧版本，缺少 scriptAssemblyVersion，新程序集客户端因此拒绝它；ResourceUpdateController 在有响应但清单不兼容时改为报告服务端/客户端版本，避免误提示仅需启动 HTTP。Bootstrap 静态编译通过；用户须在 Unity 设置 1.1.0 并重新构建、发布匹配资源后才可远程测试。

@@ -92,16 +92,10 @@ public class SwordSkill : Skill
     protected override void Start()
     {
         if (RoomNetwork != null) { if (player.IsLocalInputOwner) GenerateDots(); return; }
+        regularGravity = swordGravity;
         base.Start();
         GenerateDots();
-        SetUpGravity();
 
-        swordUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockSword);
-        spinUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockSpinSword);
-        bounceUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockBounceSword);
-        swordUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockSword);
-        timeStopUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockTimeStop);
-        vulnerableUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockVulnerable);
     }
 
     private void SetUpGravity()
@@ -182,7 +176,7 @@ public class SwordSkill : Skill
 
         if (RoomNetwork != null) RoomNetwork.RegisterSword(player, newSword);
         newSwordController.SetUpSword(finalDir, swordGravity, player, freezeDuration, returnSpeed);
-        if (RoomNetwork == null) AudioManager.instance.PlaySFX(12, null);
+        if (RoomNetwork == null) AudioManager.TryPlaySFX(12, null);
         player.AssignNewSword(newSword);
         DotsActive(false);
         if (RoomNetwork != null) { Combat.Skills.Commit<SwordSkill>(); RoomNetwork.Publish(); }
@@ -224,6 +218,8 @@ public class SwordSkill : Skill
         UnlockPierceSword();
         UnlockTimeStop();
         UnlockVulnerable();
+        swordGravity = regularGravity;
+        SetUpGravity();
     }
 
     private void UnlockTimeStop()

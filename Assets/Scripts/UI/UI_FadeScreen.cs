@@ -13,5 +13,5 @@ public class UI_FadeScreen : MonoBehaviour
 
     public void FadeOut() => (anim ??= GetComponent<Animator>()).SetTrigger("fadeOut");
 
-    public void FadeIn() => anim.SetTrigger("fadeIn");
+    public void FadeIn() => (anim ??= GetComponent<Animator>()).SetTrigger("fadeIn");
 }

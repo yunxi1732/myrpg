@@ -157,7 +157,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &2681061831618854808
 GameObject:
   m_ObjectHideFlags: 0
@@ -10120,7 +10120,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6373710c36f7b664f9b6c51f6ed4ea97, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy_slime
+  m_EditorClassIdentifier: Rpg.HotUpdate::Enemy_slime
   groundCheck: {fileID: 9210522084527251646}
   groundCheckDistance: 0.7
   whatIsGround:
@@ -10253,7 +10253,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 97e5b41899fa36f46bb0bb01d94cb7d0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyStats
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyStats
   strength:
     baseValue: 0
     modifiers: 
@@ -10319,7 +10319,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d40d4977c84e12f4ba20fedc66b362ba, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ItemDrop
+  m_EditorClassIdentifier: Rpg.HotUpdate::ItemDrop
   possibleItemDrop: 0
   possibleDrop: []
   dropPrefab: {fileID: 3460175464311070586, guid: f720bc20244f28149ac292af7a4ed7df, type: 3}

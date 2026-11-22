@@ -13,14 +13,14 @@ public class PlayerMoveState : PlayerGroundedState
     {
         base.Enter();
 
-        AudioManager.instance.PlaySFX(16, null);
+        AudioManager.TryPlaySFX(16, null);
     }
 
     public override void Exit()
     {
         base.Exit();
 
-        AudioManager.instance.StopSFX(16);
+        AudioManager.TryStopSFX(16);
     }
 
     public override void Update()

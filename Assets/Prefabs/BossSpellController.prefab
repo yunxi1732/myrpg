@@ -105,7 +105,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ce88929e920868b4a8355a073d6106eb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DeathBringerSpell_Controller
+  m_EditorClassIdentifier: Rpg.HotUpdate::DeathBringerSpell_Controller
   check: {fileID: 5716024477333119304}
   boxSize: {x: 2.3, y: 3.8}
   whatIsPlayer:

@@ -742,7 +742,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 51156001}
-        m_TargetAssemblyTypeName: UI_VolumeSlider, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI_VolumeSlider, Rpg.HotUpdate
         m_MethodName: SliderVolume
         m_Mode: 0
         m_Arguments:
@@ -1186,7 +1186,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &108284647
 GameObject:
   m_ObjectHideFlags: 0
@@ -1611,7 +1611,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -2452,7 +2452,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -3234,7 +3234,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -3831,7 +3831,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -7944,7 +7944,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -8584,7 +8584,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -8833,7 +8833,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   endText: {fileID: 1261484841}
-  fadeScreen: {fileID: 1465115328}
   restartButton: {fileID: 723548342}
   characterUI: {fileID: 1335198232}
   skillTreeUI: {fileID: 1121105596}
@@ -9383,7 +9382,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -10353,7 +10352,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 493421660}
-        m_TargetAssemblyTypeName: UI_VolumeSlider, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI_VolumeSlider, Rpg.HotUpdate
         m_MethodName: SliderVolume
         m_Mode: 0
         m_Arguments:
@@ -10640,7 +10639,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -13443,7 +13442,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -13564,8 +13563,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -13594,7 +13592,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &716191406
 GameObject:
   m_ObjectHideFlags: 0
@@ -18657,7 +18655,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: RestartGameButton
         m_Mode: 1
         m_Arguments:
@@ -20748,7 +20746,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &910000001
 Transform:
   m_ObjectHideFlags: 0
@@ -21327,7 +21325,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e11bcd66bac45c42a4a393568dcf768, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BossAttackTrigger
+  m_EditorClassIdentifier: Rpg.HotUpdate::BossAttackTrigger
 --- !u!1 &965605559
 GameObject:
   m_ObjectHideFlags: 0
@@ -21587,8 +21585,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -21617,7 +21614,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &984618124
 GameObject:
   m_ObjectHideFlags: 0
@@ -27671,7 +27668,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5d3f2f035e181a844b58fe07d1bf278d, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Enemy_Boss
+  m_EditorClassIdentifier: Rpg.HotUpdate::Enemy_Boss
   groundCheck: {fileID: 1023120793}
   groundCheckDistance: 3
   whatIsGround:
@@ -27715,7 +27712,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d40d4977c84e12f4ba20fedc66b362ba, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ItemDrop
+  m_EditorClassIdentifier: Rpg.HotUpdate::ItemDrop
   possibleItemDrop: 0
   possibleDrop: []
   dropPrefab: {fileID: 3460175464311070586, guid: f720bc20244f28149ac292af7a4ed7df, type: 3}
@@ -27730,7 +27727,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 97e5b41899fa36f46bb0bb01d94cb7d0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyStats
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyStats
   strength:
     baseValue: 0
     modifiers: 
@@ -32983,8 +32980,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -33013,7 +33009,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &1072888780
 GameObject:
   m_ObjectHideFlags: 0
@@ -33201,8 +33197,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -33231,7 +33226,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &1080058415
 GameObject:
   m_ObjectHideFlags: 0
@@ -33648,7 +33643,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -34140,8 +34135,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -34170,7 +34164,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &1140109847
 GameObject:
   m_ObjectHideFlags: 0
@@ -35469,7 +35463,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1576142412}
-        m_TargetAssemblyTypeName: UI_Options, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI_Options, Rpg.HotUpdate
         m_MethodName: SaveAndExit
         m_Mode: 1
         m_Arguments:
@@ -35999,7 +35993,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -36587,8 +36581,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -36617,7 +36610,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!4 &1264350078 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 475801778180986145, guid: 88cf464c4ced75549a0fd5262125aa06, type: 3}
@@ -38011,7 +38004,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -38137,8 +38130,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -38167,7 +38159,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &1378285216
 GameObject:
   m_ObjectHideFlags: 0
@@ -44181,7 +44173,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -44346,17 +44338,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6795055403672857349, guid: 2a3a8044959fa0c4fa0d7d8e43daca74, type: 3}
   m_PrefabInstance: {fileID: 1994469377}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1465115328 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1742925655066819278, guid: 2a3a8044959fa0c4fa0d7d8e43daca74, type: 3}
-  m_PrefabInstance: {fileID: 1994469377}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 843dac3c9ddef1942ab0f7376afa77ef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1467300213
 GameObject:
   m_ObjectHideFlags: 0
@@ -45125,7 +45106,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -62343,7 +62324,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -63260,8 +63241,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -63290,7 +63270,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &2022990505
 GameObject:
   m_ObjectHideFlags: 0
@@ -63512,7 +63492,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 403607932}
-        m_TargetAssemblyTypeName: UI, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI, Rpg.HotUpdate
         m_MethodName: SwitchTo
         m_Mode: 2
         m_Arguments:
@@ -64053,8 +64033,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -64083,7 +64062,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &2061087376
 GameObject:
   m_ObjectHideFlags: 0
@@ -70598,8 +70577,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -70628,7 +70606,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 617c060a6ca5a894bbe58742275200d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyAnimatorTriggers
+  m_EditorClassIdentifier: Rpg.HotUpdate::EnemyAnimatorTriggers
 --- !u!1 &2108909279
 GameObject:
   m_ObjectHideFlags: 0
@@ -72071,8 +72049,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 7174580690968473599, guid: 8cf78924dce683f41b02bb43c07b6665, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:

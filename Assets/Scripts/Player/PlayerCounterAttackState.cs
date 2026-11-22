@@ -23,7 +23,7 @@ public class PlayerCounterAttackState : PlayerState
         base.Enter();
         canCreateClone = true;
         Succeeded = false;
-        AudioManager.instance.PlaySFX(10, null);
+        AudioManager.TryPlaySFX(10, null);
         stateTimer = player.CounterAttackDuration;
         player.anim.SetBool("SuccessfulCounterAttack", false);
     }

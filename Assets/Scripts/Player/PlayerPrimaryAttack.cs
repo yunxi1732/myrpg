@@ -71,7 +71,7 @@ public class PlayerPrimaryAttack : PlayerState
         }
 
         if (GameSimulationClock.Time > lastTimeAttacked + comboWindow || comboCounter > 2) comboCounter = 0;
-        AudioManager.instance.PlaySFX(comboCounter, null);
+        AudioManager.TryPlaySFX(comboCounter, null);
         player.anim.SetInteger("comboCounter", comboCounter);
         stateTimer = 0.1f;
         player.SetVelocity(player.attackMovement[comboCounter] * player.facingDir, 2);

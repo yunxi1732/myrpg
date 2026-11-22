@@ -13,7 +13,7 @@ namespace Rpg.Networking
             internal readonly Dictionary<string, int> Costs = new Dictionary<string, int>();
         }
         private readonly Dictionary<string, Recipe> recipes = new Dictionary<string, Recipe>();
-        // Authored assets currently omit serialized itemId. Names + category form a build-stable catalog key.
+        // Keep recipe IDs stable across old bundles that lack serialized itemId and newer bundles that include it.
         public static string RecipeId(ItemData_Equipment item) => item == null ? "" : "recipe/" + (int)item.equipmentType + "/" + item.name;
         public static string MaterialId(ItemData item) => item == null ? "" : "material/" + item.name;
         public RoomCraftCatalog(IEnumerable<ItemData_Equipment> products)

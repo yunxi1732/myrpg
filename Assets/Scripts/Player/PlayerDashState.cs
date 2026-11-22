@@ -23,7 +23,7 @@ public class PlayerDashState : PlayerState
                 player.RoomClones.Spawn(player);
             return;
         }
-        AudioManager.instance.PlaySFX(14, null);
+        AudioManager.TryPlaySFX(14, null);
         player.skill.dash.CloneOnDash();
         stateTimer = player.dashDuraiton;
 

@@ -33,6 +33,11 @@ public class SkillManager : MonoBehaviour
     public CrystalSkill crystal { get; private set; }
     public ParrySkill parry { get; private set; }
     public DodgeSkill dodge { get; private set; }
+    private void OnDestroy()
+    {
+        if (ReferenceEquals(instance, this)) instance = null;
+    }
+
     private void Awake()
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this))
@@ -41,8 +46,8 @@ public class SkillManager : MonoBehaviour
             enabled = false;
             return;
         }
-        if (instance != null) Destroy(instance.gameObject);
-        else instance = this;
+        if (instance != null && instance != this) Destroy(instance.gameObject);
+        instance = this;
     }
 
     private void Start()
@@ -62,12 +67,19 @@ public class SkillManager : MonoBehaviour
     private IEnumerator CheckSkillUnlock()
     {
         yield return GameSimulationClock.Wait(GameSimulationClock.DeltaTime);
-        dash.CheckUnlock();
-        clone.CheckUnlock();
-        sword.CheckUnlock();
-        blackhole.CheckUnlock();
-        crystal.CheckUnlock();
-        parry.CheckUnlock(); 
-        dodge.CheckUnlock();
+        RefreshUnlocks();
+    }
+
+    public void RefreshUnlocks()
+    {
+        BindStandaloneOwner();
+        if (Owner == null) return;
+        dash?.CheckUnlock();
+        clone?.CheckUnlock();
+        sword?.CheckUnlock();
+        blackhole?.CheckUnlock();
+        crystal?.CheckUnlock();
+        parry?.CheckUnlock();
+        dodge?.CheckUnlock();
     }
 }

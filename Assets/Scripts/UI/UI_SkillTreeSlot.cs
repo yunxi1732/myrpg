@@ -68,7 +68,8 @@ public class UI_SkillTreeSlot : MonoBehaviour, IPointerEnterHandler, IPointerExi
                 Rpg.Networking.RoomSceneCoordinator.Active.RequestLocalSkillUnlock(networkEntity, skillName);
             return; // Confirmation updates the icon. No solo currency or skill callbacks run here.
         }
-        AudioManager.instance.PlaySFX(4, null);
+        if (unlocked) return;
+        AudioManager.TryPlaySFX(4, null);
         for (int i = 0; i < shouldBeUnlocked.Length; i++)
         {
             if (shouldBeUnlocked[i].unlocked == false)
@@ -92,6 +93,7 @@ public class UI_SkillTreeSlot : MonoBehaviour, IPointerEnterHandler, IPointerExi
 
         unlocked = true;
         skillImage.color = Color.white;
+        if (SkillManager.instance != null) SkillManager.instance.RefreshUnlocks();
     }
 
     public void OnPointerEnter(PointerEventData eventData)

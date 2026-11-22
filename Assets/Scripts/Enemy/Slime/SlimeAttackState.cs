@@ -20,7 +20,7 @@ public class SlimeAttackState : EnemyState
             enemy.BeginNetworkAttack();
             return;
         }
-        AudioManager.instance.PlaySFX(17, enemy.transform);
+        AudioManager.TryPlaySFX(17, enemy.transform);
     }
 
     public override void Exit()

@@ -40,10 +40,6 @@ public class CloneSkill : Skill
     protected override void Start()
     {
         base.Start();
-        cloneAttackUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockCloneAttack);
-        aggresiveCloneUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockAggresiveClone);
-        multipleUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockMultiClone);
-        crystalInsteadUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockCrystalInstead);
     }
 
 

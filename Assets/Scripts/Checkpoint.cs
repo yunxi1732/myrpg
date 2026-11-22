@@ -32,7 +32,7 @@ public class Checkpoint : MonoBehaviour
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) return;
         if (!activationStatus)
-            AudioManager.instance.PlaySFX(3, transform);
+            AudioManager.TryPlaySFX(3, transform);
 
         activationStatus = true;
         anim.SetBool("active", true);

@@ -15,6 +15,7 @@ MonoBehaviour:
   itemType: 1
   itemName: The book
   itemIcon: {fileID: -1985898824, guid: a9ca9a41598dd2e44b125928045c518f, type: 3}
+  itemId: 639fa5620d2b27e42a7b92940b994bbb
   dropChance: 0
   equipmentType: 0
   itemCooldown: 0

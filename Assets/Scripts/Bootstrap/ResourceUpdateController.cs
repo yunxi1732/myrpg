@@ -15,13 +15,24 @@ using UnityEngine.SceneManagement;
 namespace Rpg.HotUpdate
 {
     [Serializable]
+    public sealed class ReleaseFile
+    {
+        public string path;
+        public string sha256;
+        public long bytes;
+    }
+
+    [Serializable]
     public sealed class ResourceRelease
     {
         public string version;
         public string clientVersion;
         public int protocolVersion;
+        public int scriptAssemblyVersion;
         public string catalogPath;
         public string catalogSha256;
+        public ReleaseFile hotUpdateDll;
+        public ReleaseFile[] aotMetadata;
     }
 
     // MainMenu is built into the client. It remains usable while the remote game
@@ -29,6 +40,7 @@ namespace Rpg.HotUpdate
     public sealed class ResourceUpdateController : MonoBehaviour
     {
         private const string Server = "http://127.0.0.1:8000/";
+        public const int ScriptAssemblyVersion = 2;
         private const string RuntimeLabel = "rpg-runtime";
         private const string ManifestName = "resource-release.json";
         private const string BlockedVersionName = "blocked-resource-version.txt";
@@ -38,6 +50,7 @@ namespace Rpg.HotUpdate
         private bool busy;
         private bool failed;
         private bool rollbackAvailable;
+        private bool restartRequired;
 
         public bool Ready { get; private set; }
         public string Status => status;
@@ -48,7 +61,8 @@ namespace Rpg.HotUpdate
             storage = Path.Combine(Application.persistentDataPath, "HotUpdate");
             Directory.CreateDirectory(storage);
             var previous = ReadManifest(Path.Combine(storage, ManifestName + ".previous"));
-            rollbackAvailable = Compatible(previous) && previous.version != ReadBlockedVersion();
+            rollbackAvailable = Compatible(previous) && previous.version != ReadBlockedVersion() &&
+                CodeUpdateLoader.HasCachedFiles(previous, storage);
         }
 
         private IEnumerator Start()
@@ -69,6 +83,9 @@ namespace Rpg.HotUpdate
         {
             if (Ready)
             {
+                if (restartRequired)
+                    GUI.Box(new Rect(Mathf.Max(12, Screen.width - 360), 12, 348, 58),
+                        "Previous version selected. Restart the client to use it.");
                 if (SceneManager.GetActiveScene().name == "MainMenu" &&
                     rollbackAvailable &&
                     GUI.Button(new Rect(Screen.width - 170, 12, 158, 32), "Rollback resources"))
@@ -132,6 +149,8 @@ namespace Rpg.HotUpdate
                     try { latest = JsonUtility.FromJson<ResourceRelease>(request.downloadHandler.text); }
                     catch (Exception error) { Debug.LogWarning("[HotUpdate] Invalid latest.json: " + error.Message); }
                 }
+                else if (savedLocator != null)
+                    Debug.Log("[HotUpdate] Update server unavailable; checking cached resources: " + request.error);
                 else Debug.LogWarning("[HotUpdate] Update check failed: " + request.error);
             }
 
@@ -174,8 +193,14 @@ namespace Rpg.HotUpdate
                                 yield return Download(candidate);
                                 if (downloadSucceeded)
                                 {
-                                    chosen = candidate;
-                                    newlyDownloaded = latest;
+                                    bool codeStaged = false;
+                                    yield return CodeUpdateLoader.Stage(latest, storage, Server,
+                                        message => status = message, result => codeStaged = result);
+                                    if (codeStaged)
+                                    {
+                                        chosen = candidate;
+                                        newlyDownloaded = latest;
+                                    }
                                 }
                             }
                             else Debug.LogWarning("[HotUpdate] Catalog has no MainScene or runtime label");
@@ -192,7 +217,12 @@ namespace Rpg.HotUpdate
 
             if (chosen == null)
             {
-                Fail("No usable game resources. Start the local HTTP service and retry.");
+                if (latest != null && !Compatible(latest))
+                    Fail("No compatible game resources. Server release targets client " + latest.clientVersion +
+                        ", protocol " + latest.protocolVersion + ", script assemblies " + latest.scriptAssemblyVersion +
+                        "; this client needs " + Application.version + ", " + ProtocolSchema.SchemaVersion +
+                        ", " + ScriptAssemblyVersion + ". Build and publish matching resources.");
+                else Fail("No usable game resources. Check the local HTTP service and the published release, then retry.");
                 yield break;
             }
             if (newlyDownloaded == null)
@@ -205,6 +235,22 @@ namespace Rpg.HotUpdate
                     Fail("Cached game resources are incomplete. Connect and retry.");
                     yield break;
                 }
+                bool codeStaged = false;
+                yield return CodeUpdateLoader.Stage(saved, storage, Server,
+                    message => status = message, result => codeStaged = result);
+                if (!codeStaged)
+                {
+                    Fail("Cached code is unavailable or failed verification. Connect and retry.");
+                    yield break;
+                }
+            }
+
+            status = "Loading game code...";
+            ResourceRelease selected = newlyDownloaded ?? saved;
+            if (!CodeUpdateLoader.LoadAndRegister(selected, storage, out string codeError))
+            {
+                Fail("Game code could not be loaded: " + codeError);
+                yield break;
             }
 
             Addressables.ClearResourceLocators();
@@ -219,7 +265,7 @@ namespace Rpg.HotUpdate
                 }
             }
             progress = 1;
-            status = "Game resources ready";
+            status = "Game code and resources ready";
             ActiveVersion = newlyDownloaded != null ? newlyDownloaded.version : saved.version;
             Ready = true;
             busy = false;
@@ -230,7 +276,8 @@ namespace Rpg.HotUpdate
             if (busy || !Ready) yield break;
             var previous = ReadManifest(Path.Combine(storage, ManifestName + ".previous"));
             var current = ReadManifest(Path.Combine(storage, ManifestName));
-            if (!Compatible(previous) || !Compatible(current)) yield break;
+            if (!Compatible(previous) || !Compatible(current) ||
+                !CodeUpdateLoader.HasCachedFiles(previous, storage)) yield break;
             string catalogPath = CatalogFile(previous);
             bool valid = false;
             try { valid = File.Exists(catalogPath) && MatchesHash(File.ReadAllBytes(catalogPath), previous.catalogSha256); }
@@ -238,42 +285,39 @@ namespace Rpg.HotUpdate
             if (!valid) yield break;
 
             busy = true;
-            Ready = false;
-            progress = 0;
-            status = "Restoring previous resources...";
+            status = "Checking previous game resources...";
             var load = Addressables.LoadContentCatalogAsync(catalogPath, false);
             yield return load;
-            if (load.Status == AsyncOperationStatus.Succeeded && HasGameScene(load.Result))
+            if (load.Status == AsyncOperationStatus.Succeeded)
             {
                 var previousLocator = load.Result;
-                yield return Download(previousLocator);
-                bool restored = false;
-                if (downloadSucceeded)
+                if (HasGameScene(previousLocator))
                 {
-                    try
+                    yield return Download(previousLocator);
+                    if (downloadSucceeded)
                     {
-                        File.WriteAllText(Path.Combine(storage, BlockedVersionName), current.version);
-                        SaveManifest(previous);
-                        Addressables.ClearResourceLocators();
-                        Addressables.AddResourceLocator(previousLocator);
-                        status = "Previous resource version restored";
-                        ActiveVersion = previous.version;
-                        progress = 1;
-                        rollbackAvailable = false;
-                        restored = true;
-                    }
-                    catch (Exception error)
-                    {
-                        Debug.LogError("[HotUpdate] Rollback save failed: " + error);
-                        try { File.Delete(Path.Combine(storage, BlockedVersionName)); }
-                        catch (Exception cleanup) { Debug.LogWarning("[HotUpdate] Rollback cleanup failed: " + cleanup.Message); }
+                        // A loaded managed assembly cannot be replaced in this process.
+                        // Keep the current code and catalog together until restart.
+                        try
+                        {
+                            File.WriteAllText(Path.Combine(storage, BlockedVersionName), current.version);
+                            SaveManifest(previous);
+                            rollbackAvailable = false;
+                            restartRequired = true;
+                            status = "Previous version selected. Restart to use it.";
+                        }
+                        catch (Exception error)
+                        {
+                            Debug.LogError("[HotUpdate] Rollback save failed: " + error);
+                            try { File.Delete(Path.Combine(storage, BlockedVersionName)); }
+                            catch (Exception cleanup) { Debug.LogWarning("[HotUpdate] Rollback cleanup failed: " + cleanup.Message); }
+                        }
                     }
                 }
-                if (!restored) Addressables.RemoveResourceLocator(previousLocator);
+                Addressables.RemoveResourceLocator(previousLocator);
             }
             else Debug.LogWarning("[HotUpdate] Previous resource catalog could not be loaded");
             Addressables.Release(load);
-            Ready = true;
             busy = false;
         }
 
@@ -317,13 +361,16 @@ namespace Rpg.HotUpdate
 
         private bool Compatible(ResourceRelease release) =>
             release != null && !string.IsNullOrWhiteSpace(release.version) &&
+            System.Text.RegularExpressions.Regex.IsMatch(release.version, "^[A-Za-z0-9_-]{1,80}$") &&
             release.clientVersion == Application.version && release.protocolVersion == ProtocolSchema.SchemaVersion &&
+            release.scriptAssemblyVersion == ScriptAssemblyVersion &&
             !string.IsNullOrWhiteSpace(release.catalogSha256) && release.catalogSha256.Length == 64 && IsHex(release.catalogSha256) &&
             !string.IsNullOrWhiteSpace(release.catalogPath) &&
             (release.catalogPath.EndsWith(".bin", StringComparison.OrdinalIgnoreCase) ||
              release.catalogPath.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) &&
-            release.catalogPath.StartsWith("releases/", StringComparison.Ordinal) &&
-            !release.catalogPath.Contains("..");
+            release.catalogPath.StartsWith("releases/" + release.version + "/StandaloneWindows64/", StringComparison.Ordinal) &&
+            !release.catalogPath.Contains("..") &&
+            CodeUpdateLoader.ValidManifest(release);
 
         private static bool IsHex(string value)
         {
@@ -359,7 +406,10 @@ namespace Rpg.HotUpdate
                 File.Replace(pending, path, previous);
             }
             else File.Move(pending, path);
-            rollbackAvailable = File.Exists(path + ".previous");
+            var previousRelease = ReadManifest(path + ".previous");
+            rollbackAvailable = Compatible(previousRelease) &&
+                CodeUpdateLoader.HasCachedFiles(previousRelease, storage) &&
+                previousRelease.version != ReadBlockedVersion();
         }
 
         private void Fail(string message)

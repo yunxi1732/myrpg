@@ -10,14 +10,14 @@ jobs:
   build:
     if: github.repository == 'yunxi1732/myrpg' && github.ref == 'refs/heads/main'
     runs-on: windows-2022
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - name: Check out project
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Prepare Addressables content for the client
+      - name: Generate HybridCLR code and Addressables content for the client
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -48,9 +48,24 @@ jobs:
             Where-Object { Test-Path -LiteralPath (Join-Path $_.DirectoryName ($_.BaseName + '_Data')) } |
             Select-Object -First 1
           if ($null -eq $player) { throw 'Windows player executable and matching Data folder were not found.' }
+          $gameAssembly = Join-Path $player.DirectoryName 'GameAssembly.dll'
+          $metadata = Join-Path $player.DirectoryName ($player.BaseName + '_Data/il2cpp_data/Metadata/global-metadata.dat')
+          $localCatalog = Join-Path $player.DirectoryName ($player.BaseName + '_Data/StreamingAssets/aa/catalog.bin')
+          $hotDll = 'Library/HybridCLR/HotUpdateDlls/StandaloneWindows64/Rpg.HotUpdate.dll'
+          foreach ($required in @($gameAssembly, $metadata, $localCatalog, $hotDll)) {
+            if (-not (Test-Path -LiteralPath $required)) { throw "Required IL2CPP or hot-update output is missing: $required" }
+          }
+          $versionMatch = Select-String -LiteralPath 'ProjectSettings/ProjectSettings.asset' -Pattern '^\s*bundleVersion:\s*(\S+)' | Select-Object -First 1
+          $layoutMatch = Select-String -LiteralPath 'Assets/Scripts/Bootstrap/ResourceUpdateController.cs' -Pattern 'public const int ScriptAssemblyVersion\s*=\s*(\d+);' | Select-Object -First 1
+          if ($null -eq $versionMatch -or $null -eq $layoutMatch) { throw 'Client or script assembly version was not found.' }
           $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
           "timestamp=$stamp" >> $env:GITHUB_OUTPUT
-          @("commit=$env:GITHUB_SHA", "built_at_utc=$stamp") |
+          @("commit=$env:GITHUB_SHA", "built_at_utc=$stamp",
+            "client_version=$($versionMatch.Matches[0].Groups[1].Value)",
+            "script_assembly_version=$($layoutMatch.Matches[0].Groups[1].Value)",
+            "player_sha256=$((Get-FileHash -LiteralPath $player.FullName -Algorithm SHA256).Hash)",
+            "game_assembly_sha256=$((Get-FileHash -LiteralPath $gameAssembly -Algorithm SHA256).Hash)",
+            "hot_update_dll_sha256=$((Get-FileHash -LiteralPath $hotDll -Algorithm SHA256).Hash)") |
             Set-Content -LiteralPath (Join-Path $root 'build-info.txt')
 
       - name: Upload Windows test client

@@ -10,7 +10,7 @@ public class Player : Entity
     private static readonly HashSet<Player> activePlayers = new HashSet<Player>();
     public static IEnumerable<Player> ActivePlayers => activePlayers;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetActivePlayers() => activePlayers.Clear();
+    internal static void ResetActivePlayers() => activePlayers.Clear();
     public bool CanReadSimulationInput => EntityRuntimePermissions.CanReadSimulationInput(this);
     public bool CanUseLegacyActions => EntityRuntimePermissions.CanUseLegacyActions(this);
     public PlayerInputData InputData { get; } = new PlayerInputData();

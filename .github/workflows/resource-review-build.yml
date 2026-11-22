@@ -1,4 +1,4 @@
-name: Resource review build
+name: Code and resource review build
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
   content:
     if: github.repository == 'yunxi1732/myrpg' && github.ref == 'refs/heads/main'
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Check out project
         uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
           "RPG_BASE_RELEASE_ID=$($state.Directory.Name)" >> $env:GITHUB_ENV
           "state_path=$($state.FullName)" >> $env:GITHUB_OUTPUT
 
-      - name: Build Addressables review content
+      - name: Generate HybridCLR code and Addressables review content
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -55,6 +55,10 @@ jobs:
           targetPlatform: StandaloneWindows64
           buildMethod: Rpg.Editor.RpgResourceUpdateSetup.BuildForCi
           customParameters: -rpgReleaseId ci-${{ github.run_id }}-${{ github.sha }} -rpgContentStatePath ${{ steps.base.outputs.state_path }}
+
+      - name: Audit runtime assembly placement
+        shell: pwsh
+        run: python Tools/audit_hot_update_assemblies.py
 
       - name: Stage manifest and checksums
         id: package
@@ -68,6 +72,10 @@ jobs:
           }
           "release_id=$releaseId" >> $env:GITHUB_OUTPUT
 
+      - name: Verify staged release
+        shell: pwsh
+        run: python Tools/verify_resource_release.py --release-id "ci-$env:GITHUB_RUN_ID-$env:GITHUB_SHA"
+
       - name: Upload review artifact
         uses: actions/upload-artifact@v4
         with:
@@ -75,5 +83,8 @@ jobs:
           path: |
             ServerData/releases/${{ steps.package.outputs.release_id }}/
             Build/ResourceRelease/${{ steps.package.outputs.release_id }}/
+            Docs/HotUpdateAssemblyInventory.csv
+            Assets/HybridCLR/Generate/AOTGenericReferences.cs
+            Assets/HybridCLR/Generate/link.xml
           if-no-files-found: error
           retention-days: 90

@@ -15,6 +15,7 @@ MonoBehaviour:
   itemType: 1
   itemName: Ice And Fire
   itemIcon: {fileID: 1398721256, guid: a9ca9a41598dd2e44b125928045c518f, type: 3}
+  itemId: 7b96e82df073069419a0f8271ecb5690
   dropChance: 6
   equipmentType: 0
   itemCooldown: 0

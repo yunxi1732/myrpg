@@ -1,0 +1,26 @@
+{
+  "name": "Rpg.HotUpdate",
+  "rootNamespace": "",
+  "references": [
+    "Rpg.Bootstrap",
+    "Unity.Addressables",
+    "Unity.ResourceManager",
+    "UnityEngine.UI",
+    "Unity.TextMeshPro",
+    "Unity.Networking.Transport",
+    "Unity.Collections",
+    "Unity.Burst",
+    "Unity.VisualScripting.Core",
+    "Unity.2D.IK.Runtime",
+    "Cinemachine"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

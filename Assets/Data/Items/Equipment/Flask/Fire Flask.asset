@@ -15,6 +15,7 @@ MonoBehaviour:
   itemType: 1
   itemName: Fire Flask
   itemIcon: {fileID: -410334530, guid: a9ca9a41598dd2e44b125928045c518f, type: 3}
+  itemId: 9364afbb7720dc444a5d383fb1a00c97
   dropChance: 0
   equipmentType: 3
   itemCooldown: 15

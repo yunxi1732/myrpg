@@ -34,9 +34,6 @@ public class ParrySkill : Skill
     {
         base.Start();
 
-        parryUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockParry);
-        restorageUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockParryRestore);
-        parryWithMirageUnlockButton.GetComponent<Button>().onClick.AddListener(UnlockParryWithMirage);
     }
 
     public override void CheckUnlock()

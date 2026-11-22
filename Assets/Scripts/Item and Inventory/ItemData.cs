@@ -18,6 +18,18 @@ public class ItemData : ScriptableObject
     public Sprite itemIcon;
     public string itemId;
 
+    public string StableItemId
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(itemId) && LegacyItemIds.TryResolve(name, out string legacyId))
+                itemId = legacyId;
+            return itemId;
+        }
+    }
+
+    private void OnEnable() { _ = StableItemId; }
+
     [Range(0, 100)]
     public float dropChance;
 

@@ -1,4 +1,4 @@
-# 第四步：资源热更新实施记录
+# 资源与代码热更新实施记录
 
 状态：实施中。运行时代码和编辑器脚本通过本机 .NET 静态编译（0 个错误）；Unity 已导入配置、完成资源构建和独立 Windows 客户端构建。使用者确认同一客户端在线、离线及内容更新正常，回退、双客户端版本拒绝和失败重试也已验证；CI 产物尚未完成验收。
 
@@ -34,12 +34,26 @@
 
 ## 使用者在 Unity 中的操作
 
-1. 等待 Unity 重新编译，确认 Console 没有当前编译错误。
+1. Unity Player Settings Version 已设为 `1.1.0`，Standalone Scripting Backend 已设为 IL2CPP。当前资源清单要求 `scriptAssemblyVersion=2`；版本 `20261122T104506Z` 是该客户端的全量基础资源，`20261122T114153Z` 是沿用同一 Catalog 的代码更新。
 2. 退出 Play Mode，执行 `Tools > RPG Resource Update > 1 Configure Remote Content`。脚本保留 MainMenu 为唯一 Player Build 场景，建立远程 Profile 和资源组；检查 Addressables Groups 和 Build Settings。
-3. 执行 `Tools > RPG Resource Update > 2 Build Initial Review Content`。Console 会显示 `releaseId`；后续更新使用菜单 `3 Build Update Review Content`，并选择与作为更新基线的目录相匹配的 `addressables_content_state.bin`。当前本机更新基线为 `Build/ResourceRelease/20261121T131032Z/addressables_content_state.bin`。
-4. 在项目根目录运行 `python Tools/package_resource_release.py --release-id <Console 中的 releaseId>`。它在 `Build/ResourceRelease/<releaseId>/` 生成待审核的 `latest.json`、校验记录和内容状态文件。
+3. 本次脚本程序集布局迁移必须执行 `Tools > RPG Resource Update > 2 Build Initial Review Content`，重新生成完整资源包；不要用旧版本的 `addressables_content_state.bin` 执行菜单 `3 Build Update Review Content`。Console 会显示新 `releaseId`。以后在同一客户端布局内做资源更新，才使用与对应发布版本匹配的内容状态。
+4. 先在 Unity 的 HybridCLR 菜单生成 Windows 64 位热更 DLL 和所需 AOT 元数据，再运行 `python Tools/package_resource_release.py --release-id <Console 中的 releaseId>`。脚本默认读取 `Library/HybridCLR/HotUpdateDlls/StandaloneWindows64/Rpg.HotUpdate.dll`，并按 `Assets/HybridCLR/Generate/AOTGenericReferences.cs` 的 `PatchedAOTAssemblyList` 读取剥离后的 AOT DLL；它将这些文件复制到同一发布目录，并在待审核的 `latest.json` 中记录路径、字节数和 SHA-256。
 5. 审核 `ServerData/releases/<releaseId>/` 与校验记录后，由使用者启动本机 HTTP 静态服务并将待审核的 `latest.json` 放到 `ServerData/` 根目录。这一步才让客户端看到新版本。日常 push 不执行这一步。
 6. Editor 默认使用 Asset Database 直接加载 MainScene；需要在 Editor 验证远程资源时，执行 `Tools > RPG Resource Update > Toggle Remote Test In Editor`，并在 Console 确认已开启。实际下载、缓存和回退最终仍需 Windows 客户端验证。
+
+## 代码热更加载器首版
+
+- `ResourceRelease` 的 `scriptAssemblyVersion` 已升至 2，旧资源清单不再兼容。新清单必须包含 `hotUpdateDll` 和 `aotMetadata`（没有补充元数据时用空数组）。资源 Catalog 与代码文件必须使用同一个 releaseId。
+- 客户端先校验并缓存 DLL 与元数据，调用 HybridCLR 补充 AOT 元数据，再 `Assembly.Load` 并反射调用 `MenuRuntimeEntry.Register()`。只有代码注册及资源准备都成功，菜单才进入 Ready 状态。编辑器直接使用已编译的 `Rpg.HotUpdate`，不重复加载 DLL。
+- 回退前核验旧代码缓存及 Catalog 并下载旧资源；由于进程内不能替换已加载程序集，回退在重启客户端后生效。首次 Windows IL2CPP 客户端、AOT 元数据清单和同一客户端替换 DLL 的实际运行仍待使用者在 Unity 中验证。
+- 仅修改热更代码时，在 Unity 执行 `HybridCLR > CompileDll > Win64`，然后用 `python Tools/package_code_release.py --base-release-id <当前版本> --release-id <新版本>` 复用原 Catalog，并**从已发布的基础版本复制**对应 AOT 元数据，不读取本机后来重新生成的 AOT 文件。保留基础版本的资源目录，因为 Catalog 仍引用其中的 Bundle。此流程不重打 Windows 客户端；若新增 AOT 泛型、桥接或基础层接口，需要先评估并构建新基础客户端。
+
+### 同一客户端替换 DLL 验收（2026-11-22）
+
+- 使用者构建 `Build/newBuild/rpg.exe`（Windows 64 位 IL2CPP）并确认可进入游戏。基础发布版本 `20261122T104506Z` 的 DLL SHA-256 为 `16c756f72a81c639da0fad2209e40857525e0ecb3f024dd9049deb7c267ed193`。
+- 仅在 `MenuRuntimeEntry.Register()` 中加入 Player.log 标记，使用者执行 `HybridCLR > CompileDll > Win64`；代码版本 `20261122T114153Z` 复用完全相同的资源 Catalog，DLL SHA-256 变为 `83af751d8d04b218343d7bf7aeae4c4f1ccd1ac0d88fa388de282e8dec162493`。发布清单后，使用者重新启动原客户端。
+- `Player.log` 记录 `[HotUpdate] DLL update probe v2 registered`，本地活动清单和缓存 DLL 的哈希均指向新版本。`rpg.exe` SHA-256 始终为 `C60CBB59C0E1E20DBE9BFFE0193A8E17E7065514A04745E9A1E5D08F1A12C745`，`GameAssembly.dll` 始终为 `DF9C6917CD113AD1C5DBE959B433489A271F23C71F1543A820212F22DA792226`。同一 IL2CPP 客户端替换 DLL 的基本链路已验证；损坏 DLL 恢复和代码版本回退仍需单独验证。
+- 后续代码版本 `20261122T124206Z` 在热更入口显式重置两处静态状态；使用者重新编译 Win64 热更 DLL，沿用原 Catalog 与 6 个基础 AOT 文件发布，DLL SHA-256 为 `57c5ee25194329a2f1d78277ff75b6b0cf10d50264ca641f18b362282ee52872`。使用者确认原 Windows 客户端可进入游戏，`Player.log` 与本地清单指向新版本；故障和回退验收按使用者要求暂缓。
 
 ## 待验证的验收
 

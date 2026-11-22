@@ -9,11 +9,16 @@ public class PlayerManager : MonoBehaviour, ISaveManager
 
     public int currency;
 
+    private void OnDestroy()
+    {
+        if (ReferenceEquals(instance, this)) instance = null;
+    }
+
     private void Awake()
     {
         if (!Rpg.Networking.EntityRuntimePermissions.CanUseLegacyWorld(this)) { enabled = false; return; }
-        if (instance != null) Destroy(instance.gameObject);
-        else instance = this;
+        if (instance != null && instance != this) Destroy(instance.gameObject);
+        instance = this;
     }
 
     public bool HaveEnoughMoney(int _price)

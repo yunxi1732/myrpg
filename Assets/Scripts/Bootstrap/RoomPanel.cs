@@ -3,7 +3,28 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using Rpg.Networking;
+
+// Values prepared by the room flow for the built-in menu view.
+public readonly struct RoomPanelDisplayState
+{
+    public readonly bool CanCreate;
+    public readonly bool IsHosting;
+    public readonly bool HasGuest;
+    public readonly bool IsConnected;
+    public readonly bool IsConnectionPending;
+    public readonly string PendingLabel;
+
+    public RoomPanelDisplayState(bool canCreate, bool isHosting, bool hasGuest,
+        bool isConnected, bool isConnectionPending, string pendingLabel)
+    {
+        CanCreate = canCreate;
+        IsHosting = isHosting;
+        HasGuest = hasGuest;
+        IsConnected = isConnected;
+        IsConnectionPending = isConnectionPending;
+        PendingLabel = pendingLabel;
+    }
+}
 
 public sealed class RoomPanel : BasePanel
 {
@@ -14,10 +35,7 @@ public sealed class RoomPanel : BasePanel
     [SerializeField] private Button exitRoomButton;
     [SerializeField] private Button returnButton;
     private float statusRemaining;
-    private bool creationAvailable;
-    private bool hosting;
-    private bool hasGuest;
-    private RoomConnectionState clientState;
+    private RoomPanelDisplayState displayState;
     private string sceneStatus;
     public bool IsSceneLoading { get; private set; }
 
@@ -66,27 +84,24 @@ public sealed class RoomPanel : BasePanel
         HideStatus();
     }
 
-    public void SetHostState(bool canCreate, bool listening, bool guestConnected,
-        RoomConnectionState connectionState = RoomConnectionState.Idle)
+    public void SetDisplayState(RoomPanelDisplayState state)
     {
-        creationAvailable = canCreate;
-        hosting = listening;
-        hasGuest = guestConnected;
-        clientState = connectionState;
-        IsConnectionPending = clientState == RoomConnectionState.Connecting || clientState == RoomConnectionState.Handshaking;
+        displayState = state;
+        IsConnectionPending = state.IsConnectionPending;
         if (IsReady) RefreshControls();
     }
 
     private void RefreshControls()
     {
-        bool connected = clientState == RoomConnectionState.Connected;
-        ipInput.interactable = portInput.interactable = !hosting && !connected && !IsConnectionPending;
-        enterRoomButton.interactable = creationAvailable && !hosting && !connected && !IsConnectionPending;
-        exitRoomButton.interactable = (hosting || connected) && !IsConnectionPending;
+        ipInput.interactable = portInput.interactable = !displayState.IsHosting && !displayState.IsConnected && !IsConnectionPending;
+        enterRoomButton.interactable = displayState.CanCreate && !displayState.IsHosting && !displayState.IsConnected && !IsConnectionPending;
+        exitRoomButton.interactable = (displayState.IsHosting || displayState.IsConnected) && !IsConnectionPending;
         returnButton.interactable = !IsConnectionPending && !IsSceneLoading;
         var label = enterRoomButton.GetComponentInChildren<TMP_Text>(true);
-        if (label != null) label.text = !string.IsNullOrEmpty(sceneStatus) ? sceneStatus : IsConnectionPending ? (clientState == RoomConnectionState.Handshaking ? "Joining..." : "Connecting...") :
-            hosting ? (hasGuest ? "B joined" : "Waiting for B") : connected ? "Room joined" :
+        if (label != null) label.text = !string.IsNullOrEmpty(sceneStatus) ? sceneStatus :
+            IsConnectionPending ? (displayState.PendingLabel ?? "Connecting...") :
+            displayState.IsHosting ? (displayState.HasGuest ? "B joined" : "Waiting for B") :
+            displayState.IsConnected ? "Room joined" :
             string.IsNullOrWhiteSpace(Address) ? "Create Room" : "Join Room";
     }
 
@@ -185,12 +200,12 @@ public sealed class RoomPanel : BasePanel
 
     private void RequestCreate()
     {
-        if (!IsConnectionPending && creationAvailable && !hosting) CreateRequested?.Invoke();
+        if (!IsConnectionPending && displayState.CanCreate && !displayState.IsHosting) CreateRequested?.Invoke();
     }
 
     private void RequestExit()
     {
-        if (!IsConnectionPending && (hosting || clientState == RoomConnectionState.Connected)) ExitRequested?.Invoke();
+        if (!IsConnectionPending && (displayState.IsHosting || displayState.IsConnected)) ExitRequested?.Invoke();
     }
 
     private void OnAddressChanged(string value) { if (IsReady) RefreshControls(); }

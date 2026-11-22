@@ -12,14 +12,14 @@ public class SlimeMoveState : SlimeGroundedState
     {
         base.Enter();
 
-        if (!enemy.NetworkMovementOnly) AudioManager.instance.PlaySFX(6, enemy.transform);
+        if (!enemy.NetworkMovementOnly) AudioManager.TryPlaySFX(6, enemy.transform);
     }
 
     public override void Exit()
     {
         base.Exit();
 
-        if (!enemy.NetworkMovementOnly) AudioManager.instance.StopSFX(6);
+        if (!enemy.NetworkMovementOnly) AudioManager.TryStopSFX(6);
     }
 
     public override void Update()

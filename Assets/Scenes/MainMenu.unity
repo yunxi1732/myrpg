@@ -912,7 +912,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1044351604}
-        m_TargetAssemblyTypeName: UI_MainMenu, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI_MainMenu, Rpg.Bootstrap
         m_MethodName: NewGame
         m_Mode: 1
         m_Arguments:
@@ -1821,7 +1821,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sceneName: MainScene
   continueButton: {fileID: 1240901272}
-  fadeScreen: {fileID: 1604597568}
   roomPanel: {fileID: 1900100100}
   onlineButton: {fileID: 1795503760}
   logRoomMessageMetrics: 1
@@ -2243,7 +2242,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1044351604}
-        m_TargetAssemblyTypeName: UI_MainMenu, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI_MainMenu, Rpg.Bootstrap
         m_MethodName: ContinueGame
         m_Mode: 1
         m_Arguments:
@@ -2770,17 +2769,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 6795055403672857349, guid: 2a3a8044959fa0c4fa0d7d8e43daca74, type: 3}
   m_PrefabInstance: {fileID: 6795055402693221433}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1604597568 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1742925655066819278, guid: 2a3a8044959fa0c4fa0d7d8e43daca74, type: 3}
-  m_PrefabInstance: {fileID: 6795055402693221433}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 843dac3c9ddef1942ab0f7376afa77ef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1739790542
 GameObject:
   m_ObjectHideFlags: 0
@@ -2866,7 +2854,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1044351604}
-        m_TargetAssemblyTypeName: UI_MainMenu, Assembly-CSharp
+        m_TargetAssemblyTypeName: UI_MainMenu, Rpg.Bootstrap
         m_MethodName: ExitGame
         m_Mode: 1
         m_Arguments:

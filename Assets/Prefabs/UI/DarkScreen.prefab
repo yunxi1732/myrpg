@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 6795055403672857350}
   - component: {fileID: 6795055403672857351}
   - component: {fileID: 6795055403672857348}
-  - component: {fileID: 1742925655066819278}
   m_Layer: 5
   m_Name: DarkScreen
   m_TagString: Untagged
@@ -99,15 +98,3 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &1742925655066819278
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6795055403672857346}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 843dac3c9ddef1942ab0f7376afa77ef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

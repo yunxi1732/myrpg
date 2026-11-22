@@ -15,7 +15,7 @@ public class BossAttackState : EnemyState
     {
         base.Enter();
         if (enemy.NetworkMovementOnly) enemy.BeginNetworkAttack();
-        else AudioManager.instance.PlaySFX(17, enemy.transform);
+        else AudioManager.TryPlaySFX(17, enemy.transform);
         enemy.chanceToTeleport += 5;
     }
 

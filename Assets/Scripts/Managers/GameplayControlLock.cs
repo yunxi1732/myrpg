@@ -47,7 +47,7 @@ public static class GameplayControlLock
 
     // Also runs when Enter Play Mode has Domain Reload disabled.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetForPlay()
+    internal static void ResetForPlay()
     {
         holders.Clear();
         Changed = null;

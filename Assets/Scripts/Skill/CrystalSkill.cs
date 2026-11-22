@@ -44,11 +44,6 @@ public class CrystalSkill : Skill
     {
         base.Start();
 
-        unlockCrystalButton.GetComponent<Button>().onClick.AddListener(UnlockCrystal);
-        unlockCloneInsteadButton.GetComponent<Button>().onClick.AddListener(UnlockCrystalMirage);
-        unlockExplosiveCrystalButton.GetComponent<Button>().onClick.AddListener(UnlockExplosiveCrystal);
-        unlockMovingCrystalButton.GetComponent<Button>().onClick.AddListener(UnlockMovingCrystal);
-        unlockMultiStackButton.GetComponent<Button>().onClick.AddListener(UnlockMultiCrystal);
     }
 
     #region Unlock skill region
